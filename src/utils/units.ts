@@ -7,7 +7,7 @@ export const PX_TO_IN = 1 / 96;
 export const CM_TO_PX = 96 / 2.54;
 export const PX_TO_CM = 2.54 / 96;
 
-export type Unit = 'mm' | 'px' | 'pt' | 'in' | 'cm';
+export type Unit = "mm" | "px" | "pt" | "in" | "cm";
 
 export function pxToMm(px: number): number {
   return Number((px * PX_TO_MM).toFixed(2));
@@ -42,17 +42,17 @@ export function cmToPx(cm: number): number {
 }
 
 export function pxToUnit(px: number, unit: Unit): number {
-  if (unit === 'mm') return pxToMm(px);
-  if (unit === 'pt') return pxToPt(px);
-  if (unit === 'in') return pxToIn(px);
-  if (unit === 'cm') return pxToCm(px);
+  if (unit === "mm") return pxToMm(px);
+  if (unit === "pt") return pxToPt(px);
+  if (unit === "in") return pxToIn(px);
+  if (unit === "cm") return pxToCm(px);
   return Math.round(px);
 }
 
 export function unitToPx(value: number, unit: Unit): number {
-  if (unit === 'mm') return mmToPx(value);
-  if (unit === 'pt') return ptToPx(value);
-  if (unit === 'in') return inToPx(value);
-  if (unit === 'cm') return cmToPx(value);
+  if (unit === "mm") return mmToPx(value);
+  if (unit === "pt") return ptToPx(value);
+  if (unit === "in") return inToPx(value);
+  if (unit === "cm") return cmToPx(value);
   return Math.round(value);
 }

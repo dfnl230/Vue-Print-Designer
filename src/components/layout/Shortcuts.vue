@@ -1,28 +1,36 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, nextTick, inject, computed, type Ref } from 'vue';
-import { useI18n } from 'vue-i18n';
-import { useDesignerStore } from '@/stores/designer';
-import { useTemplateStore } from '@/stores/templates';
-import { formatShortcut } from '@/utils/os';
-import type { PrintElement } from '@/types';
-import DeleteIcon from '~icons/material-symbols/delete';
-import CutIcon from '~icons/material-symbols/content-cut';
-import CopyIcon from '~icons/material-symbols/content-copy'; // Reverted icon name
-import PasteIcon from '~icons/material-symbols/content-paste';
-import LockIcon from '~icons/material-symbols/lock';
-import UnlockIcon from '~icons/material-symbols/lock-open';
-import UndoIcon from '~icons/material-symbols/undo';
-import RedoIcon from '~icons/material-symbols/redo';
-import BringToFrontIcon from '~icons/material-symbols/vertical-align-top';
-import SendToBackIcon from '~icons/material-symbols/vertical-align-bottom';
-import MoveUpIcon from '~icons/material-symbols/arrow-upward';
-import MoveDownIcon from '~icons/material-symbols/arrow-downward';
+import {
+  onMounted,
+  onUnmounted,
+  ref,
+  nextTick,
+  inject,
+  computed,
+  type Ref,
+} from "vue";
+import { useI18n } from "vue-i18n";
+import { useDesignerStore } from "@/stores/designer";
+import { useTemplateStore } from "@/stores/templates";
+import { formatShortcut } from "@/utils/os";
+import type { PrintElement } from "@/types";
+import DeleteIcon from "~icons/material-symbols/delete";
+import CutIcon from "~icons/material-symbols/content-cut";
+import CopyIcon from "~icons/material-symbols/content-copy"; // Reverted icon name
+import PasteIcon from "~icons/material-symbols/content-paste";
+import LockIcon from "~icons/material-symbols/lock";
+import UnlockIcon from "~icons/material-symbols/lock-open";
+import UndoIcon from "~icons/material-symbols/undo";
+import RedoIcon from "~icons/material-symbols/redo";
+import BringToFrontIcon from "~icons/material-symbols/vertical-align-top";
+import SendToBackIcon from "~icons/material-symbols/vertical-align-bottom";
+import MoveUpIcon from "~icons/material-symbols/arrow-upward";
+import MoveDownIcon from "~icons/material-symbols/arrow-downward";
 
 const { t } = useI18n();
 const store = useDesignerStore();
 const templateStore = useTemplateStore();
-const designerRoot = inject<Ref<HTMLElement | null>>('designer-root');
-const designerInstanceId = inject<string | null>('designer-instance-id', null);
+const designerRoot = inject<Ref<HTMLElement | null>>("designer-root");
+const designerInstanceId = inject<string | null>("designer-instance-id", null);
 const showMenu = ref(false);
 const menuX = ref(0);
 const menuY = ref(0);
@@ -34,30 +42,30 @@ const currentMouseX = ref(0);
 const currentMouseY = ref(0);
 
 const canBringToFront = computed(() => {
-  return store.canMoveElementsLayer(store.selectedElementIds, 'front');
+  return store.canMoveElementsLayer(store.selectedElementIds, "front");
 });
 
 const canSendToBack = computed(() => {
-  return store.canMoveElementsLayer(store.selectedElementIds, 'back');
+  return store.canMoveElementsLayer(store.selectedElementIds, "back");
 });
 
 const canMoveLayerUp = computed(() => {
-  return store.canMoveElementsLayer(store.selectedElementIds, 'forward');
+  return store.canMoveElementsLayer(store.selectedElementIds, "forward");
 });
 
 const canMoveLayerDown = computed(() => {
-  return store.canMoveElementsLayer(store.selectedElementIds, 'backward');
+  return store.canMoveElementsLayer(store.selectedElementIds, "backward");
 });
 
-const handleLayerMove = (mode: 'front' | 'back' | 'forward' | 'backward') => {
+const handleLayerMove = (mode: "front" | "back" | "forward" | "backward") => {
   const ids = [...store.selectedElementIds];
   if (ids.length === 0) return;
 
-  if (mode === 'front') {
-    store.moveElementsLayer(ids, 'front');
-  } else if (mode === 'back') {
+  if (mode === "front") {
+    store.moveElementsLayer(ids, "front");
+  } else if (mode === "back") {
     store.sendElementsToBack(ids);
-  } else if (mode === 'forward') {
+  } else if (mode === "forward") {
     store.moveElementsForward(ids);
   } else {
     store.moveElementsBackward(ids);
@@ -72,14 +80,16 @@ const handleMouseMove = (e: MouseEvent) => {
 };
 
 const getQueryRoot = () => {
-  return (designerRoot?.value?.getRootNode() as Document | ShadowRoot) || document;
+  return (
+    (designerRoot?.value?.getRootNode() as Document | ShadowRoot) || document
+  );
 };
 
 const isShortcutEventForCurrentDesigner = (e: KeyboardEvent) => {
   const root = designerRoot?.value;
   if (!root) return true;
 
-  const path = typeof e.composedPath === 'function' ? e.composedPath() : [];
+  const path = typeof e.composedPath === "function" ? e.composedPath() : [];
   if (path.length > 0) {
     return path.includes(root);
   }
@@ -88,7 +98,10 @@ const isShortcutEventForCurrentDesigner = (e: KeyboardEvent) => {
   return !!target && root.contains(target);
 };
 
-const dispatchDesignerEvent = (name: string, detail: Record<string, any> = {}) => {
+const dispatchDesignerEvent = (
+  name: string,
+  detail: Record<string, any> = {},
+) => {
   const payload = { ...detail };
   if (designerInstanceId) {
     payload.__designerInstanceId = designerInstanceId;
@@ -97,7 +110,7 @@ const dispatchDesignerEvent = (name: string, detail: Record<string, any> = {}) =
 };
 
 const getPasteTarget = (clientX: number, clientY: number) => {
-  const pages = getQueryRoot().querySelectorAll('.print-page');
+  const pages = getQueryRoot().querySelectorAll(".print-page");
   if (pages.length === 0) return undefined;
 
   let closestPage: HTMLElement | null = null;
@@ -107,40 +120,44 @@ const getPasteTarget = (clientX: number, clientY: number) => {
   for (let i = 0; i < pages.length; i++) {
     const page = pages[i] as HTMLElement;
     const rect = page.getBoundingClientRect();
-    
+
     // Check if inside
-    if (clientX >= rect.left && clientX <= rect.right && 
-        clientY >= rect.top && clientY <= rect.bottom) {
-        return {
-            pageIndex: i,
-            x: (clientX - rect.left) / store.zoom,
-            y: (clientY - rect.top) / store.zoom
-        };
+    if (
+      clientX >= rect.left &&
+      clientX <= rect.right &&
+      clientY >= rect.top &&
+      clientY <= rect.bottom
+    ) {
+      return {
+        pageIndex: i,
+        x: (clientX - rect.left) / store.zoom,
+        y: (clientY - rect.top) / store.zoom,
+      };
     }
 
     // Calculate distance to rectangle
     const dx = Math.max(rect.left - clientX, 0, clientX - rect.right);
     const dy = Math.max(rect.top - clientY, 0, clientY - rect.bottom);
-    const dist = Math.sqrt(dx*dx + dy*dy);
-    
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
     if (dist < minDistance) {
-        minDistance = dist;
-        closestPage = page;
-        targetPageIndex = i;
+      minDistance = dist;
+      closestPage = page;
+      targetPageIndex = i;
     }
   }
 
   // Project onto closest page
   if (closestPage) {
-      const rect = closestPage.getBoundingClientRect();
-      let x = (clientX - rect.left) / store.zoom;
-      let y = (clientY - rect.top) / store.zoom;
-      
-      // Clamp to page bounds
-      x = Math.max(0, Math.min(store.canvasSize.width, x));
-      y = Math.max(0, Math.min(store.canvasSize.height, y));
-      
-      return { pageIndex: targetPageIndex, x, y };
+    const rect = closestPage.getBoundingClientRect();
+    let x = (clientX - rect.left) / store.zoom;
+    let y = (clientY - rect.top) / store.zoom;
+
+    // Clamp to page bounds
+    x = Math.max(0, Math.min(store.canvasSize.width, x));
+    y = Math.max(0, Math.min(store.canvasSize.height, y));
+
+    return { pageIndex: targetPageIndex, x, y };
   }
 
   return undefined;
@@ -152,15 +169,15 @@ const handleKeydown = (e: KeyboardEvent) => {
   if (!isShortcutEventForCurrentDesigner(e)) return;
 
   // New Template (Ctrl + Alt + N) - Trigger UI flow via event
-  if ((e.ctrlKey || e.metaKey) && e.altKey && e.key.toLowerCase() === 'n') {
+  if ((e.ctrlKey || e.metaKey) && e.altKey && e.key.toLowerCase() === "n") {
     e.preventDefault();
     e.stopPropagation();
-    dispatchDesignerEvent('designer:new-template');
+    dispatchDesignerEvent("designer:new-template");
     return;
   }
 
   // Settings (Ctrl/Cmd + ,)
-  if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+  if ((e.ctrlKey || e.metaKey) && e.key === ",") {
     e.preventDefault();
     e.stopPropagation();
     store.setShowSettings(true);
@@ -169,23 +186,27 @@ const handleKeydown = (e: KeyboardEvent) => {
 
   // ignore when typing in inputs
   const target = e.target as Element | null;
-  if (target && (target.closest('input, textarea, select, [contenteditable="true"]'))) return;
-  if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) {
+  if (
+    target &&
+    target.closest('input, textarea, select, [contenteditable="true"]')
+  )
+    return;
+  if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
     const step = e.shiftKey ? 10 : 1;
 
     if (store.selectedGuideId) {
-      const guide = store.guides.find(g => g.id === store.selectedGuideId);
+      const guide = store.guides.find((g) => g.id === store.selectedGuideId);
       if (guide) {
         e.preventDefault();
         const prev = guide.position;
         let pos = prev;
-        if (guide.type === 'vertical') {
-          if (e.key === 'ArrowLeft') pos -= step;
-          else if (e.key === 'ArrowRight') pos += step;
+        if (guide.type === "vertical") {
+          if (e.key === "ArrowLeft") pos -= step;
+          else if (e.key === "ArrowRight") pos += step;
           else return;
         } else {
-          if (e.key === 'ArrowUp') pos -= step;
-          else if (e.key === 'ArrowDown') pos += step;
+          if (e.key === "ArrowUp") pos -= step;
+          else if (e.key === "ArrowDown") pos += step;
           else return;
         }
         if ((prev > 0 && pos < 0) || (prev < 0 && pos > 0) || pos === 0) {
@@ -196,25 +217,28 @@ const handleKeydown = (e: KeyboardEvent) => {
       }
     } else if (store.selectedElementIds.length > 0) {
       e.preventDefault();
-      const dx = e.key === 'ArrowLeft' ? -step : (e.key === 'ArrowRight' ? step : 0);
-      const dy = e.key === 'ArrowUp' ? -step : (e.key === 'ArrowDown' ? step : 0);
+      const dx =
+        e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0;
+      const dy = e.key === "ArrowUp" ? -step : e.key === "ArrowDown" ? step : 0;
       store.setDragging(true);
       store.nudgeSelectedElements(dx, dy);
     }
     return;
   }
   // Select All (Ctrl/Cmd + A)
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a") {
     e.preventDefault();
     if (store.pages[store.currentPageIndex]) {
-      const allIds = store.pages[store.currentPageIndex].elements.map(el => el.id);
+      const allIds = store.pages[store.currentPageIndex].elements.map(
+        (el) => el.id,
+      );
       store.setSelection(allIds);
     }
     return;
   }
 
   // Delete
-  if (e.key === 'Delete') {
+  if (e.key === "Delete") {
     if (store.selectedElementIds.length > 1) {
       e.preventDefault();
       store.removeSelectedElements();
@@ -229,7 +253,7 @@ const handleKeydown = (e: KeyboardEvent) => {
   }
 
   // Copy (Ctrl/Cmd + C)
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c") {
     if (store.selectedElementId) {
       e.preventDefault();
       store.copy();
@@ -238,7 +262,7 @@ const handleKeydown = (e: KeyboardEvent) => {
   }
 
   // Cut (Ctrl/Cmd + X)
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x') {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "x") {
     if (store.selectedElementId) {
       e.preventDefault();
       store.cut();
@@ -247,7 +271,7 @@ const handleKeydown = (e: KeyboardEvent) => {
   }
 
   // Paste (Ctrl/Cmd + V)
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v") {
     if (store.clipboard.length > 0) {
       e.preventDefault();
       store.paste(getPasteTarget(currentMouseX.value, currentMouseY.value));
@@ -256,92 +280,97 @@ const handleKeydown = (e: KeyboardEvent) => {
   }
 
   // Help (Ctrl/Cmd + H)
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'h') {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "h") {
     e.preventDefault();
     store.setShowHelp(true);
     return;
   }
-  
+
   // Close Help (Escape)
-  if (store.showHelp && e.key === 'Escape') {
+  if (store.showHelp && e.key === "Escape") {
     e.preventDefault();
     store.setShowHelp(false);
     return;
   }
 
   // Undo (Ctrl/Cmd + Z)
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !e.shiftKey) {
     e.preventDefault();
     store.undo();
     return;
   }
 
   // Redo (Ctrl/Cmd + Y) or (Ctrl+Shift+Z)
-  if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) {
+  if (
+    (e.ctrlKey || e.metaKey) &&
+    (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey))
+  ) {
     e.preventDefault();
     store.redo();
     return;
   }
 
   // Lock/Unlock (Ctrl/Cmd + L)
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l') {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "l") {
     e.preventDefault();
     store.toggleLock();
     return;
   }
 
   // Preview (Ctrl + Shift + P)
-  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'p') {
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "p") {
     e.preventDefault();
-    dispatchDesignerEvent('designer:preview');
+    dispatchDesignerEvent("designer:preview");
     return;
   }
 
   const mod = e.ctrlKey || e.metaKey;
   const key = e.key.toLowerCase();
 
-  if (store.editingCustomElementId && mod && (key === 's' || key === 'q')) {
+  if (store.editingCustomElementId && mod && (key === "s" || key === "q")) {
     return;
   }
 
   // Save As (Ctrl + Shift + S)
-  if (mod && e.shiftKey && key === 's') {
+  if (mod && e.shiftKey && key === "s") {
     e.preventDefault();
-    dispatchDesignerEvent('designer:save-as', { id: templateStore.currentTemplateId });
+    dispatchDesignerEvent("designer:save-as", {
+      id: templateStore.currentTemplateId,
+    });
     return;
   }
 
   // Save (Ctrl + S)
-  if (mod && key === 's') {
+  if (mod && key === "s") {
     e.preventDefault();
-    dispatchDesignerEvent('designer:save');
+    dispatchDesignerEvent("designer:save");
     return;
   }
 
   // Print (Ctrl + P)
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p' && !e.shiftKey) {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "p" && !e.shiftKey) {
     e.preventDefault();
-    dispatchDesignerEvent('designer:print');
+    dispatchDesignerEvent("designer:print");
     return;
   }
 
   // Export PDF (Ctrl + Shift + E)
-  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'e') {
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "e") {
     e.preventDefault();
-    dispatchDesignerEvent('designer:export-pdf');
+    dispatchDesignerEvent("designer:export-pdf");
     return;
   }
 
   // View JSON (Ctrl + Shift + J)
-  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'j') {
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "j") {
     e.preventDefault();
-    dispatchDesignerEvent('designer:view-json');
+    dispatchDesignerEvent("designer:view-json");
     return;
   }
 };
 
 const handleKeyup = (e: KeyboardEvent) => {
-  if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) {
+  if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
     // Clear highlight after arrow movement stops
     store.setDragging(false);
     store.setHighlightedGuide(null);
@@ -358,12 +387,14 @@ const handleWindowBlur = () => {
 };
 
 const handleContextMenu = async (e: MouseEvent) => {
-  const designerArea = getQueryRoot().querySelector('.overflow-auto'); // The scroll container (canvas area)
+  const designerArea = getQueryRoot().querySelector(".overflow-auto"); // The scroll container (canvas area)
   const path = e.composedPath();
-  const isInsideDesigner = !!designerArea && path.some((node) => {
-    if (node === designerArea) return true;
-    return node instanceof Element && designerArea.contains(node);
-  });
+  const isInsideDesigner =
+    !!designerArea &&
+    path.some((node) => {
+      if (node === designerArea) return true;
+      return node instanceof Element && designerArea.contains(node);
+    });
 
   if (!isInsideDesigner) {
     // Not in designer area, show native context menu
@@ -377,7 +408,7 @@ const handleContextMenu = async (e: MouseEvent) => {
   menuY.value = e.clientY;
   clickX.value = e.clientX;
   clickY.value = e.clientY;
-  
+
   // Adjust menu position if it overflows the screen
   await nextTick();
   if (menuRef.value) {
@@ -394,38 +425,43 @@ const handleContextMenu = async (e: MouseEvent) => {
   }
 
   // Only allow paste when right-click occurs within any print page (canvas)
-  const pages = getQueryRoot().querySelectorAll('.print-page');
+  const pages = getQueryRoot().querySelectorAll(".print-page");
   let inside = false;
   pages.forEach((p) => {
     const rect = (p as HTMLElement).getBoundingClientRect();
-    if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+    if (
+      e.clientX >= rect.left &&
+      e.clientX <= rect.right &&
+      e.clientY >= rect.top &&
+      e.clientY <= rect.bottom
+    ) {
       inside = true;
     }
   });
   canPasteHere.value = inside;
-  window.addEventListener('click', closeMenuOnce);
+  window.addEventListener("click", closeMenuOnce);
 };
 
 const closeMenuOnce = () => {
   showMenu.value = false;
-  window.removeEventListener('click', closeMenuOnce);
+  window.removeEventListener("click", closeMenuOnce);
 };
 
 onMounted(() => {
-  window.addEventListener('keydown', handleKeydown, { capture: true });
-  window.addEventListener('contextmenu', handleContextMenu);
-  window.addEventListener('keyup', handleKeyup);
-  window.addEventListener('mousemove', handleMouseMove);
-  window.addEventListener('blur', handleWindowBlur);
+  window.addEventListener("keydown", handleKeydown, { capture: true });
+  window.addEventListener("contextmenu", handleContextMenu);
+  window.addEventListener("keyup", handleKeyup);
+  window.addEventListener("mousemove", handleMouseMove);
+  window.addEventListener("blur", handleWindowBlur);
 });
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeydown, { capture: true });
-  window.removeEventListener('contextmenu', handleContextMenu);
-  window.removeEventListener('click', closeMenuOnce);
-  window.removeEventListener('keyup', handleKeyup);
-  window.removeEventListener('mousemove', handleMouseMove);
-  window.removeEventListener('blur', handleWindowBlur);
+  window.removeEventListener("keydown", handleKeydown, { capture: true });
+  window.removeEventListener("contextmenu", handleContextMenu);
+  window.removeEventListener("click", closeMenuOnce);
+  window.removeEventListener("keyup", handleKeyup);
+  window.removeEventListener("mousemove", handleMouseMove);
+  window.removeEventListener("blur", handleWindowBlur);
 });
 </script>
 
@@ -438,113 +474,179 @@ onUnmounted(() => {
     leave-from-class="transform scale-100 opacity-100"
     leave-to-class="transform scale-95 opacity-0"
   >
-    <div v-if="showMenu" ref="menuRef" class="fixed z-[9999]" :style="{ left: `${menuX}px`, top: `${menuY}px` }">
-      <div class="bg-white border border-gray-200 shadow-xl rounded-md min-w-[160px] py-1">
+    <div
+      v-if="showMenu"
+      ref="menuRef"
+      class="fixed z-[9999]"
+      :style="{ left: `${menuX}px`, top: `${menuY}px` }"
+    >
+      <div
+        class="bg-white border border-gray-200 shadow-xl rounded-md min-w-[160px] py-1"
+      >
         <button
-        class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 flex items-center gap-2"
-        :disabled="(store.selectedElementIds.length === 0 && !store.selectedGuideId) || (store.selectedElement?.locked)"
-        @click="() => {
-          if (store.selectedElementIds.length > 1) {
-            store.removeSelectedElements();
-          } else if (store.selectedElementId) {
-            store.removeElement(store.selectedElementId);
-          } else if (store.selectedGuideId) {
-            store.removeGuide(store.selectedGuideId);
-          }
-          showMenu=false;
-        }"
-      >
-        <DeleteIcon class="w-4 h-4" />
-        <span class="flex-1">{{ t('common.delete') }}{{ store.selectedElementIds.length > 1 ? ` (${store.selectedElementIds.length})` : '' }}</span>
-        <span class="text-xs text-gray-400">{{ formatShortcut(['Del']) }}</span>
-      </button>
-      <button
-        class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 flex items-center gap-2"
-        :disabled="!store.selectedElementId || store.selectedElement?.locked"
-        @click="() => { store.cut(); showMenu=false; }"
-      >
-        <CutIcon class="w-4 h-4" />
-        <span class="flex-1">{{ t('common.cut') }}</span>
-        <span class="text-xs text-gray-400">{{ formatShortcut(['Ctrl', 'X']) }}</span>
-      </button>
-      <button
-        class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 flex items-center gap-2"
-        :disabled="!store.selectedElementId || store.selectedElement?.locked"
-        @click="() => { store.copy(); showMenu=false; }"
-      >
-        <CopyIcon class="w-4 h-4" />
-        <span class="flex-1">{{ t('common.copy') }}</span>
-        <span class="text-xs text-gray-400">{{ formatShortcut(['Ctrl', 'C']) }}</span>
-      </button>
-      <button
-        class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 flex items-center gap-2"
-        :disabled="store.clipboard.length === 0"
-        @click="() => { store.paste(getPasteTarget(clickX, clickY)); showMenu=false; }"
-      >
-        <PasteIcon class="w-4 h-4" />
-        <span class="flex-1">{{ t('common.paste') }}</span>
-        <span class="text-xs text-gray-400">{{ formatShortcut(['Ctrl', 'V']) }}</span>
-      </button>
-      <div class="border-t border-gray-200 my-1"></div>
-      <button
-        class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400 flex items-center gap-2"
-        :disabled="!canBringToFront"
-        @click="() => handleLayerMove('front')"
-      >
-        <BringToFrontIcon class="w-4 h-4" />
-        <span class="flex-1">{{ t('properties.action.bringToFront') }}</span>
-      </button>
-      <button
-        class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400 flex items-center gap-2"
-        :disabled="!canSendToBack"
-        @click="() => handleLayerMove('back')"
-      >
-        <SendToBackIcon class="w-4 h-4" />
-        <span class="flex-1">{{ t('properties.action.sendToBack') }}</span>
-      </button>
-      <button
-        class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400 flex items-center gap-2"
-        :disabled="!canMoveLayerUp"
-        @click="() => handleLayerMove('forward')"
-      >
-        <MoveUpIcon class="w-4 h-4" />
-        <span class="flex-1">{{ t('properties.action.moveUp') }}</span>
-      </button>
-      <button
-        class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400 flex items-center gap-2"
-        :disabled="!canMoveLayerDown"
-        @click="() => handleLayerMove('backward')"
-      >
-        <MoveDownIcon class="w-4 h-4" />
-        <span class="flex-1">{{ t('properties.action.moveDown') }}</span>
-      </button>
-      <button
-        class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 flex items-center gap-2"
-        :disabled="store.selectedElementIds.length === 0"
-        @click="() => { store.toggleLock(); showMenu=false; }"
-      >
-        <component :is="store.selectedElement?.locked ? UnlockIcon : LockIcon" class="w-4 h-4" />
-        <span class="flex-1">{{ store.selectedElement?.locked ? t('common.unlock') : t('common.lock') }}</span>
-        <span class="text-xs text-gray-400">{{ formatShortcut(['Ctrl', 'L']) }}</span>
-      </button>
-      <div class="border-t border-gray-200 my-1"></div>
-      <button
-        class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
-        @click="store.undo(); showMenu=false;"
-      >
-        <UndoIcon class="w-4 h-4" />
-        <span class="flex-1">{{ t('common.undo') }}</span>
-        <span class="text-xs text-gray-400">{{ formatShortcut(['Ctrl', 'Z']) }}</span>
-      </button>
-      <button
-        class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
-        @click="store.redo(); showMenu=false;"
-      >
-        <RedoIcon class="w-4 h-4" />
-        <span class="flex-1">{{ t('common.redo') }}</span>
-        <span class="text-xs text-gray-400">{{ formatShortcut(['Ctrl', 'Y']) }}</span>
-      </button>
+          class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 flex items-center gap-2"
+          :disabled="
+            (store.selectedElementIds.length === 0 && !store.selectedGuideId) ||
+            store.selectedElement?.locked
+          "
+          @click="
+            () => {
+              if (store.selectedElementIds.length > 1) {
+                store.removeSelectedElements();
+              } else if (store.selectedElementId) {
+                store.removeElement(store.selectedElementId);
+              } else if (store.selectedGuideId) {
+                store.removeGuide(store.selectedGuideId);
+              }
+              showMenu = false;
+            }
+          "
+        >
+          <DeleteIcon class="w-4 h-4" />
+          <span class="flex-1"
+            >{{ t("common.delete")
+            }}{{
+              store.selectedElementIds.length > 1
+                ? ` (${store.selectedElementIds.length})`
+                : ""
+            }}</span
+          >
+          <span class="text-xs text-gray-400">{{
+            formatShortcut(["Del"])
+          }}</span>
+        </button>
+        <button
+          class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 flex items-center gap-2"
+          :disabled="!store.selectedElementId || store.selectedElement?.locked"
+          @click="
+            () => {
+              store.cut();
+              showMenu = false;
+            }
+          "
+        >
+          <CutIcon class="w-4 h-4" />
+          <span class="flex-1">{{ t("common.cut") }}</span>
+          <span class="text-xs text-gray-400">{{
+            formatShortcut(["Ctrl", "X"])
+          }}</span>
+        </button>
+        <button
+          class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 flex items-center gap-2"
+          :disabled="!store.selectedElementId || store.selectedElement?.locked"
+          @click="
+            () => {
+              store.copy();
+              showMenu = false;
+            }
+          "
+        >
+          <CopyIcon class="w-4 h-4" />
+          <span class="flex-1">{{ t("common.copy") }}</span>
+          <span class="text-xs text-gray-400">{{
+            formatShortcut(["Ctrl", "C"])
+          }}</span>
+        </button>
+        <button
+          class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 flex items-center gap-2"
+          :disabled="store.clipboard.length === 0"
+          @click="
+            () => {
+              store.paste(getPasteTarget(clickX, clickY));
+              showMenu = false;
+            }
+          "
+        >
+          <PasteIcon class="w-4 h-4" />
+          <span class="flex-1">{{ t("common.paste") }}</span>
+          <span class="text-xs text-gray-400">{{
+            formatShortcut(["Ctrl", "V"])
+          }}</span>
+        </button>
+        <div class="border-t border-gray-200 my-1"></div>
+        <button
+          class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400 flex items-center gap-2"
+          :disabled="!canBringToFront"
+          @click="() => handleLayerMove('front')"
+        >
+          <BringToFrontIcon class="w-4 h-4" />
+          <span class="flex-1">{{ t("properties.action.bringToFront") }}</span>
+        </button>
+        <button
+          class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400 flex items-center gap-2"
+          :disabled="!canSendToBack"
+          @click="() => handleLayerMove('back')"
+        >
+          <SendToBackIcon class="w-4 h-4" />
+          <span class="flex-1">{{ t("properties.action.sendToBack") }}</span>
+        </button>
+        <button
+          class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400 flex items-center gap-2"
+          :disabled="!canMoveLayerUp"
+          @click="() => handleLayerMove('forward')"
+        >
+          <MoveUpIcon class="w-4 h-4" />
+          <span class="flex-1">{{ t("properties.action.moveUp") }}</span>
+        </button>
+        <button
+          class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400 flex items-center gap-2"
+          :disabled="!canMoveLayerDown"
+          @click="() => handleLayerMove('backward')"
+        >
+          <MoveDownIcon class="w-4 h-4" />
+          <span class="flex-1">{{ t("properties.action.moveDown") }}</span>
+        </button>
+        <button
+          class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 flex items-center gap-2"
+          :disabled="store.selectedElementIds.length === 0"
+          @click="
+            () => {
+              store.toggleLock();
+              showMenu = false;
+            }
+          "
+        >
+          <component
+            :is="store.selectedElement?.locked ? UnlockIcon : LockIcon"
+            class="w-4 h-4"
+          />
+          <span class="flex-1">{{
+            store.selectedElement?.locked
+              ? t("common.unlock")
+              : t("common.lock")
+          }}</span>
+          <span class="text-xs text-gray-400">{{
+            formatShortcut(["Ctrl", "L"])
+          }}</span>
+        </button>
+        <div class="border-t border-gray-200 my-1"></div>
+        <button
+          class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
+          @click="
+            store.undo();
+            showMenu = false;
+          "
+        >
+          <UndoIcon class="w-4 h-4" />
+          <span class="flex-1">{{ t("common.undo") }}</span>
+          <span class="text-xs text-gray-400">{{
+            formatShortcut(["Ctrl", "Z"])
+          }}</span>
+        </button>
+        <button
+          class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
+          @click="
+            store.redo();
+            showMenu = false;
+          "
+        >
+          <RedoIcon class="w-4 h-4" />
+          <span class="flex-1">{{ t("common.redo") }}</span>
+          <span class="text-xs text-gray-400">{{
+            formatShortcut(["Ctrl", "Y"])
+          }}</span>
+        </button>
+      </div>
     </div>
-  </div>
   </Transition>
 </template>

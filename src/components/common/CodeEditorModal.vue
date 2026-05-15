@@ -1,15 +1,25 @@
 <script setup lang="ts">
-import { watch, onMounted, onUnmounted, computed, inject, ref, defineAsyncComponent } from 'vue';
-import { useI18n } from 'vue-i18n';
-import { useDesignerStore } from '@/stores/designer';
-import { useTheme } from '@/composables/useTheme';
-import Close from '~icons/material-symbols/close';
+import {
+  watch,
+  onMounted,
+  onUnmounted,
+  computed,
+  inject,
+  ref,
+  defineAsyncComponent,
+} from "vue";
+import { useI18n } from "vue-i18n";
+import { useDesignerStore } from "@/stores/designer";
+import { useTheme } from "@/composables/useTheme";
+import Close from "~icons/material-symbols/close";
 
-const Editor = defineAsyncComponent(() => import('@guolao/vue-monaco-editor').then(m => m.Editor));
+const Editor = defineAsyncComponent(() =>
+  import("@guolao/vue-monaco-editor").then((m) => m.Editor),
+);
 
 const { t } = useI18n();
 const { isDark } = useTheme();
-const modalContainer = inject('modal-container', ref<HTMLElement | null>(null));
+const modalContainer = inject("modal-container", ref<HTMLElement | null>(null));
 
 const props = defineProps<{
   visible: boolean;
@@ -20,55 +30,58 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'update:visible', visible: boolean): void;
-  (e: 'update:value', value: string): void;
-  (e: 'close'): void;
+  (e: "update:visible", visible: boolean): void;
+  (e: "update:value", value: string): void;
+  (e: "close"): void;
 }>();
 
 const store = useDesignerStore();
 
 const editorOptions = computed(() => ({
   minimap: { enabled: true },
-  lineNumbers: 'on',
+  lineNumbers: "on",
   glyphMargin: false,
   folding: true,
-  wordWrap: 'on',
+  wordWrap: "on",
   automaticLayout: true,
   scrollBeyondLastLine: false,
-  theme: isDark.value ? 'vs-dark' : 'vs',
+  theme: isDark.value ? "vs-dark" : "vs",
   fontSize: 14,
   fontFamily: 'Consolas, "Courier New", monospace',
-  renderLineHighlight: 'none',
+  renderLineHighlight: "none",
   overviewRulerLanes: 0,
   hideCursorInOverviewRuler: true,
   contextmenu: true,
 }));
 
 const handleChange = (val: string | undefined) => {
-  emit('update:value', val || '');
+  emit("update:value", val || "");
 };
 
 const handleClose = () => {
-  emit('update:visible', false);
-  emit('close');
+  emit("update:visible", false);
+  emit("close");
 };
 
 const handleKeydown = (e: KeyboardEvent) => {
-  if (props.visible && e.key === 'Escape') {
+  if (props.visible && e.key === "Escape") {
     handleClose();
   }
 };
 
-watch(() => props.visible, (val) => {
-  store.setDisableGlobalShortcuts(val);
-});
+watch(
+  () => props.visible,
+  (val) => {
+    store.setDisableGlobalShortcuts(val);
+  },
+);
 
 onMounted(() => {
-  window.addEventListener('keydown', handleKeydown);
+  window.addEventListener("keydown", handleKeydown);
 });
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeydown);
+  window.removeEventListener("keydown", handleKeydown);
   if (props.visible) {
     store.setDisableGlobalShortcuts(false);
   }
@@ -77,15 +90,32 @@ onUnmounted(() => {
 
 <template>
   <Teleport :to="modalContainer || 'body'">
-    <div v-if="visible" :class="{ 'dark': isDark }" class="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 pointer-events-auto" @click.self="handleClose">
-      <div class="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-[60vw] h-[80vh] flex flex-col overflow-hidden animate-fade-in">
+    <div
+      v-if="visible"
+      :class="{ dark: isDark }"
+      class="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 pointer-events-auto"
+      @click.self="handleClose"
+    >
+      <div
+        class="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-[60vw] h-[80vh] flex flex-col overflow-hidden animate-fade-in"
+      >
         <!-- Header -->
-        <div class="h-[60px] flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-800 shrink-0">
+        <div
+          class="h-[60px] flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-800 shrink-0"
+        >
           <div class="flex items-center gap-2">
-            <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">{{ title }}</h3>
-            <span class="px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs font-mono uppercase">{{ language }}</span>
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">
+              {{ title }}
+            </h3>
+            <span
+              class="px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs font-mono uppercase"
+              >{{ language }}</span
+            >
           </div>
-          <button @click="handleClose" class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-500 dark:text-gray-400">
+          <button
+            @click="handleClose"
+            class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-500 dark:text-gray-400"
+          >
             <Close class="w-4 h-4" />
           </button>
         </div>
@@ -102,12 +132,14 @@ onUnmounted(() => {
         </div>
 
         <!-- Footer -->
-        <div class="p-4 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 flex justify-end rounded-b-lg">
-          <button 
+        <div
+          class="p-4 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 flex justify-end rounded-b-lg"
+        >
+          <button
             @click="handleClose"
             class="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors text-sm"
           >
-            {{ t('common.close') }}
+            {{ t("common.close") }}
           </button>
         </div>
       </div>
@@ -121,7 +153,13 @@ onUnmounted(() => {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 </style>

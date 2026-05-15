@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, inject, type Ref } from 'vue';
-import { useI18n } from 'vue-i18n';
-import type { PrintElement } from '@/types';
-import { ElementType } from '@/types';
-import { useDesignerStore } from '@/stores/designer';
-import Lock from '~icons/material-symbols/lock';
-import RotateRight from '~icons/material-symbols/rotate-right';
+import { ref, computed, inject, type Ref } from "vue";
+import { useI18n } from "vue-i18n";
+import type { PrintElement } from "@/types";
+import { ElementType } from "@/types";
+import { useDesignerStore } from "@/stores/designer";
+import Lock from "~icons/material-symbols/lock";
+import RotateRight from "~icons/material-symbols/rotate-right";
 
 const props = defineProps<{
   element: PrintElement;
@@ -21,40 +21,54 @@ const store = useDesignerStore();
 const elementRef = ref<HTMLElement | null>(null);
 const isHovered = ref(false);
 
-const designerRoot = inject<Ref<HTMLElement | null>>('designer-root', ref(null));
+const designerRoot = inject<Ref<HTMLElement | null>>(
+  "designer-root",
+  ref(null),
+);
 const getQueryRoot = () => {
-  return (designerRoot?.value?.getRootNode() as Document | ShadowRoot) || document;
+  return (
+    (designerRoot?.value?.getRootNode() as Document | ShadowRoot) || document
+  );
 };
 
 const actualIsSelected = computed(() => {
-  const isMultiSelected = !props.isSelected && store.selectedElementIds.includes(props.element.id);
+  const isMultiSelected =
+    !props.isSelected && store.selectedElementIds.includes(props.element.id);
   return !props.readOnly && (props.isSelected || isMultiSelected);
 });
 
 const shouldConstrainToCanvas = computed(() => !store.allowDragOutsideCanvas);
 
-const selfBorderedTypes = [ElementType.TABLE, ElementType.LINE, ElementType.RECT, ElementType.CIRCLE];
+const selfBorderedTypes = [
+  ElementType.TABLE,
+  ElementType.LINE,
+  ElementType.RECT,
+  ElementType.CIRCLE,
+];
 
 const borderOverlayStyle = computed<Record<string, any> | null>(() => {
   if (selfBorderedTypes.includes(props.element.type)) {
     return null;
   }
 
-  if (props.element.style.borderStyle && props.element.style.borderStyle !== 'none') {
+  if (
+    props.element.style.borderStyle &&
+    props.element.style.borderStyle !== "none"
+  ) {
     return {
       borderStyle: props.element.style.borderStyle,
       borderWidth: `${props.element.style.borderWidth || 1}px`,
-      borderColor: props.element.style.borderColor || '#000',
-      borderRadius: 'inherit',
-      boxSizing: 'border-box'
+      borderColor: props.element.style.borderColor || "#000",
+      borderRadius: "inherit",
+      boxSizing: "border-box",
     };
   }
 
   if (props.element.style.border) {
     return {
       border: props.element.style.border,
-      borderRadius: 'inherit',
-      boxSizing: 'border-box'
+      borderRadius: "inherit",
+      boxSizing: "border-box",
     };
   }
 
@@ -74,22 +88,22 @@ const style = computed(() => {
 
   if (props.element.type === ElementType.TEXT) {
     const inheritedTextKeys = [
-      'fontFamily',
-      'fontSize',
-      'fontWeight',
-      'fontStyle',
-      'textAlign',
-      'verticalAlign',
-      'textDecoration',
-      'writingMode',
-      'textOrientation',
-      'direction',
-      'letterSpacing',
-      'lineHeight',
-      'textTransform',
-      'color',
-      'padding',
-      'whiteSpace'
+      "fontFamily",
+      "fontSize",
+      "fontWeight",
+      "fontStyle",
+      "textAlign",
+      "verticalAlign",
+      "textDecoration",
+      "writingMode",
+      "textOrientation",
+      "direction",
+      "letterSpacing",
+      "lineHeight",
+      "textTransform",
+      "color",
+      "padding",
+      "whiteSpace",
     ];
     inheritedTextKeys.forEach((key) => {
       delete baseStyle[key];
@@ -98,12 +112,12 @@ const style = computed(() => {
 
   // Handle structured border properties
   // Skip border/background for self-bordered elements (Table, Line, Rect, Circle)
-  
+
   if (selfBorderedTypes.includes(props.element.type)) {
     // For these elements, background and borders are handled internally
     // We must remove them from the wrapper to avoid double rendering or artifacts (e.g. square background behind circle)
     delete baseStyle.backgroundColor;
-    
+
     // Borders are already handled by not adding them below, but we also need to ensure
     // any border props in element.style don't leak through via the spread above if they match standard CSS names
     // (though usually they are structured properties like borderWidth, which don't affect CSS directly unless mapped)
@@ -122,15 +136,21 @@ const style = computed(() => {
   delete baseStyle.borderColor;
 
   // Keep outer width/height equal to the element size regardless of border width.
-  baseStyle.boxSizing = 'border-box';
+  baseStyle.boxSizing = "border-box";
 
   if (props.clipToPageBounds) {
     const pageWidth = store.canvasSize.width;
     const pageHeight = store.canvasSize.height;
     const clipLeft = Math.max(0, -props.element.x);
     const clipTop = Math.max(0, -props.element.y);
-    const clipRight = Math.max(0, props.element.x + props.element.width - pageWidth);
-    const clipBottom = Math.max(0, props.element.y + props.element.height - pageHeight);
+    const clipRight = Math.max(
+      0,
+      props.element.x + props.element.width - pageWidth,
+    );
+    const clipBottom = Math.max(
+      0,
+      props.element.y + props.element.height - pageHeight,
+    );
 
     if (clipLeft > 0 || clipTop > 0 || clipRight > 0 || clipBottom > 0) {
       baseStyle.clipPath = `inset(${clipTop}px ${clipRight}px ${clipBottom}px ${clipLeft}px)`;
@@ -160,20 +180,24 @@ const handleMouseDown = (e: MouseEvent) => {
   if (props.readOnly) return;
   if (e.button !== 0) return; // Only left click
   // Don't start drag if clicking on resize/rotate handles
-  if ((e.target as HTMLElement).closest('.resize-handle') || (e.target as HTMLElement).closest('.rotate-handle')) return;
-  
+  if (
+    (e.target as HTMLElement).closest(".resize-handle") ||
+    (e.target as HTMLElement).closest(".rotate-handle")
+  )
+    return;
+
   // e.stopPropagation();
 
   // Check for multi-select (Ctrl/Cmd key)
   const isMultiSelect = e.ctrlKey || e.metaKey;
-  
+
   // Refined Selection Logic:
   // 1. If multi-selecting (Ctrl/Cmd), always toggle/add.
   // 2. If single-selecting (No modifier):
   //    a. If element is ALREADY selected, do NOT deselect others immediately (wait for mouse up).
   //       This allows dragging a group by clicking any member.
   //    b. If element is NOT selected, select it exclusively.
-  
+
   if (isMultiSelect) {
     store.selectElement(props.element.id, true);
   } else {
@@ -197,16 +221,16 @@ const handleMouseDown = (e: MouseEvent) => {
   initialLeft = props.element.x;
   initialTop = props.element.y;
 
-  window.addEventListener('mousemove', handleMouseMove);
-  window.addEventListener('mouseup', handleMouseUp);
+  window.addEventListener("mousemove", handleMouseMove);
+  window.addEventListener("mouseup", handleMouseUp);
 };
 
 const handleMouseMove = (e: MouseEvent) => {
   if (!isDragging) return;
-  
+
   const dx = (e.clientX - startX) / props.zoom;
   const dy = (e.clientY - startY) / props.zoom;
-  
+
   // If we moved significantly, it's a drag operation
   if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
     if (!hasSnapshot) {
@@ -214,48 +238,72 @@ const handleMouseMove = (e: MouseEvent) => {
       hasSnapshot = true;
     }
 
-    if (store.selectedElementIds.length > 1 && store.selectedElementIds.includes(props.element.id)) {
-      store.moveSelectedElements(props.element.id, initialLeft + dx, initialTop + dy, false, shouldConstrainToCanvas.value);
+    if (
+      store.selectedElementIds.length > 1 &&
+      store.selectedElementIds.includes(props.element.id)
+    ) {
+      store.moveSelectedElements(
+        props.element.id,
+        initialLeft + dx,
+        initialTop + dy,
+        false,
+        shouldConstrainToCanvas.value,
+      );
     } else {
-      store.moveElementWithSnap(props.element.id, initialLeft + dx, initialTop + dy, false, shouldConstrainToCanvas.value);
+      store.moveElementWithSnap(
+        props.element.id,
+        initialLeft + dx,
+        initialTop + dy,
+        false,
+        shouldConstrainToCanvas.value,
+      );
     }
   }
 };
 
 const handleMouseUp = (e: MouseEvent) => {
   if (isDragging && hasSnapshot) {
-     const root = getQueryRoot();
-     const elementsFromPoint = root.elementsFromPoint(e.clientX, e.clientY);
-     const pageElement = elementsFromPoint.find(el => el.classList.contains('print-page')) as HTMLElement;
-     
-     if (pageElement) {
-        const pageId = pageElement.id; 
-        const pageIndex = parseInt(pageId.replace('page-', ''), 10);
-        
-        if (!isNaN(pageIndex) && pageIndex !== props.pageIndex) {
-           // Dropped on different page
-           const oldPageElement = root.getElementById(`page-${props.pageIndex}`);
-           if (oldPageElement) {
-              const oldRect = oldPageElement.getBoundingClientRect();
-              const newRect = pageElement.getBoundingClientRect();
-              
-              const dxPage = (oldRect.left - newRect.left) / props.zoom;
-              const dyPage = (oldRect.top - newRect.top) / props.zoom;
+    const root = getQueryRoot();
+    const elementsFromPoint = root.elementsFromPoint(e.clientX, e.clientY);
+    const pageElement = elementsFromPoint.find((el) =>
+      el.classList.contains("print-page"),
+    ) as HTMLElement;
 
-              const idsToMove = (store.selectedElementIds.length > 1 && store.selectedElementIds.includes(props.element.id))
-                  ? [...store.selectedElementIds]
-                  : [props.element.id];
+    if (pageElement) {
+      const pageId = pageElement.id;
+      const pageIndex = parseInt(pageId.replace("page-", ""), 10);
 
-              idsToMove.forEach(id => {
-                  const page = store.pages[props.pageIndex];
-                  const el = page.elements.find(e => e.id === id);
-                  if (el) {
-                      store.moveElementToPage(id, pageIndex, el.x + dxPage, el.y + dyPage);
-                  }
-              });
-           }
-           }
-     }
+      if (!isNaN(pageIndex) && pageIndex !== props.pageIndex) {
+        // Dropped on different page
+        const oldPageElement = root.getElementById(`page-${props.pageIndex}`);
+        if (oldPageElement) {
+          const oldRect = oldPageElement.getBoundingClientRect();
+          const newRect = pageElement.getBoundingClientRect();
+
+          const dxPage = (oldRect.left - newRect.left) / props.zoom;
+          const dyPage = (oldRect.top - newRect.top) / props.zoom;
+
+          const idsToMove =
+            store.selectedElementIds.length > 1 &&
+            store.selectedElementIds.includes(props.element.id)
+              ? [...store.selectedElementIds]
+              : [props.element.id];
+
+          idsToMove.forEach((id) => {
+            const page = store.pages[props.pageIndex];
+            const el = page.elements.find((e) => e.id === id);
+            if (el) {
+              store.moveElementToPage(
+                id,
+                pageIndex,
+                el.x + dxPage,
+                el.y + dyPage,
+              );
+            }
+          });
+        }
+      }
+    }
   }
 
   // If we didn't drag (was a click), and it wasn't a multi-select action,
@@ -267,14 +315,14 @@ const handleMouseUp = (e: MouseEvent) => {
     // But we also need to check modifiers
     const isMultiSelect = e.ctrlKey || e.metaKey;
     if (!isMultiSelect) {
-       store.selectElement(props.element.id, false);
+      store.selectElement(props.element.id, false);
     }
   }
 
   isDragging = false;
   store.setDragging(false);
-  window.removeEventListener('mousemove', handleMouseMove);
-  window.removeEventListener('mouseup', handleMouseUp);
+  window.removeEventListener("mousemove", handleMouseMove);
+  window.removeEventListener("mouseup", handleMouseUp);
   store.setHighlightedGuide(null);
   store.setHighlightedEdge(null);
   store.setHighlightedAlignedElements([]);
@@ -291,7 +339,7 @@ const handleRotateStart = (e: MouseEvent) => {
   e.preventDefault();
 
   if (!elementRef.value) return;
-  
+
   isRotating.value = true;
   isSnapped.value = false;
   hasSnapshot = false;
@@ -300,15 +348,18 @@ const handleRotateStart = (e: MouseEvent) => {
   const rect = elementRef.value.getBoundingClientRect();
   const centerX = rect.left + rect.width / 2;
   const centerY = rect.top + rect.height / 2;
-  
+
   const startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
   const initialRotation = props.element.style.rotate || 0;
 
   const handleRotateMove = (moveEvent: MouseEvent) => {
-    const currentAngle = Math.atan2(moveEvent.clientY - centerY, moveEvent.clientX - centerX);
+    const currentAngle = Math.atan2(
+      moveEvent.clientY - centerY,
+      moveEvent.clientX - centerX,
+    );
     const degrees = (currentAngle - startAngle) * (180 / Math.PI);
     let newRotation = initialRotation + degrees;
-    
+
     // Normalize to 0-360
     newRotation = newRotation % 360;
     if (newRotation < 0) newRotation += 360;
@@ -324,7 +375,7 @@ const handleRotateStart = (e: MouseEvent) => {
       // User can hold Ctrl to disable snapping for fine adjustments
       const snapThreshold = 5;
       const targets = [0, 90, 180, 270, 360];
-      
+
       for (const target of targets) {
         if (Math.abs(newRotation - target) <= snapThreshold) {
           newRotation = target === 360 ? 0 : target;
@@ -337,7 +388,7 @@ const handleRotateStart = (e: MouseEvent) => {
     // Round to integer (Step 1)
     newRotation = Math.round(newRotation);
     if (newRotation === 360) newRotation = 0;
-    
+
     currentRotationDisplay.value = newRotation;
 
     if (!hasSnapshot) {
@@ -345,22 +396,26 @@ const handleRotateStart = (e: MouseEvent) => {
       hasSnapshot = true;
     }
 
-    store.updateElement(props.element.id, {
-      style: {
-        ...props.element.style,
-        rotate: newRotation
-      }
-    }, false);
+    store.updateElement(
+      props.element.id,
+      {
+        style: {
+          ...props.element.style,
+          rotate: newRotation,
+        },
+      },
+      false,
+    );
   };
 
   const handleRotateUp = () => {
     isRotating.value = false;
-    window.removeEventListener('mousemove', handleRotateMove);
-    window.removeEventListener('mouseup', handleRotateUp);
+    window.removeEventListener("mousemove", handleRotateMove);
+    window.removeEventListener("mouseup", handleRotateUp);
   };
 
-  window.addEventListener('mousemove', handleRotateMove);
-  window.addEventListener('mouseup', handleRotateUp);
+  window.addEventListener("mousemove", handleRotateMove);
+  window.addEventListener("mouseup", handleRotateUp);
 };
 
 const handleResizeStart = (e: MouseEvent) => {
@@ -369,8 +424,8 @@ const handleResizeStart = (e: MouseEvent) => {
 
   type ResizeSnapCandidate = {
     point: number;
-    type: 'edge' | 'guide' | 'element';
-    edge?: 'right' | 'bottom';
+    type: "edge" | "guide" | "element";
+    edge?: "right" | "bottom";
     guideId?: string;
   };
 
@@ -410,41 +465,65 @@ const handleResizeStart = (e: MouseEvent) => {
     const selectedSet = new Set(store.selectedElementIds);
     selectedSet.add(props.element.id);
     const referenceElements = page
-      ? page.elements.filter(item => !selectedSet.has(item.id))
+      ? page.elements.filter((item) => !selectedSet.has(item.id))
       : [];
 
     const xCandidates: ResizeSnapCandidate[] = [];
     const yCandidates: ResizeSnapCandidate[] = [];
 
     if (maxRightBoundary - x >= MIN_SIZE) {
-      xCandidates.push({ point: maxRightBoundary, type: 'edge', edge: 'right' });
+      xCandidates.push({
+        point: maxRightBoundary,
+        type: "edge",
+        edge: "right",
+      });
     }
     if (maxBottomBoundary - y >= MIN_SIZE) {
-      yCandidates.push({ point: maxBottomBoundary, type: 'edge', edge: 'bottom' });
+      yCandidates.push({
+        point: maxBottomBoundary,
+        type: "edge",
+        edge: "bottom",
+      });
     }
 
     for (const guide of store.guides) {
-      if (guide.type === 'vertical' && guide.position - x >= MIN_SIZE) {
-        xCandidates.push({ point: guide.position, type: 'guide', guideId: guide.id });
+      if (guide.type === "vertical" && guide.position - x >= MIN_SIZE) {
+        xCandidates.push({
+          point: guide.position,
+          type: "guide",
+          guideId: guide.id,
+        });
       }
-      if (guide.type === 'horizontal' && guide.position - y >= MIN_SIZE) {
-        yCandidates.push({ point: guide.position, type: 'guide', guideId: guide.id });
+      if (guide.type === "horizontal" && guide.position - y >= MIN_SIZE) {
+        yCandidates.push({
+          point: guide.position,
+          type: "guide",
+          guideId: guide.id,
+        });
       }
     }
 
     for (const item of referenceElements) {
       const bounds = store.getElementBoundsAtPosition(item, item.x, item.y);
-      const xPoints = [bounds.minX, (bounds.minX + bounds.maxX) / 2, bounds.maxX];
-      const yPoints = [bounds.minY, (bounds.minY + bounds.maxY) / 2, bounds.maxY];
+      const xPoints = [
+        bounds.minX,
+        (bounds.minX + bounds.maxX) / 2,
+        bounds.maxX,
+      ];
+      const yPoints = [
+        bounds.minY,
+        (bounds.minY + bounds.maxY) / 2,
+        bounds.maxY,
+      ];
 
       for (const point of xPoints) {
         if (point - x >= MIN_SIZE) {
-          xCandidates.push({ point, type: 'element' });
+          xCandidates.push({ point, type: "element" });
         }
       }
       for (const point of yPoints) {
         if (point - y >= MIN_SIZE) {
-          yCandidates.push({ point, type: 'element' });
+          yCandidates.push({ point, type: "element" });
         }
       }
     }
@@ -465,37 +544,53 @@ const handleResizeStart = (e: MouseEvent) => {
     const snappedRight = x + width;
     const snappedBottom = y + height;
 
-    if (bestX?.type === 'element' || bestY?.type === 'element') {
+    if (bestX?.type === "element" || bestY?.type === "element") {
       for (const item of referenceElements) {
         const bounds = store.getElementBoundsAtPosition(item, item.x, item.y);
-        if (bestX?.type === 'element') {
-          const xPoints = [bounds.minX, (bounds.minX + bounds.maxX) / 2, bounds.maxX];
-          if (xPoints.some(point => Math.abs(point - snappedRight) <= ALIGN_EPSILON)) {
+        if (bestX?.type === "element") {
+          const xPoints = [
+            bounds.minX,
+            (bounds.minX + bounds.maxX) / 2,
+            bounds.maxX,
+          ];
+          if (
+            xPoints.some(
+              (point) => Math.abs(point - snappedRight) <= ALIGN_EPSILON,
+            )
+          ) {
             highlightedAlignedElementIds.add(item.id);
           }
         }
-        if (bestY?.type === 'element') {
-          const yPoints = [bounds.minY, (bounds.minY + bounds.maxY) / 2, bounds.maxY];
-          if (yPoints.some(point => Math.abs(point - snappedBottom) <= ALIGN_EPSILON)) {
+        if (bestY?.type === "element") {
+          const yPoints = [
+            bounds.minY,
+            (bounds.minY + bounds.maxY) / 2,
+            bounds.maxY,
+          ];
+          if (
+            yPoints.some(
+              (point) => Math.abs(point - snappedBottom) <= ALIGN_EPSILON,
+            )
+          ) {
             highlightedAlignedElementIds.add(item.id);
           }
         }
       }
     }
 
-    let highlightedEdge: 'left' | 'top' | 'right' | 'bottom' | null = null;
-    if (bestX?.type === 'edge') {
-      highlightedEdge = 'right';
+    let highlightedEdge: "left" | "top" | "right" | "bottom" | null = null;
+    if (bestX?.type === "edge") {
+      highlightedEdge = "right";
     }
-    if (bestY?.type === 'edge') {
-      highlightedEdge = highlightedEdge || 'bottom';
+    if (bestY?.type === "edge") {
+      highlightedEdge = highlightedEdge || "bottom";
     }
 
     let highlightedGuideId: string | null = null;
-    if (bestX?.type === 'guide') {
+    if (bestX?.type === "guide") {
       highlightedGuideId = bestX.guideId || null;
     }
-    if (!highlightedGuideId && bestY?.type === 'guide') {
+    if (!highlightedGuideId && bestY?.type === "guide") {
       highlightedGuideId = bestY.guideId || null;
     }
 
@@ -504,10 +599,10 @@ const handleResizeStart = (e: MouseEvent) => {
       height,
       highlightedEdge,
       highlightedGuideId,
-      highlightedAlignedElementIds: Array.from(highlightedAlignedElementIds)
+      highlightedAlignedElementIds: Array.from(highlightedAlignedElementIds),
     };
   };
-  
+
   const startX = e.clientX;
   const startY = e.clientY;
   const initialWidth = props.element.width;
@@ -517,11 +612,11 @@ const handleResizeStart = (e: MouseEvent) => {
   store.setHighlightedGuide(null);
   store.setHighlightedEdge(null);
   store.setHighlightedAlignedElements([]);
-  
+
   const handleResizeMove = (moveEvent: MouseEvent) => {
     const dx = (moveEvent.clientX - startX) / props.zoom;
     const dy = (moveEvent.clientY - startY) / props.zoom;
-    
+
     if (!hasSnapshot) {
       store.snapshot();
       hasSnapshot = true;
@@ -533,7 +628,10 @@ const handleResizeStart = (e: MouseEvent) => {
     if (moveEvent.shiftKey) {
       const ratio = initialWidth / initialHeight;
       // Use the larger relative change to drive the size
-      if (Math.abs(newWidth / initialWidth - 1) > Math.abs(newHeight / initialHeight - 1)) {
+      if (
+        Math.abs(newWidth / initialWidth - 1) >
+        Math.abs(newHeight / initialHeight - 1)
+      ) {
         newHeight = newWidth / ratio;
       } else {
         newWidth = newHeight * ratio;
@@ -543,27 +641,32 @@ const handleResizeStart = (e: MouseEvent) => {
     const snapped = getResizeSnapResult(newWidth, newHeight);
     store.setHighlightedGuide(snapped.highlightedGuideId || null);
     store.setHighlightedEdge(snapped.highlightedEdge || null);
-    store.setHighlightedAlignedElements(snapped.highlightedAlignedElementIds || []);
+    store.setHighlightedAlignedElements(
+      snapped.highlightedAlignedElementIds || [],
+    );
 
-    store.updateElement(props.element.id, {
-      width: snapped.width,
-      height: snapped.height
-    }, false);
+    store.updateElement(
+      props.element.id,
+      {
+        width: snapped.width,
+        height: snapped.height,
+      },
+      false,
+    );
   };
-  
+
   const handleResizeUp = () => {
     store.setDragging(false);
     store.setHighlightedGuide(null);
     store.setHighlightedEdge(null);
     store.setHighlightedAlignedElements([]);
-    window.removeEventListener('mousemove', handleResizeMove);
-    window.removeEventListener('mouseup', handleResizeUp);
+    window.removeEventListener("mousemove", handleResizeMove);
+    window.removeEventListener("mouseup", handleResizeUp);
   };
-  
-  window.addEventListener('mousemove', handleResizeMove);
-  window.addEventListener('mouseup', handleResizeUp);
-};
 
+  window.addEventListener("mousemove", handleResizeMove);
+  window.addEventListener("mouseup", handleResizeUp);
+};
 </script>
 
 <template>
@@ -577,7 +680,7 @@ const handleResizeStart = (e: MouseEvent) => {
     :class="[
       readOnly ? 'cursor-not-allowed' : '',
       !readOnly && element.locked ? 'cursor-not-allowed' : '',
-      !readOnly && !element.locked ? 'cursor-move' : ''
+      !readOnly && !element.locked ? 'cursor-move' : '',
     ]"
     :style="style"
     @mouseenter="isHovered = true"
@@ -597,9 +700,9 @@ const handleResizeStart = (e: MouseEvent) => {
       v-if="!readOnly && !actualIsSelected"
       :class="[
         'absolute inset-0 box-border border pointer-events-none z-30 transition-opacity duration-75',
-        isHovered ? 'opacity-100' : 'opacity-0'
+        isHovered ? 'opacity-100' : 'opacity-0',
       ]"
-      style="border-color: var(--brand-300);"
+      style="border-color: var(--brand-300)"
     ></div>
 
     <div
@@ -607,48 +710,89 @@ const handleResizeStart = (e: MouseEvent) => {
       data-print-exclude="true"
       :class="[
         'absolute inset-0 box-border border-2 pointer-events-none z-40',
-        element.locked ? 'border-red-500' : 'theme-border-strong'
+        element.locked ? 'border-red-500' : 'theme-border-strong',
       ]"
     ></div>
 
     <template v-if="isAlignmentTarget">
-      <div data-print-exclude="true" class="absolute inset-0 pointer-events-none z-30">
+      <div
+        data-print-exclude="true"
+        class="absolute inset-0 pointer-events-none z-30"
+      >
         <div class="absolute inset-0 border-2 theme-border"></div>
-        <div class="absolute inset-0" style="background-color: var(--brand-500-alpha-10);"></div>
-        <div class="absolute w-px theme-bg-strong" style="left: 50%; top: 50%; height: min(45%, 20px); transform: translate(-0.5px, -50%);"></div>
-        <div class="absolute h-px theme-bg-strong" style="left: 50%; top: 50%; width: min(45%, 20px); transform: translate(-50%, -0.5px);"></div>
+        <div
+          class="absolute inset-0"
+          style="background-color: var(--brand-500-alpha-10)"
+        ></div>
+        <div
+          class="absolute w-px theme-bg-strong"
+          style="
+            left: 50%;
+            top: 50%;
+            height: min(45%, 20px);
+            transform: translate(-0.5px, -50%);
+          "
+        ></div>
+        <div
+          class="absolute h-px theme-bg-strong"
+          style="
+            left: 50%;
+            top: 50%;
+            width: min(45%, 20px);
+            transform: translate(-50%, -0.5px);
+          "
+        ></div>
       </div>
     </template>
 
     <!-- Locked Indicator -->
-    <div v-if="!readOnly && element.locked && isSelected" data-print-exclude="true" class="absolute -top-3 -right-3 bg-red-500 rounded-full p-1 shadow-md z-50">
+    <div
+      v-if="!readOnly && element.locked && isSelected"
+      data-print-exclude="true"
+      class="absolute -top-3 -right-3 bg-red-500 rounded-full p-1 shadow-md z-50"
+    >
       <Lock class="w-3 h-3 text-white" />
     </div>
 
     <!-- Resize Handles (only visible when selected and not multi-selected) -->
-    <template v-if="!readOnly && isSelected && store.selectedElementIds.length <= 1 && !element.locked">
-       <!-- Resize Handle -->
-       <div
-         data-print-exclude="true"
-         class="resize-handle absolute bottom-0 right-0 w-3 h-3 bg-blue-600 cursor-se-resize z-50"
-         @mousedown="handleResizeStart"
-       ></div>
-       
-       <!-- Rotation Handle (top right, no background) -->
-       <div
-         data-print-exclude="true"
-         class="rotate-handle absolute -top-4 -right-5 w-5 h-5 flex items-center justify-center cursor-grab z-50 theme-text theme-text-hover"
-         :title="t('common.rotate')"
-         @mousedown="handleRotateStart"
-       >
-         <!-- Material Symbol Icon -->
-         <RotateRight class="w-3 h-3" />
-         
-         <!-- Angle Tooltip -->
-        <div v-if="isRotating" :class="['absolute top-6 left-1/2 transform -translate-x-1/2 text-xs px-2 py-1 rounded whitespace-nowrap z-50 pointer-events-none font-sans font-normal not-italic leading-none tracking-normal normal-case', isSnapped ? 'theme-bg-strong text-white' : 'theme-bg-soft text-white']">
-            {{ currentRotationDisplay }}°
-         </div>
-       </div>
+    <template
+      v-if="
+        !readOnly &&
+        isSelected &&
+        store.selectedElementIds.length <= 1 &&
+        !element.locked
+      "
+    >
+      <!-- Resize Handle -->
+      <div
+        data-print-exclude="true"
+        class="resize-handle absolute bottom-0 right-0 w-3 h-3 bg-blue-600 cursor-se-resize z-50"
+        @mousedown="handleResizeStart"
+      ></div>
+
+      <!-- Rotation Handle (top right, no background) -->
+      <div
+        data-print-exclude="true"
+        class="rotate-handle absolute -top-4 -right-5 w-5 h-5 flex items-center justify-center cursor-grab z-50 theme-text theme-text-hover"
+        :title="t('common.rotate')"
+        @mousedown="handleRotateStart"
+      >
+        <!-- Material Symbol Icon -->
+        <RotateRight class="w-3 h-3" />
+
+        <!-- Angle Tooltip -->
+        <div
+          v-if="isRotating"
+          :class="[
+            'absolute top-6 left-1/2 transform -translate-x-1/2 text-xs px-2 py-1 rounded whitespace-nowrap z-50 pointer-events-none font-sans font-normal not-italic leading-none tracking-normal normal-case',
+            isSnapped
+              ? 'theme-bg-strong text-white'
+              : 'theme-bg-soft text-white',
+          ]"
+        >
+          {{ currentRotationDisplay }}°
+        </div>
+      </div>
     </template>
   </div>
 </template>

@@ -118,7 +118,10 @@ const defaultFontOptions = computed(() => [
     label: t("properties.option.timesNewRoman"),
     value: '"Times New Roman", serif',
   },
-  { label: t("properties.option.courierNew"), value: '"Courier New", monospace' },
+  {
+    label: t("properties.option.courierNew"),
+    value: '"Courier New", monospace',
+  },
   { label: t("properties.option.simSun"), value: "SimSun, serif" },
   { label: t("properties.option.simHei"), value: "SimHei, sans-serif" },
 ]);
@@ -195,7 +198,7 @@ const resolveOptionLabel = (label: unknown) => {
 const getSelectOptions = (field: PropertyField) => {
   const rawOptions = fontFamilyFieldKeys.has(field.key || "")
     ? dynamicFontFamilyOptions.value
-    : (field.options || []);
+    : field.options || [];
   return rawOptions.map((option: any) => ({
     ...option,
     label: resolveOptionLabel(option.label),

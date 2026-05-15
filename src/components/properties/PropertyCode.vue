@@ -1,12 +1,21 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted, computed, defineAsyncComponent } from 'vue';
-import { useDesignerStore } from '@/stores/designer';
-import { useTheme } from '@/composables/useTheme';
-import CodeEditorModal from '@/components/common/CodeEditorModal.vue';
-import OpenInFull from '~icons/material-symbols/open-in-full';
-import Close from '~icons/material-symbols/close';
+import {
+  ref,
+  watch,
+  onMounted,
+  onUnmounted,
+  computed,
+  defineAsyncComponent,
+} from "vue";
+import { useDesignerStore } from "@/stores/designer";
+import { useTheme } from "@/composables/useTheme";
+import CodeEditorModal from "@/components/common/CodeEditorModal.vue";
+import OpenInFull from "~icons/material-symbols/open-in-full";
+import Close from "~icons/material-symbols/close";
 
-const Editor = defineAsyncComponent(() => import('@guolao/vue-monaco-editor').then(m => m.Editor));
+const Editor = defineAsyncComponent(() =>
+  import("@guolao/vue-monaco-editor").then((m) => m.Editor),
+);
 
 const props = defineProps<{
   label: string;
@@ -16,7 +25,7 @@ const props = defineProps<{
   height?: number;
 }>();
 
-const emit = defineEmits(['update:value']);
+const emit = defineEmits(["update:value"]);
 const store = useDesignerStore();
 const { isDark } = useTheme();
 
@@ -24,23 +33,23 @@ const isExpanded = ref(false);
 
 const editorOptions = computed(() => ({
   minimap: { enabled: false },
-  lineNumbers: 'on',
+  lineNumbers: "on",
   glyphMargin: false,
   folding: true,
-  wordWrap: 'on',
+  wordWrap: "on",
   automaticLayout: true,
   scrollBeyondLastLine: false,
-  theme: isDark.value ? 'vs-dark' : 'vs',
+  theme: isDark.value ? "vs-dark" : "vs",
   fontSize: 12,
   fontFamily: 'Consolas, "Courier New", monospace',
-  renderLineHighlight: 'none',
+  renderLineHighlight: "none",
   overviewRulerLanes: 0,
   hideCursorInOverviewRuler: true,
   contextmenu: false,
 }));
 
 const handleChange = (val: string | undefined) => {
-  emit('update:value', val || '');
+  emit("update:value", val || "");
 };
 
 const toggleExpand = () => {
@@ -52,7 +61,7 @@ const handleModalClose = () => {
 };
 
 const handleModalUpdate = (val: string) => {
-  emit('update:value', val);
+  emit("update:value", val);
 };
 </script>
 
@@ -62,7 +71,7 @@ const handleModalUpdate = (val: string) => {
       <label class="text-xs text-gray-500 font-medium">{{ label }}</label>
       <div class="flex items-center gap-2">
         <span class="text-[10px] text-gray-400 uppercase">{{ language }}</span>
-        <button 
+        <button
           @click="toggleExpand"
           class="text-gray-400 hover:text-blue-600 transition-colors p-0.5 rounded hover:bg-gray-100"
           title="Expand Editor"
@@ -71,11 +80,15 @@ const handleModalUpdate = (val: string) => {
         </button>
       </div>
     </div>
-    
+
     <!-- Inline Editor -->
-    <div 
+    <div
       class="border border-gray-300 rounded overflow-hidden focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 resize-y relative group"
-      :style="{ height: `${height || 200}px`, minHeight: '100px', maxHeight: '600px' }"
+      :style="{
+        height: `${height || 200}px`,
+        minHeight: '100px',
+        maxHeight: '600px',
+      }"
     >
       <Editor
         :value="value"
@@ -85,7 +98,9 @@ const handleModalUpdate = (val: string) => {
         class="w-full h-full"
       />
       <!-- Resize Handle Visual Hint (optional, standard resize handle is usually bottom-right) -->
-      <div class="absolute bottom-0 right-0 w-3 h-3 cursor-ns-resize pointer-events-none bg-gradient-to-tl from-gray-300 to-transparent opacity-50 group-hover:opacity-100"></div>
+      <div
+        class="absolute bottom-0 right-0 w-3 h-3 cursor-ns-resize pointer-events-none bg-gradient-to-tl from-gray-300 to-transparent opacity-50 group-hover:opacity-100"
+      ></div>
     </div>
 
     <!-- Expanded Modal -->
@@ -104,6 +119,6 @@ const handleModalUpdate = (val: string) => {
 <style scoped>
 /* Ensure the resize handle works */
 .resize-y {
-  resize: vertical; 
+  resize: vertical;
 }
 </style>

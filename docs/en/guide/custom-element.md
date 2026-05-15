@@ -11,9 +11,9 @@ First, add a new type definition to the `ElementType` enum in `src/types/index.t
 
 export enum ElementType {
   // ... existing types
-  TEXT = 'text',
+  TEXT = "text",
   // ...
-  STAR = 'star' // [!code ++]
+  STAR = "star", // [!code ++]
 }
 ```
 
@@ -24,7 +24,7 @@ Create a new Vue component in the `src/components/elements/` directory, e.g., `S
 ```vue
 <!-- src/components/elements/StarElement.vue -->
 <script setup lang="ts">
-import type { PrintElement } from '@/types';
+import type { PrintElement } from "@/types";
 
 defineProps<{
   element: PrintElement;
@@ -32,31 +32,33 @@ defineProps<{
 </script>
 
 <script lang="ts">
-import type { ElementPropertiesSchema } from '@/types';
+import type { ElementPropertiesSchema } from "@/types";
 
 // Define property panel configuration
 export const elementPropertiesSchema: ElementPropertiesSchema = {
   sections: [
     {
-      title: 'properties.section.style',
-      tab: 'style',
+      title: "properties.section.style",
+      tab: "style",
       fields: [
-        { 
-          label: 'properties.label.color', 
-          type: 'color', 
-          target: 'style', 
-          key: 'color' 
-        }
-      ]
-    }
-  ]
+        {
+          label: "properties.label.color",
+          type: "color",
+          target: "style",
+          key: "color",
+        },
+      ],
+    },
+  ],
 };
 </script>
 
 <template>
   <div class="w-full h-full flex items-center justify-center">
     <svg viewBox="0 0 24 24" :fill="element.style.color || '#000000'">
-      <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+      <path
+        d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"
+      />
     </svg>
   </div>
 </template>
@@ -69,15 +71,17 @@ Import the new component in `src/components/canvas/Canvas.vue` and add the mappi
 ```typescript
 // src/components/canvas/Canvas.vue
 
-import StarElement from '../elements/StarElement.vue'; // [!code ++]
+import StarElement from "../elements/StarElement.vue"; // [!code ++]
 
 // ...
 
 const getComponent = (type: ElementType) => {
   switch (type) {
     // ...
-    case ElementType.STAR: return StarElement; // [!code ++]
-    default: return TextElement;
+    case ElementType.STAR:
+      return StarElement; // [!code ++]
+    default:
+      return TextElement;
   }
 };
 ```
@@ -89,14 +93,15 @@ Import the component's Schema in `src/components/layout/PropertiesPanel.vue` and
 ```typescript
 // src/components/layout/PropertiesPanel.vue
 
-import { elementPropertiesSchema as StarSchema } from '@/components/elements/StarElement.vue'; // [!code ++]
+import { elementPropertiesSchema as StarSchema } from "@/components/elements/StarElement.vue"; // [!code ++]
 
 // ...
 
 const getSchema = (type: ElementType): ElementPropertiesSchema | null => {
   switch (type) {
     // ...
-    case ElementType.STAR: return StarSchema; // [!code ++]
+    case ElementType.STAR:
+      return StarSchema; // [!code ++]
   }
   return null;
 };
@@ -108,19 +113,19 @@ Configure the sidebar menu item in `src/components/layout/Sidebar.vue` so that i
 
 ```typescript
 // src/components/layout/Sidebar.vue
-import StarIcon from '~icons/material-symbols/star'; // Import icon
+import StarIcon from "~icons/material-symbols/star"; // Import icon
 
 // ...
 
 const categories = [
   // ...
   {
-    title: 'sidebar.shapes',
+    title: "sidebar.shapes",
     items: [
       // ...
-      { type: ElementType.STAR, label: 'sidebar.star', icon: StarIcon }, // [!code ++]
-    ]
-  }
+      { type: ElementType.STAR, label: "sidebar.star", icon: StarIcon }, // [!code ++]
+    ],
+  },
 ];
 
 // ...
@@ -128,7 +133,8 @@ const categories = [
 const getIcon = (type: ElementType) => {
   switch (type) {
     // ...
-    case ElementType.STAR: return StarIcon; // [!code ++]
+    case ElementType.STAR:
+      return StarIcon; // [!code ++]
     // ...
   }
 };
@@ -141,17 +147,21 @@ In `src/utils/elementFactory.ts`, add the new element's default dimensions and p
 ```typescript
 // src/utils/elementFactory.ts
 
-export const elementConfigRegistry: Partial<Record<ElementType, ElementConfigGenerator>> = {
+export const elementConfigRegistry: Partial<
+  Record<ElementType, ElementConfigGenerator>
+> = {
   // ... existing elements configuration
-  
-  [ElementType.STAR]: (t) => ({ // [!code ++]
+
+  [ElementType.STAR]: (t) => ({
+    // [!code ++]
     width: 100, // [!code ++]
     height: 100, // [!code ++]
-    style: { // [!code ++]
-      backgroundColor: 'transparent', // [!code ++]
-      borderColor: '#000000' // [!code ++]
-    } // [!code ++]
-  }) // [!code ++]
+    style: {
+      // [!code ++]
+      backgroundColor: "transparent", // [!code ++]
+      borderColor: "#000000", // [!code ++]
+    }, // [!code ++]
+  }), // [!code ++]
 };
 
 // Note: The createNewElement function will automatically deep merge this with the base configuration

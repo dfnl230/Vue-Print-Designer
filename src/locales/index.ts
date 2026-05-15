@@ -1,6 +1,6 @@
-import { createI18n } from 'vue-i18n';
-import en from './en';
-import zh from './zh';
+import { createI18n } from "vue-i18n";
+import en from "./en";
+import zh from "./zh";
 
 const messages = {
   en,
@@ -8,22 +8,22 @@ const messages = {
 };
 
 const getInitialLanguage = () => {
-  const stored = localStorage.getItem('print-designer-language');
-  if (stored && (stored === 'zh' || stored === 'en')) {
+  const stored = localStorage.getItem("print-designer-language");
+  if (stored && (stored === "zh" || stored === "en")) {
     return stored;
   }
   const lang = navigator.language.toLowerCase();
-  if (lang.startsWith('zh')) {
-    return 'zh';
+  if (lang.startsWith("zh")) {
+    return "zh";
   }
-  return 'en'; // Default to English for other languages
+  return "en"; // Default to English for other languages
 };
 
-export const createI18nInstance = (initialLocale?: 'zh' | 'en') => {
+export const createI18nInstance = (initialLocale?: "zh" | "en") => {
   return createI18n({
     legacy: false, // Use Composition API
     locale: initialLocale || getInitialLanguage(),
-    fallbackLocale: 'en',
+    fallbackLocale: "en",
     messages,
   });
 };

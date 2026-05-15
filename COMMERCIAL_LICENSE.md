@@ -8,10 +8,10 @@ If you need to remove or alter the project logo, name, or copyright/attribution 
 开源免费版仅适用于 **个人非商用** 场景。
 The Open Source Free Version is for **Personal Non-Commercial Use** only.
 
-*   ✅ 完整打印设计功能 / Full print design functionality
-*   ✅ 社区 Issue 支持 / Community Issue support
-*   ❌ **必须保留版权标识与 Logo** / **Must retain copyright notices and Logo**
-*   ❌ **不可用于企业商用** / **Not for Enterprise Commercial Use**
+- ✅ 完整打印设计功能 / Full print design functionality
+- ✅ 社区 Issue 支持 / Community Issue support
+- ❌ **必须保留版权标识与 Logo** / **Must retain copyright notices and Logo**
+- ❌ **不可用于企业商用** / **Not for Enterprise Commercial Use**
 
 ## 商业授权与价格 / Commercial Licensing & Pricing
 

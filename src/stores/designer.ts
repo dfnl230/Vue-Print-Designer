@@ -287,7 +287,8 @@ const normalizeDesignerFontOptions = (
   options.forEach((option) => {
     if (!option || typeof option.value !== "string") return;
     const value = option.value.trim();
-    const rawLabel = typeof option.label === "string" ? option.label.trim() : "";
+    const rawLabel =
+      typeof option.label === "string" ? option.label.trim() : "";
     const label = rawLabel || value || i18n.global.t("editor.fonts.default");
     if (seen.has(value)) return;
     seen.add(value);
@@ -1927,7 +1928,10 @@ export const useDesignerStore = defineStore("designer", {
             );
             const touchedAutoHeight =
               !!nextUpdates.style &&
-              Object.prototype.hasOwnProperty.call(nextUpdates.style, "autoHeight");
+              Object.prototype.hasOwnProperty.call(
+                nextUpdates.style,
+                "autoHeight",
+              );
 
             const nextRepeatPerPage = touchedRepeatPerPage
               ? nextUpdates.repeatPerPage === true

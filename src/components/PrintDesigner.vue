@@ -1,28 +1,28 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick, computed, watch } from 'vue';
-import { useI18n } from 'vue-i18n';
-import { uiConfirm } from '@/utils/confirm';
-import { useDesignerStore } from '@/stores/designer';
-import { useTemplateStore } from '@/stores/templates';
-import { useAutoSave } from '@/composables/useAutoSave';
-import { useTheme } from '@/composables/useTheme';
-import debounce from 'lodash/debounce';
-import { canEditEntity } from '@/utils/entityConstraints';
-import { pxToUnit, type Unit } from '@/utils/units';
-import { parseColor, toRgbaString } from '@/utils/color';
-import Header from './layout/Header.vue';
-import Sidebar from './layout/Sidebar.vue';
-import PropertiesPanel from './layout/PropertiesPanel.vue';
-import Canvas from './canvas/Canvas.vue';
-import Ruler from './layout/Ruler.vue';
-import Shortcuts from './layout/Shortcuts.vue';
-import Minimap from './layout/Minimap.vue';
-import VariablesPanel from './layout/VariablesPanel.vue';
-import InputModal from '@/components/common/InputModal.vue';
-import { toast } from '@/utils/toast';
-import Save from '~icons/material-symbols/save';
-import SaveAs from '~icons/material-symbols/save-as';
-import Logout from '~icons/material-symbols/logout';
+import { ref, onMounted, onUnmounted, nextTick, computed, watch } from "vue";
+import { useI18n } from "vue-i18n";
+import { uiConfirm } from "@/utils/confirm";
+import { useDesignerStore } from "@/stores/designer";
+import { useTemplateStore } from "@/stores/templates";
+import { useAutoSave } from "@/composables/useAutoSave";
+import { useTheme } from "@/composables/useTheme";
+import debounce from "lodash/debounce";
+import { canEditEntity } from "@/utils/entityConstraints";
+import { pxToUnit, type Unit } from "@/utils/units";
+import { parseColor, toRgbaString } from "@/utils/color";
+import Header from "./layout/Header.vue";
+import Sidebar from "./layout/Sidebar.vue";
+import PropertiesPanel from "./layout/PropertiesPanel.vue";
+import Canvas from "./canvas/Canvas.vue";
+import Ruler from "./layout/Ruler.vue";
+import Shortcuts from "./layout/Shortcuts.vue";
+import Minimap from "./layout/Minimap.vue";
+import VariablesPanel from "./layout/VariablesPanel.vue";
+import InputModal from "@/components/common/InputModal.vue";
+import { toast } from "@/utils/toast";
+import Save from "~icons/material-symbols/save";
+import SaveAs from "~icons/material-symbols/save-as";
+import Logout from "~icons/material-symbols/logout";
 
 const store = useDesignerStore();
 const templateStore = useTemplateStore();
@@ -40,10 +40,10 @@ let resizeObserver: ResizeObserver | null = null;
 const canvasContainer = ref<HTMLElement | null>(null);
 
 // Provide root and modal container for children
-import { provide } from 'vue';
-provide('designer-root', rootContainer);
-provide('modal-container', modalContainer);
-provide('designer-instance-id', designerInstanceId);
+import { provide } from "vue";
+provide("designer-root", rootContainer);
+provide("modal-container", modalContainer);
+provide("designer-instance-id", designerInstanceId);
 const canvasWrapper = ref<HTMLElement | null>(null);
 const showSaveAsModal = ref(false);
 const brandTick = ref(0);
@@ -53,7 +53,9 @@ const handleBrandThemeUpdated = () => {
 };
 
 const getThemeRgba = (cssVar: string, alpha: number) => {
-  const value = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
+  const value = getComputedStyle(document.documentElement)
+    .getPropertyValue(cssVar)
+    .trim();
   const parsed = parseColor(value);
   if (!parsed) return `rgba(59, 130, 246, ${alpha})`;
   return toRgbaString(parsed.h, parsed.s, parsed.v, alpha);
@@ -61,7 +63,7 @@ const getThemeRgba = (cssVar: string, alpha: number) => {
 
 const editingCustomElement = computed(() => store.editingCustomElement);
 const saveAsInitialName = computed(() => {
-  if (!editingCustomElement.value) return '';
+  if (!editingCustomElement.value) return "";
   return `${editingCustomElement.value.name} Copy`;
 });
 
@@ -76,18 +78,18 @@ onMounted(() => {
   resizeObserver = new ResizeObserver(() => {
     updateOffset();
   });
-  
+
   if (scrollContainer.value) {
     resizeObserver.observe(scrollContainer.value);
   }
 
-  window.addEventListener('resize', updateOffset);
-  window.addEventListener('keydown', handleCtrlKey);
-  window.addEventListener('keydown', handleCustomEditShortcuts);
-  window.addEventListener('keyup', handleCtrlKey);
-  window.addEventListener('blur', handleBlur);
-  window.addEventListener('brand-theme-updated', handleBrandThemeUpdated);
-  
+  window.addEventListener("resize", updateOffset);
+  window.addEventListener("keydown", handleCtrlKey);
+  window.addEventListener("keydown", handleCustomEditShortcuts);
+  window.addEventListener("keyup", handleCtrlKey);
+  window.addEventListener("blur", handleBlur);
+  window.addEventListener("brand-theme-updated", handleBrandThemeUpdated);
+
   // Watch for layout changes
   watch(
     [
@@ -95,19 +97,23 @@ onMounted(() => {
       () => store.canvasSize.width,
       () => store.canvasSize.height,
       () => store.zoom,
-      () => store.showMinimap
+      () => store.showMinimap,
     ],
     () => {
       nextTick(updateOffset);
-    }
+    },
   );
 
   // Apply dark mode class to root container for Shadow DOM compatibility
-  watch(isDark, (val) => {
-    if (rootContainer.value) {
-      rootContainer.value.classList.toggle('dark', val);
-    }
-  }, { immediate: true });
+  watch(
+    isDark,
+    (val) => {
+      if (rootContainer.value) {
+        rootContainer.value.classList.toggle("dark", val);
+      }
+    },
+    { immediate: true },
+  );
 
   // Auto-save watcher
   watch(
@@ -123,13 +129,13 @@ onMounted(() => {
       () => store.pageSpacingX,
       () => store.pageSpacingY,
       () => store.watermark,
-      () => store.showMinimap
+      () => store.showMinimap,
     ],
     () => {
       if (templateStore.isLoading) return;
       debouncedAutoSave();
     },
-    { deep: true }
+    { deep: true },
   );
 });
 
@@ -137,7 +143,9 @@ const debouncedAutoSave = debounce(async () => {
   if (templateStore.isLoading) return;
   if (store.editingCustomElementId) return;
   if (autoSave.value && templateStore.currentTemplateId) {
-    const currentTemplate = templateStore.templates.find(t => t.id === templateStore.currentTemplateId);
+    const currentTemplate = templateStore.templates.find(
+      (t) => t.id === templateStore.currentTemplateId,
+    );
     if (currentTemplate && canEditEntity(currentTemplate)) {
       if (templateStore.isSaving) {
         // If already saving, we must not drop this save.
@@ -153,7 +161,7 @@ const debouncedAutoSave = debounce(async () => {
 const handleSaveCustomEdit = () => {
   const ok = store.commitCustomElementEdit();
   if (!ok) {
-    toast.error(t('sidebar.editSaveFailed'));
+    toast.error(t("sidebar.editSaveFailed"));
     return;
   }
   store.cancelCustomElementEdit();
@@ -164,14 +172,14 @@ const handleSaveCustomEditAs = (name: string) => {
   if (!trimmed) return;
   const ok = store.saveCustomElementEditAs(trimmed);
   if (!ok) {
-    toast.error(t('sidebar.editSaveFailed'));
+    toast.error(t("sidebar.editSaveFailed"));
     return;
   }
   store.cancelCustomElementEdit();
 };
 
 const handleExitCustomEdit = async () => {
-  if (!await uiConfirm.show(t('sidebar.confirmExitEdit'))) {
+  if (!(await uiConfirm.show(t("sidebar.confirmExitEdit")))) {
     return;
   }
   store.cancelCustomElementEdit();
@@ -185,7 +193,7 @@ const isTypingTarget = (target: EventTarget | null) => {
   if (!el) return false;
   if (el.isContentEditable) return true;
   const tag = el.tagName?.toLowerCase();
-  return tag === 'input' || tag === 'textarea' || tag === 'select';
+  return tag === "input" || tag === "textarea" || tag === "select";
 };
 
 const handleCustomEditShortcuts = (e: KeyboardEvent) => {
@@ -198,21 +206,21 @@ const handleCustomEditShortcuts = (e: KeyboardEvent) => {
   if (!mod) return;
 
   const key = e.key.toLowerCase();
-  if (key === 's' && e.shiftKey) {
+  if (key === "s" && e.shiftKey) {
     e.preventDefault();
     e.stopPropagation();
     showSaveAsModal.value = true;
     return;
   }
 
-  if (key === 's') {
+  if (key === "s") {
     e.preventDefault();
     e.stopPropagation();
     handleSaveCustomEdit();
     return;
   }
 
-  if (key === 'q') {
+  if (key === "q") {
     e.preventDefault();
     e.stopPropagation();
     handleExitCustomEdit();
@@ -235,10 +243,10 @@ const scrollWidth = ref(0);
 const scrollHeight = ref(0);
 const viewportWidth = ref(0);
 const viewportHeight = ref(0);
-const unitLabel = computed(() => store.unit || 'mm');
+const unitLabel = computed(() => store.unit || "mm");
 const formatUnitValue = (px: number) => {
-  const value = pxToUnit(px, (store.unit || 'mm') as Unit);
-  return store.unit === 'px' ? Math.round(value) : Number(value.toFixed(1));
+  const value = pxToUnit(px, (store.unit || "mm") as Unit);
+  return store.unit === "px" ? Math.round(value) : Number(value.toFixed(1));
 };
 
 const canvasStyle = computed(() => {
@@ -247,10 +255,9 @@ const canvasStyle = computed(() => {
   const pageWidth = store.canvasSize.width;
   const gapY = 20;
   // const paddingBottom = 80; // pb-20 - Removed to prevent unnecessary scrollbars
-  
-  const unscaledHeight = pagesCount > 0
-    ? (pagesCount * pageHeight) + ((pagesCount - 1) * gapY)
-    : 0;
+
+  const unscaledHeight =
+    pagesCount > 0 ? pagesCount * pageHeight + (pagesCount - 1) * gapY : 0;
 
   const unscaledWidth = pageWidth;
 
@@ -265,20 +272,20 @@ const updateOffset = () => {
     // Calculate expected scroll dimensions based on canvas size to avoid loop with overlay size
     const containerClientWidth = scrollContainer.value.clientWidth;
     const containerClientHeight = scrollContainer.value.clientHeight;
-    
+
     viewportWidth.value = containerClientWidth;
     viewportHeight.value = containerClientHeight;
-    
+
     const wrapperW = parseFloat(canvasStyle.value.width);
     const wrapperH = parseFloat(canvasStyle.value.height);
-    
+
     // p-8 = 32px padding on each side
     const paddingX = 64;
     const paddingY = 64;
 
     scrollWidth.value = Math.max(containerClientWidth, wrapperW + paddingX);
     scrollHeight.value = Math.max(containerClientHeight, wrapperH + paddingY);
-    
+
     // Fix: If the wrapper fits within the container, force scroll dimensions to client dimensions
     // This prevents scrollbars from appearing when they shouldn't due to slight pixel differences
     if (wrapperW + paddingX <= containerClientWidth) {
@@ -296,8 +303,16 @@ const updateOffset = () => {
     scrollX.value = scrollContainer.value.scrollLeft;
     scrollY.value = scrollContainer.value.scrollTop;
 
-    offsetX.value = wrapperRect.left - containerRect.left + scrollContainer.value.scrollLeft - clientLeft;
-    offsetY.value = wrapperRect.top - containerRect.top + scrollContainer.value.scrollTop - clientTop;
+    offsetX.value =
+      wrapperRect.left -
+      containerRect.left +
+      scrollContainer.value.scrollLeft -
+      clientLeft;
+    offsetY.value =
+      wrapperRect.top -
+      containerRect.top +
+      scrollContainer.value.scrollTop -
+      clientTop;
   }
 };
 
@@ -307,42 +322,45 @@ onUnmounted(() => {
     resizeObserver.disconnect();
     resizeObserver = null;
   }
-  window.removeEventListener('resize', updateOffset);
-  window.removeEventListener('mousemove', handleGuideMouseMove);
-  window.removeEventListener('mouseup', handleGuideMouseUp);
-  window.removeEventListener('keydown', handleCtrlKey);
-  window.removeEventListener('keydown', handleCustomEditShortcuts);
-  window.removeEventListener('keyup', handleCtrlKey);
-  window.removeEventListener('blur', handleBlur);
-  window.removeEventListener('brand-theme-updated', handleBrandThemeUpdated);
-  scrollContainer.value?.removeEventListener('wheel', handleZoomWheel);
+  window.removeEventListener("resize", updateOffset);
+  window.removeEventListener("mousemove", handleGuideMouseMove);
+  window.removeEventListener("mouseup", handleGuideMouseUp);
+  window.removeEventListener("keydown", handleCtrlKey);
+  window.removeEventListener("keydown", handleCustomEditShortcuts);
+  window.removeEventListener("keyup", handleCtrlKey);
+  window.removeEventListener("blur", handleBlur);
+  window.removeEventListener("brand-theme-updated", handleBrandThemeUpdated);
+  scrollContainer.value?.removeEventListener("wheel", handleZoomWheel);
 });
-
 
 // Guides Logic
 const isDraggingGuide = ref(false);
 const draggingGuideId = ref<string | null>(null);
-const draggingGuideType = ref<'horizontal' | 'vertical'>('horizontal');
+const draggingGuideType = ref<"horizontal" | "vertical">("horizontal");
 const draggingGuidePos = ref(0);
 
-const handleGuideDragStart = (e: MouseEvent, type: 'horizontal' | 'vertical', id: string | null = null) => {
+const handleGuideDragStart = (
+  e: MouseEvent,
+  type: "horizontal" | "vertical",
+  id: string | null = null,
+) => {
   isDraggingGuide.value = true;
   draggingGuideId.value = id;
   draggingGuideType.value = type;
-  
+
   updateGuidePosFromEvent(e);
-  
-  window.addEventListener('mousemove', handleGuideMouseMove);
-  window.addEventListener('mouseup', handleGuideMouseUp);
+
+  window.addEventListener("mousemove", handleGuideMouseMove);
+  window.addEventListener("mouseup", handleGuideMouseUp);
 };
 
 const updateGuidePosFromEvent = (e: MouseEvent) => {
   if (!scrollContainer.value) return;
-  
+
   const rect = scrollContainer.value.getBoundingClientRect();
   const zoom = store.zoom;
-  
-  if (draggingGuideType.value === 'horizontal') {
+
+  if (draggingGuideType.value === "horizontal") {
     // Relative to scrollContainer top
     const visualY = e.clientY - rect.top + scrollContainer.value.scrollTop;
     draggingGuidePos.value = (visualY - offsetY.value) / zoom;
@@ -366,15 +384,15 @@ const handleGuideMouseMove = (e: MouseEvent) => {
 
 const handleGuideMouseUp = (e: MouseEvent) => {
   if (!isDraggingGuide.value) return;
-  
+
   const rect = scrollContainer.value!.getBoundingClientRect();
   let shouldDelete = false;
-  
+
   // Delete if dragged back to ruler or out of bounds (top/left)
-  if (draggingGuideType.value === 'horizontal') {
-      if (e.clientY < rect.top) shouldDelete = true;
+  if (draggingGuideType.value === "horizontal") {
+    if (e.clientY < rect.top) shouldDelete = true;
   } else {
-      if (e.clientX < rect.left) shouldDelete = true;
+    if (e.clientX < rect.left) shouldDelete = true;
   }
 
   if (shouldDelete) {
@@ -385,14 +403,17 @@ const handleGuideMouseUp = (e: MouseEvent) => {
     if (draggingGuideId.value) {
       store.updateGuide(draggingGuideId.value, draggingGuidePos.value);
     } else {
-      store.addGuide({ type: draggingGuideType.value, position: draggingGuidePos.value });
+      store.addGuide({
+        type: draggingGuideType.value,
+        position: draggingGuidePos.value,
+      });
     }
   }
 
   isDraggingGuide.value = false;
   draggingGuideId.value = null;
-  window.removeEventListener('mousemove', handleGuideMouseMove);
-  window.removeEventListener('mouseup', handleGuideMouseUp);
+  window.removeEventListener("mousemove", handleGuideMouseMove);
+  window.removeEventListener("mouseup", handleGuideMouseUp);
 };
 
 const handleZoomWheel = (e: WheelEvent) => {
@@ -410,25 +431,27 @@ const handleZoomWheel = (e: WheelEvent) => {
 
 const handleCtrlKey = (e: KeyboardEvent) => {
   if (store.disableGlobalShortcuts) return;
-  if (e.key === 'Control' || e.key === 'Meta') {
-    if (e.type === 'keydown' && !e.repeat) {
-      scrollContainer.value?.addEventListener('wheel', handleZoomWheel, { passive: false });
-    } else if (e.type === 'keyup') {
-      scrollContainer.value?.removeEventListener('wheel', handleZoomWheel);
+  if (e.key === "Control" || e.key === "Meta") {
+    if (e.type === "keydown" && !e.repeat) {
+      scrollContainer.value?.addEventListener("wheel", handleZoomWheel, {
+        passive: false,
+      });
+    } else if (e.type === "keyup") {
+      scrollContainer.value?.removeEventListener("wheel", handleZoomWheel);
     }
   }
 };
 
 const handleBlur = () => {
-  scrollContainer.value?.removeEventListener('wheel', handleZoomWheel);
+  scrollContainer.value?.removeEventListener("wheel", handleZoomWheel);
 };
 
-const handleMinimapScroll = (pos: { left: number, top: number }) => {
+const handleMinimapScroll = (pos: { left: number; top: number }) => {
   if (scrollContainer.value) {
     scrollContainer.value.scrollTo({
       left: pos.left,
       top: pos.top,
-      behavior: 'auto'
+      behavior: "auto",
     });
   }
 };
@@ -440,7 +463,7 @@ const getRotatedBounds = (el: any) => {
       minX: el.x,
       maxX: el.x + el.width,
       minY: el.y,
-      maxY: el.y + el.height
+      maxY: el.y + el.height,
     };
   }
 
@@ -454,15 +477,18 @@ const getRotatedBounds = (el: any) => {
     { x: el.x, y: el.y },
     { x: el.x + el.width, y: el.y },
     { x: el.x, y: el.y + el.height },
-    { x: el.x + el.width, y: el.y + el.height }
+    { x: el.x + el.width, y: el.y + el.height },
   ];
 
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  let minX = Infinity,
+    maxX = -Infinity,
+    minY = Infinity,
+    maxY = -Infinity;
 
   for (const p of corners) {
     const nx = cx + (p.x - cx) * cos - (p.y - cy) * sin;
     const ny = cy + (p.x - cx) * sin + (p.y - cy) * cos;
-    
+
     if (nx < minX) minX = nx;
     if (nx > maxX) maxX = nx;
     if (ny < minY) minY = ny;
@@ -475,11 +501,11 @@ const getRotatedBounds = (el: any) => {
 const dragProjection = computed(() => {
   if (!store.isDragging || store.selectedElementIds.length === 0) return null;
 
-  const elements: { el: any, pageIndex: number }[] = [];
+  const elements: { el: any; pageIndex: number }[] = [];
   for (const id of store.selectedElementIds) {
     for (let i = 0; i < store.pages.length; i++) {
       const page = store.pages[i];
-      const el = page.elements.find(e => e.id === id);
+      const el = page.elements.find((e) => e.id === id);
       if (el) elements.push({ el, pageIndex: i });
     }
   }
@@ -496,7 +522,7 @@ const dragProjection = computed(() => {
   for (const { el, pageIndex } of elements) {
     const bounds = getRotatedBounds(el);
     const pageOffset = pageIndex * (store.canvasSize.height + gapY);
-    
+
     // Apply page offset to Y coordinates
     bounds.minY += pageOffset;
     bounds.maxY += pageOffset;
@@ -510,235 +536,370 @@ const dragProjection = computed(() => {
   const centerX = (globalMinX + globalMaxX) / 2;
   const centerY = (globalMinY + globalMaxY) / 2;
 
-  return { minX: globalMinX, maxX: globalMaxX, minY: globalMinY, maxY: globalMaxY, centerX, centerY };
+  return {
+    minX: globalMinX,
+    maxX: globalMaxX,
+    minY: globalMinY,
+    maxY: globalMaxY,
+    centerX,
+    centerY,
+  };
 });
 
 const rulerIndicators = computed(() => {
   if (!dragProjection.value) return { h: [], v: [] };
   brandTick.value;
-  const indicatorColor = getThemeRgba('--brand-500', 0.5);
-  
+  const indicatorColor = getThemeRgba("--brand-500", 0.5);
+
   const { minX, maxX, minY, maxY } = dragProjection.value;
-  
+
   return {
     h: [
       { position: minX, color: indicatorColor },
-      { position: maxX, color: indicatorColor }
+      { position: maxX, color: indicatorColor },
     ],
     v: [
       { position: minY, color: indicatorColor },
-      { position: maxY, color: indicatorColor }
-    ]
+      { position: maxY, color: indicatorColor },
+    ],
   };
 });
 
 const rulerRanges = computed(() => {
   if (!dragProjection.value) return { h: null, v: null };
   brandTick.value;
-  const rangeColor = getThemeRgba('--brand-300', 0.6);
+  const rangeColor = getThemeRgba("--brand-300", 0.6);
   const { minX, maxX, minY, maxY } = dragProjection.value;
   return {
     h: { start: minX, end: maxX, color: rangeColor },
-    v: { start: minY, end: maxY, color: rangeColor }
+    v: { start: minY, end: maxY, color: rangeColor },
   };
 });
 </script>
 
 <template>
   <!-- Headless Wrapper (hidden) -->
-  <div v-if="props.headless" class="print-designer-headless" style="display: none;">
+  <div
+    v-if="props.headless"
+    class="print-designer-headless"
+    style="display: none"
+  >
     <div ref="rootContainer"></div>
   </div>
 
   <!-- Main Designer UI -->
-  <div v-else ref="rootContainer" class="h-full w-full flex flex-col bg-gray-100 overflow-hidden">
+  <div
+    v-else
+    ref="rootContainer"
+    class="h-full w-full flex flex-col bg-gray-100 overflow-hidden"
+  >
     <Header />
     <div class="flex-1 flex overflow-hidden">
       <Sidebar />
       <main class="flex-1 overflow-hidden relative flex flex-col">
-        <div v-if="store.editingCustomElementId" class="flex items-center justify-between px-4 py-2 bg-blue-50 border-b border-blue-200 text-blue-900 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-100">
+        <div
+          v-if="store.editingCustomElementId"
+          class="flex items-center justify-between px-4 py-2 bg-blue-50 border-b border-blue-200 text-blue-900 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-100"
+        >
           <div class="text-sm font-medium">
-            {{ t('sidebar.editingElement', { name: editingCustomElement?.name || '' }) }}
+            {{
+              t("sidebar.editingElement", {
+                name: editingCustomElement?.name || "",
+              })
+            }}
           </div>
           <div class="flex items-center gap-2">
-            <button @click="handleSaveCustomEdit" class="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400 inline-flex items-center gap-1.5">
+            <button
+              @click="handleSaveCustomEdit"
+              class="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400 inline-flex items-center gap-1.5"
+            >
               <Save class="w-4 h-4" />
-              {{ t('sidebar.saveEdit') }}
+              {{ t("sidebar.saveEdit") }}
             </button>
-            <button @click="showSaveAsModal = true" class="px-3 py-1.5 text-xs font-medium bg-blue-200 text-blue-900 rounded hover:bg-blue-300 dark:bg-blue-700 dark:hover:bg-blue-600 dark:text-white inline-flex items-center gap-1.5">
+            <button
+              @click="showSaveAsModal = true"
+              class="px-3 py-1.5 text-xs font-medium bg-blue-200 text-blue-900 rounded hover:bg-blue-300 dark:bg-blue-700 dark:hover:bg-blue-600 dark:text-white inline-flex items-center gap-1.5"
+            >
               <SaveAs class="w-4 h-4" />
-              {{ t('sidebar.saveAs') }}
+              {{ t("sidebar.saveAs") }}
             </button>
-            <button @click="handleExitCustomEdit" class="px-3 py-1.5 text-xs font-medium bg-slate-200 text-slate-900 rounded hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-100 inline-flex items-center gap-1.5">
+            <button
+              @click="handleExitCustomEdit"
+              class="px-3 py-1.5 text-xs font-medium bg-slate-200 text-slate-900 rounded hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-100 inline-flex items-center gap-1.5"
+            >
               <Logout class="w-4 h-4" />
-              {{ t('sidebar.exitEdit') }}
+              {{ t("sidebar.exitEdit") }}
             </button>
           </div>
         </div>
         <Shortcuts />
         <!-- Rulers Area -->
         <div class="relative w-full h-full flex flex-col overflow-hidden">
-           <!-- Top Ruler -->
-           <div class="flex-none h-5 bg-gray-50 border-b border-gray-300 flex z-20">
-              <div class="w-5 flex-none bg-gray-100 border-r border-gray-300"></div> <!-- Corner -->
-              <div class="flex-1 relative overflow-hidden">
-                  <Ruler 
-                    type="horizontal" 
-                    :zoom="store.zoom" 
-                    :scroll="scrollX" 
-                    :offset="offsetX" 
-                    :thick="20"
-                    :unit="(store.unit || 'mm') as Unit"
-                    :indicators="rulerIndicators.h"
-                    :range="rulerRanges.h"
-                    @guide-drag-start="(e) => handleGuideDragStart(e, 'horizontal')"
-                 />
-              </div>
-           </div>
-           
-           <div class="flex-1 flex overflow-hidden relative">
-              <!-- Left Ruler -->
-              <div class="w-5 flex-none bg-gray-50 border-r border-gray-300 h-full relative z-20 overflow-hidden">
-                  <Ruler 
-                    type="vertical" 
-                    :zoom="store.zoom" 
-                    :scroll="scrollY" 
-                    :offset="offsetY" 
-                    :thick="20"
-                    :unit="(store.unit || 'mm') as Unit"
-                    :indicators="rulerIndicators.v"
-                    :range="rulerRanges.v"
-                    @guide-drag-start="(e) => handleGuideDragStart(e, 'vertical')"
-                 />
-              </div>
-              
-              <!-- Canvas Area -->
+          <!-- Top Ruler -->
+          <div
+            class="flex-none h-5 bg-gray-50 border-b border-gray-300 flex z-20"
+          >
+            <div
+              class="w-5 flex-none bg-gray-100 border-r border-gray-300"
+            ></div>
+            <!-- Corner -->
+            <div class="flex-1 relative overflow-hidden">
+              <Ruler
+                type="horizontal"
+                :zoom="store.zoom"
+                :scroll="scrollX"
+                :offset="offsetX"
+                :thick="20"
+                :unit="(store.unit || 'mm') as Unit"
+                :indicators="rulerIndicators.h"
+                :range="rulerRanges.h"
+                @guide-drag-start="(e) => handleGuideDragStart(e, 'horizontal')"
+              />
+            </div>
+          </div>
+
+          <div class="flex-1 flex overflow-hidden relative">
+            <!-- Left Ruler -->
+            <div
+              class="w-5 flex-none bg-gray-50 border-r border-gray-300 h-full relative z-20 overflow-hidden"
+            >
+              <Ruler
+                type="vertical"
+                :zoom="store.zoom"
+                :scroll="scrollY"
+                :offset="offsetY"
+                :thick="20"
+                :unit="(store.unit || 'mm') as Unit"
+                :indicators="rulerIndicators.v"
+                :range="rulerRanges.v"
+                @guide-drag-start="(e) => handleGuideDragStart(e, 'vertical')"
+              />
+            </div>
+
+            <!-- Canvas Area -->
+            <div
+              ref="scrollContainer"
+              tabindex="-1"
+              class="flex-1 overflow-auto p-8 flex relative canvas-scroll bg-gray-100 focus:outline-none"
+              @scroll="handleScroll"
+              @click="
+                (e) => {
+                  if (
+                    e.target === scrollContainer ||
+                    e.target === e.currentTarget
+                  ) {
+                    store.selectGuide(null);
+                  }
+                }
+              "
+            >
               <div
-                ref="scrollContainer"
-                tabindex="-1"
-                class="flex-1 overflow-auto p-8 flex relative canvas-scroll bg-gray-100 focus:outline-none"
-                @scroll="handleScroll"
-                @click="(e) => { if (e.target === scrollContainer || e.target === e.currentTarget) { store.selectGuide(null); } }"
+                ref="canvasWrapper"
+                :style="canvasStyle"
+                class="mx-auto relative"
               >
-                 <div ref="canvasWrapper" :style="canvasStyle" class="mx-auto relative">
-                    <Canvas ref="canvasContainer" class="absolute top-0 left-0" />
-                 </div>
-
-                 <!-- Guides Overlay -->
-                 <div class="absolute top-0 left-0 pointer-events-none z-50" :style="{ width: `${scrollWidth}px`, height: `${scrollHeight}px` }">
-                    
-                    <!-- Dragging Distance Guides -->
-                     <template v-if="dragProjection">
-                       <!-- Top Line -->
-                        <div class="absolute w-full border-t border-blue-500 border-dashed"
-                            :style="{ top: `${offsetY + Math.round(dragProjection.minY * store.zoom)}px`, left: 0 }">
-                          <div class="absolute -top-6 bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded shadow-sm"
-                               :style="{ left: `${scrollX + 10}px` }">
-                             {{ formatUnitValue(dragProjection.minY) }} {{ unitLabel }}
-                          </div>
-                       </div>
-                       <!-- Bottom Line -->
-                        <div class="absolute w-full border-t border-dashed theme-border"
-                            :style="{ top: `${offsetY + Math.round(dragProjection.maxY * store.zoom)}px`, left: 0 }">
-                          <div class="absolute -top-6 theme-bg text-white text-xs px-1.5 py-0.5 rounded shadow-sm"
-                               :style="{ left: `${scrollX + 10}px` }">
-                             {{ formatUnitValue(dragProjection.maxY) }} {{ unitLabel }}
-                          </div>
-                       </div>
-                       <!-- Left Line -->
-                        <div class="absolute h-full border-l border-dashed theme-border"
-                            :style="{ left: `${offsetX + Math.round(dragProjection.minX * store.zoom)}px`, top: 0 }">
-                          <div class="absolute -left-2 transform -translate-x-full theme-bg text-white text-xs px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap"
-                               :style="{ top: `${scrollY + 10}px` }">
-                             {{ formatUnitValue(dragProjection.minX) }} {{ unitLabel }}
-                          </div>
-                       </div>
-                       <!-- Right Line -->
-                        <div class="absolute h-full border-l border-dashed theme-border"
-                            :style="{ left: `${offsetX + Math.round(dragProjection.maxX * store.zoom)}px`, top: 0 }">
-                          <div class="absolute -left-2 transform -translate-x-full theme-bg text-white text-xs px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap"
-                               :style="{ top: `${scrollY + 10}px` }">
-                             {{ formatUnitValue(dragProjection.maxX) }} {{ unitLabel }}
-                          </div>
-                       </div>
-                     </template>
-
-                    <!-- Existing Guides -->
-                    <template v-for="guide in store.guides" :key="guide.id">
-                       <div 
-                          v-if="guide.type === 'horizontal'"
-                          class="absolute left-0 w-full h-3 -mt-1.5 cursor-row-resize pointer-events-auto group flex flex-col justify-center"
-                          :style="{ top: `${offsetY + guide.position * store.zoom}px` }"
-                          @mousedown.stop="(e) => { store.selectGuide(guide.id); handleGuideDragStart(e, 'horizontal', guide.id); }"
-                       >
-                        <div :class="['w-full', store.highlightedGuideId === guide.id ? 'border-t-2 theme-border-strong' : 'border-t theme-border', 'theme-border-hover']"></div>
-                          <div class="absolute left-2 -top-4 theme-bg text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap">
-                             {{ formatUnitValue(guide.position) }}{{ unitLabel }}
-                          </div>
-                       </div>
-                       <div 
-                          v-else
-                          class="absolute top-0 h-full w-3 -ml-1.5 cursor-col-resize pointer-events-auto group flex flex-row justify-center"
-                          :style="{ left: `${offsetX + guide.position * store.zoom}px` }"
-                          @mousedown.stop="(e) => { store.selectGuide(guide.id); handleGuideDragStart(e, 'vertical', guide.id); }"
-                       >
-                          <div :class="['h-full', store.highlightedGuideId === guide.id ? 'border-l-2 theme-border-strong' : 'border-l theme-border', 'theme-border-hover']"></div>
-                          <div class="absolute top-2 -left-4 theme-bg text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap">
-                             {{ formatUnitValue(guide.position) }}{{ unitLabel }}
-                          </div>
-                       </div>
-                    </template>
-                    
-                    <!-- Dragging Preview -->
-                    <div 
-                       v-if="isDraggingGuide && !draggingGuideId"
-                       :class="[
-                         'absolute border-dashed pointer-events-none theme-border',
-                         draggingGuideType === 'horizontal' ? 'left-0 w-full border-t' : 'top-0 h-full border-l'
-                       ]"
-                       :style="{ 
-                         top: draggingGuideType === 'horizontal' ? `${offsetY + draggingGuidePos * store.zoom}px` : undefined,
-                         left: draggingGuideType === 'vertical' ? `${offsetX + draggingGuidePos * store.zoom}px` : undefined
-                       }"
-                    >
-                         <div :class="[
-                           'absolute theme-bg text-white text-[10px] px-1 rounded',
-                           draggingGuideType === 'horizontal' ? 'left-2 -top-4' : 'top-2 -left-4'
-                       ]">
-                          {{ formatUnitValue(draggingGuidePos) }}{{ unitLabel }}
-                       </div>
-                    </div>
-                    
-
-                    
-                    <!-- Edge Highlight -->
-                    <div v-if="store.highlightedEdge" class="absolute pointer-events-none">
-                      <div 
-                        v-if="store.highlightedEdge === 'top'" 
-                        class="absolute left-0 w-full border-t theme-border"
-                        :style="{ top: `${offsetY}px` }"
-                      ></div>
-                      <div 
-                        v-else-if="store.highlightedEdge === 'bottom'" 
-                        class="absolute left-0 w-full border-t theme-border"
-                        :style="{ top: `${offsetY + store.canvasSize.height * store.zoom}px` }"
-                      ></div>
-                      <div 
-                        v-else-if="store.highlightedEdge === 'left'" 
-                        class="absolute top-0 h-full border-l theme-border"
-                        :style="{ left: `${offsetX}px` }"
-                      ></div>
-                      <div 
-                        v-else-if="store.highlightedEdge === 'right'" 
-                        class="absolute top-0 h-full border-l theme-border"
-                        :style="{ left: `${offsetX + store.canvasSize.width * store.zoom}px` }"
-                      ></div>
-                    </div>
-                 </div>
+                <Canvas ref="canvasContainer" class="absolute top-0 left-0" />
               </div>
-           </div>
+
+              <!-- Guides Overlay -->
+              <div
+                class="absolute top-0 left-0 pointer-events-none z-50"
+                :style="{
+                  width: `${scrollWidth}px`,
+                  height: `${scrollHeight}px`,
+                }"
+              >
+                <!-- Dragging Distance Guides -->
+                <template v-if="dragProjection">
+                  <!-- Top Line -->
+                  <div
+                    class="absolute w-full border-t border-blue-500 border-dashed"
+                    :style="{
+                      top: `${offsetY + Math.round(dragProjection.minY * store.zoom)}px`,
+                      left: 0,
+                    }"
+                  >
+                    <div
+                      class="absolute -top-6 bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded shadow-sm"
+                      :style="{ left: `${scrollX + 10}px` }"
+                    >
+                      {{ formatUnitValue(dragProjection.minY) }} {{ unitLabel }}
+                    </div>
+                  </div>
+                  <!-- Bottom Line -->
+                  <div
+                    class="absolute w-full border-t border-dashed theme-border"
+                    :style="{
+                      top: `${offsetY + Math.round(dragProjection.maxY * store.zoom)}px`,
+                      left: 0,
+                    }"
+                  >
+                    <div
+                      class="absolute -top-6 theme-bg text-white text-xs px-1.5 py-0.5 rounded shadow-sm"
+                      :style="{ left: `${scrollX + 10}px` }"
+                    >
+                      {{ formatUnitValue(dragProjection.maxY) }} {{ unitLabel }}
+                    </div>
+                  </div>
+                  <!-- Left Line -->
+                  <div
+                    class="absolute h-full border-l border-dashed theme-border"
+                    :style="{
+                      left: `${offsetX + Math.round(dragProjection.minX * store.zoom)}px`,
+                      top: 0,
+                    }"
+                  >
+                    <div
+                      class="absolute -left-2 transform -translate-x-full theme-bg text-white text-xs px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap"
+                      :style="{ top: `${scrollY + 10}px` }"
+                    >
+                      {{ formatUnitValue(dragProjection.minX) }} {{ unitLabel }}
+                    </div>
+                  </div>
+                  <!-- Right Line -->
+                  <div
+                    class="absolute h-full border-l border-dashed theme-border"
+                    :style="{
+                      left: `${offsetX + Math.round(dragProjection.maxX * store.zoom)}px`,
+                      top: 0,
+                    }"
+                  >
+                    <div
+                      class="absolute -left-2 transform -translate-x-full theme-bg text-white text-xs px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap"
+                      :style="{ top: `${scrollY + 10}px` }"
+                    >
+                      {{ formatUnitValue(dragProjection.maxX) }} {{ unitLabel }}
+                    </div>
+                  </div>
+                </template>
+
+                <!-- Existing Guides -->
+                <template v-for="guide in store.guides" :key="guide.id">
+                  <div
+                    v-if="guide.type === 'horizontal'"
+                    class="absolute left-0 w-full h-3 -mt-1.5 cursor-row-resize pointer-events-auto group flex flex-col justify-center"
+                    :style="{
+                      top: `${offsetY + guide.position * store.zoom}px`,
+                    }"
+                    @mousedown.stop="
+                      (e) => {
+                        store.selectGuide(guide.id);
+                        handleGuideDragStart(e, 'horizontal', guide.id);
+                      }
+                    "
+                  >
+                    <div
+                      :class="[
+                        'w-full',
+                        store.highlightedGuideId === guide.id
+                          ? 'border-t-2 theme-border-strong'
+                          : 'border-t theme-border',
+                        'theme-border-hover',
+                      ]"
+                    ></div>
+                    <div
+                      class="absolute left-2 -top-4 theme-bg text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap"
+                    >
+                      {{ formatUnitValue(guide.position) }}{{ unitLabel }}
+                    </div>
+                  </div>
+                  <div
+                    v-else
+                    class="absolute top-0 h-full w-3 -ml-1.5 cursor-col-resize pointer-events-auto group flex flex-row justify-center"
+                    :style="{
+                      left: `${offsetX + guide.position * store.zoom}px`,
+                    }"
+                    @mousedown.stop="
+                      (e) => {
+                        store.selectGuide(guide.id);
+                        handleGuideDragStart(e, 'vertical', guide.id);
+                      }
+                    "
+                  >
+                    <div
+                      :class="[
+                        'h-full',
+                        store.highlightedGuideId === guide.id
+                          ? 'border-l-2 theme-border-strong'
+                          : 'border-l theme-border',
+                        'theme-border-hover',
+                      ]"
+                    ></div>
+                    <div
+                      class="absolute top-2 -left-4 theme-bg text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap"
+                    >
+                      {{ formatUnitValue(guide.position) }}{{ unitLabel }}
+                    </div>
+                  </div>
+                </template>
+
+                <!-- Dragging Preview -->
+                <div
+                  v-if="isDraggingGuide && !draggingGuideId"
+                  :class="[
+                    'absolute border-dashed pointer-events-none theme-border',
+                    draggingGuideType === 'horizontal'
+                      ? 'left-0 w-full border-t'
+                      : 'top-0 h-full border-l',
+                  ]"
+                  :style="{
+                    top:
+                      draggingGuideType === 'horizontal'
+                        ? `${offsetY + draggingGuidePos * store.zoom}px`
+                        : undefined,
+                    left:
+                      draggingGuideType === 'vertical'
+                        ? `${offsetX + draggingGuidePos * store.zoom}px`
+                        : undefined,
+                  }"
+                >
+                  <div
+                    :class="[
+                      'absolute theme-bg text-white text-[10px] px-1 rounded',
+                      draggingGuideType === 'horizontal'
+                        ? 'left-2 -top-4'
+                        : 'top-2 -left-4',
+                    ]"
+                  >
+                    {{ formatUnitValue(draggingGuidePos) }}{{ unitLabel }}
+                  </div>
+                </div>
+
+                <!-- Edge Highlight -->
+                <div
+                  v-if="store.highlightedEdge"
+                  class="absolute pointer-events-none"
+                >
+                  <div
+                    v-if="store.highlightedEdge === 'top'"
+                    class="absolute left-0 w-full border-t theme-border"
+                    :style="{ top: `${offsetY}px` }"
+                  ></div>
+                  <div
+                    v-else-if="store.highlightedEdge === 'bottom'"
+                    class="absolute left-0 w-full border-t theme-border"
+                    :style="{
+                      top: `${offsetY + store.canvasSize.height * store.zoom}px`,
+                    }"
+                  ></div>
+                  <div
+                    v-else-if="store.highlightedEdge === 'left'"
+                    class="absolute top-0 h-full border-l theme-border"
+                    :style="{ left: `${offsetX}px` }"
+                  ></div>
+                  <div
+                    v-else-if="store.highlightedEdge === 'right'"
+                    class="absolute top-0 h-full border-l theme-border"
+                    :style="{
+                      left: `${offsetX + store.canvasSize.width * store.zoom}px`,
+                    }"
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        
+
         <!-- <footer class="h-6 bg-white border-t border-gray-200 text-xs flex items-center px-4 text-gray-500 z-30">
            Ready
         </footer> -->
@@ -756,7 +917,7 @@ const rulerRanges = computed(() => {
             :page-width="store.canvasSize.width"
             :page-height="store.canvasSize.height"
             :zoom="store.zoom"
-            :content-offset-x="offsetX" 
+            :content-offset-x="offsetX"
             :content-offset-y="offsetY"
             :canvas-background="store.canvasBackground"
             :show-header-line="store.showHeaderLine"
@@ -781,8 +942,19 @@ const rulerRanges = computed(() => {
     />
 
     <!-- Global Loading Overlay -->
-    <div v-if="templateStore.isLoading" class="fixed inset-0 bg-black/20 dark:bg-black/40 flex items-center justify-center z-[10000] pointer-events-auto transition-opacity duration-300">
-      <svg class="animate-spin h-8 w-8 text-gray-500 dark:text-gray-300" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <div
+      v-if="templateStore.isLoading"
+      class="fixed inset-0 bg-black/20 dark:bg-black/40 flex items-center justify-center z-[10000] pointer-events-auto transition-opacity duration-300"
+    >
+      <svg
+        class="animate-spin h-8 w-8 text-gray-500 dark:text-gray-300"
+        viewBox="0 0 24 24"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+      >
         <line x1="12" y1="3" x2="12" y2="7" opacity="1"></line>
         <line x1="16.5" y1="4.2" x2="14.5" y2="7.7" opacity="0.9"></line>
         <line x1="19.8" y1="7.5" x2="16.3" y2="9.5" opacity="0.8"></line>
@@ -799,7 +971,10 @@ const rulerRanges = computed(() => {
     </div>
 
     <!-- Modal Container for Teleport -->
-    <div ref="modalContainer" class="print-designer-modals fixed inset-0 pointer-events-none z-[9999]"></div>
+    <div
+      ref="modalContainer"
+      class="print-designer-modals fixed inset-0 pointer-events-none z-[9999]"
+    ></div>
     <VariablesPanel />
   </div>
 </template>

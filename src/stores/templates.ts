@@ -1,14 +1,25 @@
-import { defineStore } from 'pinia';
-import { v4 as uuidv4 } from 'uuid';
-import { toRaw } from 'vue';
-import cloneDeep from 'lodash/cloneDeep';
-import isEqual from 'lodash/isEqual';
-import { useDesignerStore } from './designer';
-import { toast } from '../utils/toast';
-import { getCrudConfig, buildEndpoint, buildFetchOptions } from '../utils/crudConfig';
-import { canCopyEntity, canDeleteEntity, canEditEntity, normalizeEntityConstraints, applyModalExtraValues, mergeExt } from '../utils/entityConstraints';
-import i18n from '../locales';
-import type { VariableTreeItem } from '../types';
+import { defineStore } from "pinia";
+import { v4 as uuidv4 } from "uuid";
+import { toRaw } from "vue";
+import cloneDeep from "lodash/cloneDeep";
+import isEqual from "lodash/isEqual";
+import { useDesignerStore } from "./designer";
+import { toast } from "../utils/toast";
+import {
+  getCrudConfig,
+  buildEndpoint,
+  buildFetchOptions,
+} from "../utils/crudConfig";
+import {
+  canCopyEntity,
+  canDeleteEntity,
+  canEditEntity,
+  normalizeEntityConstraints,
+  applyModalExtraValues,
+  mergeExt,
+} from "../utils/entityConstraints";
+import i18n from "../locales";
+import type { VariableTreeItem } from "../types";
 
 export interface Template {
   id: string;
@@ -30,43 +41,45 @@ export interface Template {
 }
 
 const sanitizeElement = (element: any) => {
-  if (!element || typeof element !== 'object') return null;
-  if (typeof element.id !== 'string' || !element.id) return null;
-  if (typeof element.type !== 'string' || !element.type) return null;
+  if (!element || typeof element !== "object") return null;
+  if (typeof element.id !== "string" || !element.id) return null;
+  if (typeof element.type !== "string" || !element.type) return null;
   return {
     ...element,
-    style: element.style && typeof element.style === 'object' ? element.style : {}
+    style:
+      element.style && typeof element.style === "object" ? element.style : {},
   };
 };
 
 const sanitizePages = (pages: any) => {
   if (!Array.isArray(pages)) return [];
   return pages
-    .filter((page) => page && typeof page === 'object')
+    .filter((page) => page && typeof page === "object")
     .map((page, index) => ({
       ...page,
-      id: typeof page.id === 'string' && page.id ? page.id : `page-${index + 1}`,
+      id:
+        typeof page.id === "string" && page.id ? page.id : `page-${index + 1}`,
       elements: Array.isArray(page.elements)
         ? page.elements.map(sanitizeElement).filter(Boolean)
-        : []
+        : [],
     }));
 };
 
 const sanitizeTemplateData = (data: any) => {
-  const base = data && typeof data === 'object' ? data : {};
+  const base = data && typeof data === "object" ? data : {};
   return {
     ...base,
-    pages: sanitizePages(base.pages)
+    pages: sanitizePages(base.pages),
   };
 };
 
 const hasMeaningfulTemplateData = (data: any): boolean => {
-  if (!data || typeof data !== 'object') return false;
+  if (!data || typeof data !== "object") return false;
   // A template data is meaningful if it has pages with elements,
   // or it has a defined canvasSize which is a core property of a template.
   // Just having 'testData' or other minor keys doesn't mean we have the full template data.
   if (Array.isArray(data.pages) && data.pages.length > 0) return true;
-  if (data.canvasSize && typeof data.canvasSize === 'object') return true;
+  if (data.canvasSize && typeof data.canvasSize === "object") return true;
   return false;
 };
 
@@ -76,7 +89,7 @@ const sanitizeAvailableVariables = (variables: any): VariableTreeItem[] => {
 
 const readAvailableVariables = (...sources: any[]): VariableTreeItem[] => {
   for (const source of sources) {
-    if (!source || typeof source !== 'object') continue;
+    if (!source || typeof source !== "object") continue;
     if (Array.isArray(source.ext?.availableVariables)) {
       return sanitizeAvailableVariables(source.ext.availableVariables);
     }
@@ -84,14 +97,18 @@ const readAvailableVariables = (...sources: any[]): VariableTreeItem[] => {
   return [];
 };
 
-const withExtAvailableVariables = (ext: Record<string, any> | undefined, variables: any): Record<string, any> => {
-  return mergeExt(ext, { availableVariables: sanitizeAvailableVariables(variables) });
+const withExtAvailableVariables = (
+  ext: Record<string, any> | undefined,
+  variables: any,
+): Record<string, any> => {
+  return mergeExt(ext, {
+    availableVariables: sanitizeAvailableVariables(variables),
+  });
 };
 
-
-export const useTemplateStore = defineStore('templates', {
+export const useTemplateStore = defineStore("templates", {
   state: () => ({
-    crudScopeId: '__global__',
+    crudScopeId: "__global__",
     templates: [] as Template[],
     templateDetailCache: {} as Record<string, any>,
     currentTemplateId: null as string | null,
@@ -100,47 +117,67 @@ export const useTemplateStore = defineStore('templates', {
   }),
   actions: {
     setCrudScopeId(scopeId: string) {
-      this.crudScopeId = String(scopeId || '').trim() || '__global__';
+      this.crudScopeId = String(scopeId || "").trim() || "__global__";
     },
     async fetchTemplateDetail(id: string) {
-      const { mode, endpoints, headers, fetcher } = getCrudConfig(this.crudScopeId);
-      if (mode === 'remote') {
+      const { mode, endpoints, headers, fetcher } = getCrudConfig(
+        this.crudScopeId,
+      );
+      if (mode === "remote") {
         this.isLoading = true;
         try {
-          const url = buildEndpoint(endpoints.templates?.get, id, this.crudScopeId);
-          const options = buildFetchOptions(endpoints.templates?.get, 'GET', headers);
+          const url = buildEndpoint(
+            endpoints.templates?.get,
+            id,
+            this.crudScopeId,
+          );
+          const options = buildFetchOptions(
+            endpoints.templates?.get,
+            "GET",
+            headers,
+          );
           const res = await (fetcher || fetch)(url, options);
           const payload = await res.json();
           const t = payload?.template || payload;
           if (!t) return null;
           const data = sanitizeTemplateData(t.data);
-          
+
           const currentId = t.id || id;
-          const existingTemplate = this.templates.find(item => item.id === currentId);
+          const existingTemplate = this.templates.find(
+            (item) => item.id === currentId,
+          );
           const cachedTemplate = this.templateDetailCache[currentId];
-          
+
           const detail = {
             id: currentId,
-            name: t.name || existingTemplate?.name || cachedTemplate?.name || '',
+            name:
+              t.name || existingTemplate?.name || cachedTemplate?.name || "",
             data,
-            updatedAt: t.updatedAt || cachedTemplate?.updatedAt || existingTemplate?.updatedAt || Date.now(),
-            permissions: t.permissions ?? cachedTemplate?.permissions ?? existingTemplate?.permissions,
+            updatedAt:
+              t.updatedAt ||
+              cachedTemplate?.updatedAt ||
+              existingTemplate?.updatedAt ||
+              Date.now(),
+            permissions:
+              t.permissions ??
+              cachedTemplate?.permissions ??
+              existingTemplate?.permissions,
             ext: withExtAvailableVariables(
               mergeExt(existingTemplate?.ext, cachedTemplate?.ext, t.ext),
-              readAvailableVariables(t, cachedTemplate, existingTemplate)
-            )
+              readAvailableVariables(t, cachedTemplate, existingTemplate),
+            ),
           };
           const normalized = normalizeEntityConstraints(detail);
           this.templateDetailCache[currentId] = normalized;
           return normalized as Template;
         } catch (e) {
-          console.error('Failed to fetch template detail', e);
+          console.error("Failed to fetch template detail", e);
           return null;
         } finally {
           this.isLoading = false;
         }
       } else {
-        const t = this.templates.find(item => item.id === id);
+        const t = this.templates.find((item) => item.id === id);
         if (t) {
           this.templateDetailCache[id] = t;
           return t;
@@ -149,32 +186,52 @@ export const useTemplateStore = defineStore('templates', {
       }
     },
     async loadTemplates() {
-      const { mode, endpoints, headers, fetcher } = getCrudConfig(this.crudScopeId);
-      if (mode === 'remote') {
+      const { mode, endpoints, headers, fetcher } = getCrudConfig(
+        this.crudScopeId,
+      );
+      if (mode === "remote") {
         this.isLoading = true;
         try {
-          const url = buildEndpoint(endpoints.templates?.list, '', this.crudScopeId);
-          const options = buildFetchOptions(endpoints.templates?.list, 'GET', headers);
+          const url = buildEndpoint(
+            endpoints.templates?.list,
+            "",
+            this.crudScopeId,
+          );
+          const options = buildFetchOptions(
+            endpoints.templates?.list,
+            "GET",
+            headers,
+          );
           const res = await (fetcher || fetch)(url, options);
           const data = await res.json();
           const list = Array.isArray(data) ? data : data?.templates || [];
           const newTemplates = list
-            .filter((t: any) => t && typeof t.id === 'string' && typeof t.name === 'string')
+            .filter(
+              (t: any) =>
+                t && typeof t.id === "string" && typeof t.name === "string",
+            )
             .map((t: any) => {
-              const existing = this.templates.find(e => e.id === t.id);
+              const existing = this.templates.find((e) => e.id === t.id);
               const cached = this.templateDetailCache[t.id];
               const merged = {
                 id: t.id,
                 name: t.name,
                 data: hasMeaningfulTemplateData(t.data)
                   ? sanitizeTemplateData(t.data)
-                  : (cached?.data || existing?.data || sanitizeTemplateData(undefined)),
-                updatedAt: t.updatedAt || cached?.updatedAt || existing?.updatedAt || Date.now(),
-                permissions: t.permissions ?? cached?.permissions ?? existing?.permissions,
+                  : cached?.data ||
+                    existing?.data ||
+                    sanitizeTemplateData(undefined),
+                updatedAt:
+                  t.updatedAt ||
+                  cached?.updatedAt ||
+                  existing?.updatedAt ||
+                  Date.now(),
+                permissions:
+                  t.permissions ?? cached?.permissions ?? existing?.permissions,
                 ext: withExtAvailableVariables(
                   mergeExt(existing?.ext, cached?.ext, t.ext),
-                  readAvailableVariables(t, cached, existing)
-                )
+                  readAvailableVariables(t, cached, existing),
+                ),
               };
               const normalized = normalizeEntityConstraints(merged);
               this.templateDetailCache[t.id] = normalized;
@@ -186,7 +243,7 @@ export const useTemplateStore = defineStore('templates', {
           }
           return;
         } catch (e) {
-          console.error('Failed to load templates', e);
+          console.error("Failed to load templates", e);
           this.templates = [];
           return;
         } finally {
@@ -194,25 +251,30 @@ export const useTemplateStore = defineStore('templates', {
         }
       }
 
-      const stored = localStorage.getItem('print-designer-templates');
+      const stored = localStorage.getItem("print-designer-templates");
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
           const list = Array.isArray(parsed) ? parsed : [];
           const newTemplates = list
-            .filter((t: any) => t && typeof t.id === 'string' && typeof t.name === 'string')
+            .filter(
+              (t: any) =>
+                t && typeof t.id === "string" && typeof t.name === "string",
+            )
             .map((t: any) => {
-              const existing = this.templates.find(e => e.id === t.id);
+              const existing = this.templates.find((e) => e.id === t.id);
               return normalizeEntityConstraints({
                 id: t.id,
                 name: t.name,
-                data: t.data ? sanitizeTemplateData(t.data) : (existing?.data || sanitizeTemplateData(undefined)),
+                data: t.data
+                  ? sanitizeTemplateData(t.data)
+                  : existing?.data || sanitizeTemplateData(undefined),
                 updatedAt: t.updatedAt || existing?.updatedAt || Date.now(),
                 permissions: t.permissions ?? existing?.permissions,
                 ext: withExtAvailableVariables(
                   mergeExt(existing?.ext, t.ext),
-                  readAvailableVariables(t, existing)
-                )
+                  readAvailableVariables(t, existing),
+                ),
               }) as Template;
             });
           const rawTemplates = cloneDeep(toRaw(this.templates));
@@ -220,31 +282,38 @@ export const useTemplateStore = defineStore('templates', {
             this.templates = newTemplates;
           }
         } catch (e) {
-          console.error('Failed to parse templates', e);
+          console.error("Failed to parse templates", e);
           this.templates = [];
         }
       }
     },
-    
+
     saveToLocalStorage() {
       const { mode } = getCrudConfig(this.crudScopeId);
-      if (mode === 'remote') return;
-      localStorage.setItem('print-designer-templates', JSON.stringify(this.templates));
+      if (mode === "remote") return;
+      localStorage.setItem(
+        "print-designer-templates",
+        JSON.stringify(this.templates),
+      );
     },
 
     async saveCurrentTemplate(name: string, isAutoSave = false) {
-      const { mode, endpoints, headers, fetcher } = getCrudConfig(this.crudScopeId);
+      const { mode, endpoints, headers, fetcher } = getCrudConfig(
+        this.crudScopeId,
+      );
       const designerStore = useDesignerStore();
       // Capture current ID synchronously to prevent race conditions if template changes during async save
       const targetId = this.currentTemplateId;
-      const existingTemplate = targetId ? this.templates.find(t => t.id === targetId) : undefined;
+      const existingTemplate = targetId
+        ? this.templates.find((t) => t.id === targetId)
+        : undefined;
       if (targetId && existingTemplate && !canEditEntity(existingTemplate)) {
         if (!isAutoSave) {
-          toast.warning(i18n.global.t('toast.templateReadOnly'));
+          toast.warning(i18n.global.t("toast.templateReadOnly"));
         }
         return;
       }
-      
+
       const data = {
         ...(existingTemplate?.data || {}),
         pages: sanitizePages(cloneDeep(designerStore.pages)),
@@ -276,70 +345,96 @@ export const useTemplateStore = defineStore('templates', {
       }
 
       this.isSaving = true;
-      if (mode === 'remote' && !isAutoSave) {
+      if (mode === "remote" && !isAutoSave) {
         this.isLoading = true;
       }
       try {
-        if (mode === 'remote') {
+        if (mode === "remote") {
           try {
-            const upsertBase: any = targetId ? (this.templateDetailCache[targetId] || existingTemplate || {}) : {};
+            const upsertBase: any = targetId
+              ? this.templateDetailCache[targetId] || existingTemplate || {}
+              : {};
             const payloadBase = {
               id: targetId || uuidv4(),
               name,
               data: {
                 ...(upsertBase?.data || {}),
-                ...data
+                ...data,
               },
               updatedAt: Date.now(),
               permissions: upsertBase?.permissions,
               ext: withExtAvailableVariables(
                 mergeExt(existingTemplate?.ext, upsertBase?.ext),
-                designerStore.availableVariables
-              )
+                designerStore.availableVariables,
+              ),
             };
-            const payload = normalizeEntityConstraints(applyModalExtraValues(payloadBase, targetId ? 'edit' : 'create'));
-            const url = buildEndpoint(endpoints.templates?.upsert, '', this.crudScopeId);
-            const options = buildFetchOptions(endpoints.templates?.upsert, 'POST', headers, payload);
+            const payload = normalizeEntityConstraints(
+              applyModalExtraValues(payloadBase, targetId ? "edit" : "create"),
+            );
+            const url = buildEndpoint(
+              endpoints.templates?.upsert,
+              "",
+              this.crudScopeId,
+            );
+            const options = buildFetchOptions(
+              endpoints.templates?.upsert,
+              "POST",
+              headers,
+              payload,
+            );
             const res = await (fetcher || fetch)(url, options);
             const result = await res.json();
             const id = result?.id || payload.id;
-            const index = this.templates.findIndex(t => t.id === id);
-            const resultExt = result && typeof result === 'object' && result.ext ? result.ext : {};
-            const next = normalizeEntityConstraints({ ...payload, ext: mergeExt(payload.ext, resultExt), id }) as Template;
+            const index = this.templates.findIndex((t) => t.id === id);
+            const resultExt =
+              result && typeof result === "object" && result.ext
+                ? result.ext
+                : {};
+            const next = normalizeEntityConstraints({
+              ...payload,
+              ext: mergeExt(payload.ext, resultExt),
+              id,
+            }) as Template;
             if (index >= 0) this.templates[index] = next;
             else this.templates.push(next);
-            this.templateDetailCache[id] = { ...(this.templateDetailCache[id] || {}), ...next };
-            
+            this.templateDetailCache[id] = {
+              ...(this.templateDetailCache[id] || {}),
+              ...next,
+            };
+
             // Only update currentTemplateId if we were creating a new template (no targetId)
             // or if the user hasn't switched to another template yet
             if (!targetId || this.currentTemplateId === targetId) {
               this.currentTemplateId = id;
             }
-            
+
             // Auto refresh list from remote only if it's not an auto-save
             if (!isAutoSave) {
               await this.loadTemplates();
             }
-            
+
             return;
           } catch (e) {
-            console.error('Failed to save template', e);
+            console.error("Failed to save template", e);
             if (!isAutoSave) {
-              toast.error(i18n.global.t('toast.templateSaveFailed'));
+              toast.error(i18n.global.t("toast.templateSaveFailed"));
             }
             throw e; // rethrow to let caller know
           }
         }
 
         if (targetId) {
-          const idx = this.templates.findIndex(t => t.id === targetId);
+          const idx = this.templates.findIndex((t) => t.id === targetId);
           if (idx >= 0) {
             this.templates[idx] = normalizeEntityConstraints({
               ...this.templates[idx],
               name,
               data,
               updatedAt: Date.now(),
-              ext: withExtAvailableVariables(this.templates[idx]?.ext, designerStore.availableVariables)
+              ext: withExtAvailableVariables(
+                this.templates[idx]?.ext,
+                designerStore.availableVariables,
+              ),
             }) as Template;
           }
         } else {
@@ -348,18 +443,20 @@ export const useTemplateStore = defineStore('templates', {
         this.saveToLocalStorage();
       } finally {
         this.isSaving = false;
-        if (mode === 'remote' && !isAutoSave) {
+        if (mode === "remote" && !isAutoSave) {
           this.isLoading = false;
         }
       }
     },
 
     async updateTemplate(id: string, updates: Partial<Template>) {
-      const { mode, endpoints, headers, fetcher } = getCrudConfig(this.crudScopeId);
-      const existing = this.templates.find(t => t.id === id);
+      const { mode, endpoints, headers, fetcher } = getCrudConfig(
+        this.crudScopeId,
+      );
+      const existing = this.templates.find((t) => t.id === id);
       let cached = this.templateDetailCache[id];
 
-      if (mode === 'remote') {
+      if (mode === "remote") {
         // Force fetch remote data to ensure we don't overwrite with incomplete data during partial updates
         const detail = await this.fetchTemplateDetail(id);
         if (detail) {
@@ -373,31 +470,45 @@ export const useTemplateStore = defineStore('templates', {
       const updatedTemplate = normalizeEntityConstraints({
         ...base,
         ...updates,
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
       }) as Template;
 
-      if (mode === 'remote') {
+      if (mode === "remote") {
         try {
-          const url = buildEndpoint(endpoints.templates?.upsert, '', this.crudScopeId);
-          const options = buildFetchOptions(endpoints.templates?.upsert, 'POST', headers, updatedTemplate);
+          const url = buildEndpoint(
+            endpoints.templates?.upsert,
+            "",
+            this.crudScopeId,
+          );
+          const options = buildFetchOptions(
+            endpoints.templates?.upsert,
+            "POST",
+            headers,
+            updatedTemplate,
+          );
           const res = await (fetcher || fetch)(url, options);
           const result = await res.json();
-          const resultExt = result && typeof result === 'object' && result.ext ? result.ext : {};
+          const resultExt =
+            result && typeof result === "object" && result.ext
+              ? result.ext
+              : {};
           const finalTemplate = normalizeEntityConstraints({
             ...updatedTemplate,
             ext: mergeExt(updatedTemplate.ext, resultExt),
-            id: result?.id || updatedTemplate.id
+            id: result?.id || updatedTemplate.id,
           }) as Template;
-          
-          const index = this.templates.findIndex(t => t.id === finalTemplate.id);
+
+          const index = this.templates.findIndex(
+            (t) => t.id === finalTemplate.id,
+          );
           if (index >= 0) this.templates[index] = finalTemplate;
           this.templateDetailCache[finalTemplate.id] = finalTemplate;
         } catch (e) {
-          console.error('Failed to update template', e);
-          toast.error(i18n.global.t('toast.templateSaveFailed'));
+          console.error("Failed to update template", e);
+          toast.error(i18n.global.t("toast.templateSaveFailed"));
         }
       } else {
-        const index = this.templates.findIndex(t => t.id === id);
+        const index = this.templates.findIndex((t) => t.id === id);
         if (index >= 0) {
           this.templates[index] = updatedTemplate;
         }
@@ -406,8 +517,15 @@ export const useTemplateStore = defineStore('templates', {
       }
     },
 
-    async createTemplate(name: string, data?: any, extraValues?: Record<string, any>, templateMode: 'create' | 'copy' = 'create') {
-      const { mode, endpoints, headers, fetcher } = getCrudConfig(this.crudScopeId);
+    async createTemplate(
+      name: string,
+      data?: any,
+      extraValues?: Record<string, any>,
+      templateMode: "create" | "copy" = "create",
+    ) {
+      const { mode, endpoints, headers, fetcher } = getCrudConfig(
+        this.crudScopeId,
+      );
       const designerStore = useDesignerStore();
       const nextData = data || {
         pages: cloneDeep(designerStore.pages),
@@ -429,24 +547,42 @@ export const useTemplateStore = defineStore('templates', {
         canvasBackground: designerStore.canvasBackground,
       };
       const newData = sanitizeTemplateData(nextData);
-      
-      const templateBase = applyModalExtraValues({
-        id: uuidv4(),
-        name,
-        data: newData,
-        updatedAt: Date.now(),
-        ext: withExtAvailableVariables(undefined, designerStore.availableVariables)
-      }, templateMode, extraValues);
-      const newTemplate: Template = normalizeEntityConstraints(templateBase) as Template;
 
-      if (mode === 'remote') {
+      const templateBase = applyModalExtraValues(
+        {
+          id: uuidv4(),
+          name,
+          data: newData,
+          updatedAt: Date.now(),
+          ext: withExtAvailableVariables(
+            undefined,
+            designerStore.availableVariables,
+          ),
+        },
+        templateMode,
+        extraValues,
+      );
+      const newTemplate: Template = normalizeEntityConstraints(
+        templateBase,
+      ) as Template;
+
+      if (mode === "remote") {
         this.isLoading = true;
         try {
-          const url = buildEndpoint(endpoints.templates?.upsert, '', this.crudScopeId);
-          const options = buildFetchOptions(endpoints.templates?.upsert, 'POST', headers, newTemplate);
+          const url = buildEndpoint(
+            endpoints.templates?.upsert,
+            "",
+            this.crudScopeId,
+          );
+          const options = buildFetchOptions(
+            endpoints.templates?.upsert,
+            "POST",
+            headers,
+            newTemplate,
+          );
           const res = await (fetcher || fetch)(url, options);
           const result = await res.json();
-          if (result && typeof result === 'object') {
+          if (result && typeof result === "object") {
             if (result.ext) {
               newTemplate.ext = { ...(newTemplate.ext || {}), ...result.ext };
             }
@@ -462,13 +598,13 @@ export const useTemplateStore = defineStore('templates', {
             permissions: newTemplate.permissions ?? cached?.permissions,
             ext: withExtAvailableVariables(
               mergeExt(cached?.ext, newTemplate.ext),
-              readAvailableVariables(newTemplate, cached)
-            )
+              readAvailableVariables(newTemplate, cached),
+            ),
           });
-          
+
           await this.loadTemplates();
         } catch (e) {
-          console.error('Failed to create template', e);
+          console.error("Failed to create template", e);
         } finally {
           this.isLoading = false;
         }
@@ -481,27 +617,37 @@ export const useTemplateStore = defineStore('templates', {
     },
 
     async deleteTemplate(id: string) {
-      const { mode, endpoints, headers, fetcher } = getCrudConfig(this.crudScopeId);
-      const existing = this.templates.find(t => t.id === id);
+      const { mode, endpoints, headers, fetcher } = getCrudConfig(
+        this.crudScopeId,
+      );
+      const existing = this.templates.find((t) => t.id === id);
       if (existing && !canDeleteEntity(existing)) {
-        toast.warning(i18n.global.t('toast.templateDeleteNotAllowed'));
+        toast.warning(i18n.global.t("toast.templateDeleteNotAllowed"));
         return;
       }
-      this.templates = this.templates.filter(t => t.id !== id);
+      this.templates = this.templates.filter((t) => t.id !== id);
       delete this.templateDetailCache[id];
       if (this.currentTemplateId === id) {
         this.currentTemplateId = null;
       }
-      if (mode === 'remote') {
+      if (mode === "remote") {
         this.isLoading = true;
         try {
-          const url = buildEndpoint(endpoints.templates?.delete, id, this.crudScopeId);
-          const options = buildFetchOptions(endpoints.templates?.delete, 'DELETE', headers);
+          const url = buildEndpoint(
+            endpoints.templates?.delete,
+            id,
+            this.crudScopeId,
+          );
+          const options = buildFetchOptions(
+            endpoints.templates?.delete,
+            "DELETE",
+            headers,
+          );
           await (fetcher || fetch)(url, options);
           await this.loadTemplates();
         } catch (e) {
-          console.error('Failed to delete template', e);
-          toast.error(i18n.global.t('toast.templateDeleteFailed'));
+          console.error("Failed to delete template", e);
+          toast.error(i18n.global.t("toast.templateDeleteFailed"));
         } finally {
           this.isLoading = false;
         }
@@ -510,21 +656,31 @@ export const useTemplateStore = defineStore('templates', {
       this.saveToLocalStorage();
     },
 
-    async editTemplate(id: string, newName: string, extraValues?: Record<string, any>) {
-      const { mode, endpoints, headers, fetcher } = getCrudConfig(this.crudScopeId);
-      const t = this.templates.find(t => t.id === id);
+    async editTemplate(
+      id: string,
+      newName: string,
+      extraValues?: Record<string, any>,
+    ) {
+      const { mode, endpoints, headers, fetcher } = getCrudConfig(
+        this.crudScopeId,
+      );
+      const t = this.templates.find((t) => t.id === id);
       if (t) {
         if (!canEditEntity(t)) {
-          toast.warning(i18n.global.t('toast.templateReadOnly'));
+          toast.warning(i18n.global.t("toast.templateReadOnly"));
           return;
         }
         t.name = newName;
         t.updatedAt = Date.now();
-        const nextTemplate = applyModalExtraValues(t as Record<string, any>, 'edit', extraValues) as Template;
+        const nextTemplate = applyModalExtraValues(
+          t as Record<string, any>,
+          "edit",
+          extraValues,
+        ) as Template;
         if (nextTemplate !== t) {
           Object.assign(t, nextTemplate);
         }
-        if (mode === 'remote') {
+        if (mode === "remote") {
           this.isLoading = true;
           try {
             let cachedTemplate = this.templateDetailCache[id];
@@ -533,29 +689,45 @@ export const useTemplateStore = defineStore('templates', {
             if (detail) {
               cachedTemplate = detail;
             }
-            
-            const payloadBase = applyModalExtraValues({
-              id: t.id,
-              name: newName,
-              // Force using the complete remote data
-              data: cachedTemplate?.data || t.data || {},
-              updatedAt: t.updatedAt,
-              permissions: t.permissions ?? cachedTemplate?.permissions,
-              ext: withExtAvailableVariables(
-                mergeExt(cachedTemplate?.ext, t.ext),
-                readAvailableVariables(t, cachedTemplate)
-              )
-            }, 'edit', extraValues);
+
+            const payloadBase = applyModalExtraValues(
+              {
+                id: t.id,
+                name: newName,
+                // Force using the complete remote data
+                data: cachedTemplate?.data || t.data || {},
+                updatedAt: t.updatedAt,
+                permissions: t.permissions ?? cachedTemplate?.permissions,
+                ext: withExtAvailableVariables(
+                  mergeExt(cachedTemplate?.ext, t.ext),
+                  readAvailableVariables(t, cachedTemplate),
+                ),
+              },
+              "edit",
+              extraValues,
+            );
             const payload = normalizeEntityConstraints(payloadBase);
-            const url = buildEndpoint(endpoints.templates?.upsert, '', this.crudScopeId);
-            const options = buildFetchOptions(endpoints.templates?.upsert, 'POST', headers, payload);
+            const url = buildEndpoint(
+              endpoints.templates?.upsert,
+              "",
+              this.crudScopeId,
+            );
+            const options = buildFetchOptions(
+              endpoints.templates?.upsert,
+              "POST",
+              headers,
+              payload,
+            );
             await (fetcher || fetch)(url, options);
-            this.templateDetailCache[id] = { ...(this.templateDetailCache[id] || {}), ...payload };
-            
+            this.templateDetailCache[id] = {
+              ...(this.templateDetailCache[id] || {}),
+              ...payload,
+            };
+
             await this.loadTemplates();
           } catch (e) {
-            console.error('Failed to edit template', e);
-            toast.error(i18n.global.t('toast.templateEditFailed'));
+            console.error("Failed to edit template", e);
+            toast.error(i18n.global.t("toast.templateEditFailed"));
           } finally {
             this.isLoading = false;
           }
@@ -565,17 +737,23 @@ export const useTemplateStore = defineStore('templates', {
       }
     },
 
-    async copyTemplate(id: string, newName?: string, extraValues?: Record<string, any>) {
-      const { mode, endpoints, headers, fetcher } = getCrudConfig(this.crudScopeId);
-      const t = this.templates.find(t => t.id === id);
+    async copyTemplate(
+      id: string,
+      newName?: string,
+      extraValues?: Record<string, any>,
+    ) {
+      const { mode, endpoints, headers, fetcher } = getCrudConfig(
+        this.crudScopeId,
+      );
+      const t = this.templates.find((t) => t.id === id);
       if (t) {
         if (!canCopyEntity(t)) {
-          toast.warning(i18n.global.t('toast.templateCopyNotAllowed'));
+          toast.warning(i18n.global.t("toast.templateCopyNotAllowed"));
           return;
         }
         let cachedTemplate = this.templateDetailCache[id];
 
-        if (mode === 'remote') {
+        if (mode === "remote") {
           // Force fetch remote data to ensure we have the complete and latest template
           const detail = await this.fetchTemplateDetail(id);
           if (detail) {
@@ -585,45 +763,70 @@ export const useTemplateStore = defineStore('templates', {
 
         // Use cached full data instead of potentially incomplete list data
         const sourceData = cachedTemplate?.data || t.data;
-        const source: any = mode === 'remote'
-          ? {
-              id: t.id,
-              name: t.name,
-              data: sourceData,
-              ext: withExtAvailableVariables(
-                mergeExt(cachedTemplate?.ext, t.ext),
-                readAvailableVariables(t, cachedTemplate)
-              )
-            }
-          : t;
-        const newTemplateBase = applyModalExtraValues({
-          id: uuidv4(),
-          name: typeof newName === 'string' && newName.trim() ? newName.trim() : `${source.name} Copy`,
-          data: sanitizeTemplateData(JSON.parse(JSON.stringify(source.data))),
-          updatedAt: Date.now(),
-          ext: withExtAvailableVariables(source.ext, readAvailableVariables(source)),
-          // A copied template should be a normal editable template by default,
-          // instead of inheriting source read-only/system flags.
-          permissions: {
-            ...(source.permissions && typeof source.permissions === 'object' ? source.permissions : {}),
-          }
-        }, 'copy', extraValues);
-        const newTemplate: Template = normalizeEntityConstraints(newTemplateBase) as Template;
-        if (mode === 'remote') {
+        const source: any =
+          mode === "remote"
+            ? {
+                id: t.id,
+                name: t.name,
+                data: sourceData,
+                ext: withExtAvailableVariables(
+                  mergeExt(cachedTemplate?.ext, t.ext),
+                  readAvailableVariables(t, cachedTemplate),
+                ),
+              }
+            : t;
+        const newTemplateBase = applyModalExtraValues(
+          {
+            id: uuidv4(),
+            name:
+              typeof newName === "string" && newName.trim()
+                ? newName.trim()
+                : `${source.name} Copy`,
+            data: sanitizeTemplateData(JSON.parse(JSON.stringify(source.data))),
+            updatedAt: Date.now(),
+            ext: withExtAvailableVariables(
+              source.ext,
+              readAvailableVariables(source),
+            ),
+            // A copied template should be a normal editable template by default,
+            // instead of inheriting source read-only/system flags.
+            permissions: {
+              ...(source.permissions && typeof source.permissions === "object"
+                ? source.permissions
+                : {}),
+            },
+          },
+          "copy",
+          extraValues,
+        );
+        const newTemplate: Template = normalizeEntityConstraints(
+          newTemplateBase,
+        ) as Template;
+        if (mode === "remote") {
           this.isLoading = true;
           try {
-            const url = buildEndpoint(endpoints.templates?.upsert, '', this.crudScopeId);
-            const options = buildFetchOptions(endpoints.templates?.upsert, 'POST', headers, newTemplate);
+            const url = buildEndpoint(
+              endpoints.templates?.upsert,
+              "",
+              this.crudScopeId,
+            );
+            const options = buildFetchOptions(
+              endpoints.templates?.upsert,
+              "POST",
+              headers,
+              newTemplate,
+            );
             const res = await (fetcher || fetch)(url, options);
             const result = await res.json();
-            if (result && typeof result === 'object') {
+            if (result && typeof result === "object") {
               if (result.ext) {
                 newTemplate.ext = { ...(newTemplate.ext || {}), ...result.ext };
               }
             }
             newTemplate.id = result?.id || newTemplate.id;
             const cached = this.templateDetailCache[newTemplate.id];
-              this.templateDetailCache[newTemplate.id] = normalizeEntityConstraints({
+            this.templateDetailCache[newTemplate.id] =
+              normalizeEntityConstraints({
                 id: newTemplate.id,
                 name: newTemplate.name,
                 data: newTemplate.data || cached?.data,
@@ -631,16 +834,16 @@ export const useTemplateStore = defineStore('templates', {
                 permissions: newTemplate.permissions ?? cached?.permissions,
                 ext: withExtAvailableVariables(
                   mergeExt(cached?.ext, newTemplate.ext),
-                  readAvailableVariables(newTemplate, cached)
-                )
+                  readAvailableVariables(newTemplate, cached),
+                ),
               });
-            
+
             await this.loadTemplates();
             this.currentTemplateId = newTemplate.id;
             await this.loadTemplate(newTemplate.id);
           } catch (e) {
-            console.error('Failed to copy template', e);
-            toast.error(i18n.global.t('toast.templateCopyFailed'));
+            console.error("Failed to copy template", e);
+            toast.error(i18n.global.t("toast.templateCopyFailed"));
           } finally {
             this.isLoading = false;
           }
@@ -657,7 +860,7 @@ export const useTemplateStore = defineStore('templates', {
       this.isLoading = true;
       try {
         const { mode } = getCrudConfig(this.crudScopeId);
-        if (mode === 'remote') {
+        if (mode === "remote") {
           try {
             const detail = await this.fetchTemplateDetail(id);
             if (!detail) return;
@@ -665,22 +868,36 @@ export const useTemplateStore = defineStore('templates', {
             const designerStore = useDesignerStore();
             designerStore.resetCanvas();
             const data = t.data;
-            if (data.pages && data.pages.length > 0) designerStore.pages = cloneDeep(data.pages);
-            if (data.canvasSize) designerStore.canvasSize = cloneDeep(data.canvasSize);
+            if (data.pages && data.pages.length > 0)
+              designerStore.pages = cloneDeep(data.pages);
+            if (data.canvasSize)
+              designerStore.canvasSize = cloneDeep(data.canvasSize);
             if (data.guides) designerStore.guides = cloneDeep(data.guides);
             if (data.zoom !== undefined) designerStore.zoom = data.zoom;
-            if (data.showGrid !== undefined) designerStore.showGrid = data.showGrid;
-            if (data.allowDragOutsideCanvas !== undefined) designerStore.allowDragOutsideCanvas = data.allowDragOutsideCanvas;
-            if (data.headerHeight !== undefined) designerStore.headerHeight = data.headerHeight;
-            if (data.footerHeight !== undefined) designerStore.footerHeight = data.footerHeight;
-            if (data.showHeaderLine !== undefined) designerStore.showHeaderLine = data.showHeaderLine;
-            if (data.showFooterLine !== undefined) designerStore.showFooterLine = data.showFooterLine;
-            if (data.showMinimap !== undefined) designerStore.showMinimap = data.showMinimap;
-            if (data.canvasBackground !== undefined) designerStore.canvasBackground = data.canvasBackground;
-            if (data.pageSpacingX !== undefined) designerStore.pageSpacingX = data.pageSpacingX;
-            if (data.pageSpacingY !== undefined) designerStore.pageSpacingY = data.pageSpacingY;
+            if (data.showGrid !== undefined)
+              designerStore.showGrid = data.showGrid;
+            if (data.allowDragOutsideCanvas !== undefined)
+              designerStore.allowDragOutsideCanvas =
+                data.allowDragOutsideCanvas;
+            if (data.headerHeight !== undefined)
+              designerStore.headerHeight = data.headerHeight;
+            if (data.footerHeight !== undefined)
+              designerStore.footerHeight = data.footerHeight;
+            if (data.showHeaderLine !== undefined)
+              designerStore.showHeaderLine = data.showHeaderLine;
+            if (data.showFooterLine !== undefined)
+              designerStore.showFooterLine = data.showFooterLine;
+            if (data.showMinimap !== undefined)
+              designerStore.showMinimap = data.showMinimap;
+            if (data.canvasBackground !== undefined)
+              designerStore.canvasBackground = data.canvasBackground;
+            if (data.pageSpacingX !== undefined)
+              designerStore.pageSpacingX = data.pageSpacingX;
+            if (data.pageSpacingY !== undefined)
+              designerStore.pageSpacingY = data.pageSpacingY;
             if (data.unit !== undefined) designerStore.unit = data.unit;
-            if (data.watermark !== undefined) designerStore.watermark = cloneDeep(data.watermark);
+            if (data.watermark !== undefined)
+              designerStore.watermark = cloneDeep(data.watermark);
             designerStore.testData = cloneDeep(data.testData || {});
             designerStore.setAvailableVariables(readAvailableVariables(t));
             designerStore.selectedElementId = null;
@@ -689,71 +906,93 @@ export const useTemplateStore = defineStore('templates', {
             designerStore.historyFuture = [];
             const currentId = t.id || id;
             this.currentTemplateId = currentId;
-            
-            const existingIndex = this.templates.findIndex(item => item.id === currentId);
+
+            const existingIndex = this.templates.findIndex(
+              (item) => item.id === currentId,
+            );
             if (existingIndex >= 0) {
               this.templates[existingIndex] = normalizeEntityConstraints({
                 id: currentId,
                 name: t.name || this.templates[existingIndex].name,
                 data,
-                updatedAt: t.updatedAt || this.templates[existingIndex].updatedAt,
-                permissions: t.permissions ?? this.templates[existingIndex].permissions,
+                updatedAt:
+                  t.updatedAt || this.templates[existingIndex].updatedAt,
+                permissions:
+                  t.permissions ?? this.templates[existingIndex].permissions,
                 ext: withExtAvailableVariables(
                   mergeExt(this.templates[existingIndex].ext, t.ext),
-                  readAvailableVariables(t, this.templates[existingIndex])
-                )
+                  readAvailableVariables(t, this.templates[existingIndex]),
+                ),
               }) as Template;
             } else {
-              this.templates.push(normalizeEntityConstraints({
-                id: currentId,
-                name: t.name || '',
-                data,
-                updatedAt: t.updatedAt || Date.now(),
-                permissions: t.permissions,
-                ext: withExtAvailableVariables(t.ext || {}, readAvailableVariables(t))
-              }) as Template);
+              this.templates.push(
+                normalizeEntityConstraints({
+                  id: currentId,
+                  name: t.name || "",
+                  data,
+                  updatedAt: t.updatedAt || Date.now(),
+                  permissions: t.permissions,
+                  ext: withExtAvailableVariables(
+                    t.ext || {},
+                    readAvailableVariables(t),
+                  ),
+                }) as Template,
+              );
             }
             return;
           } catch (e) {
-            console.error('Failed to load template', e);
+            console.error("Failed to load template", e);
             return;
           }
         }
-        const t = this.templates.find(t => t.id === id);
+        const t = this.templates.find((t) => t.id === id);
         if (t) {
           const designerStore = useDesignerStore();
-          
+
           // Reset canvas to defaults first to avoid inheriting settings from previous template
           designerStore.resetCanvas();
-          
+
           const data = sanitizeTemplateData(t.data);
-          
+
           // Restore state
-          if (data.pages && data.pages.length > 0) designerStore.pages = cloneDeep(data.pages);
-          if (data.canvasSize) designerStore.canvasSize = cloneDeep(data.canvasSize);
+          if (data.pages && data.pages.length > 0)
+            designerStore.pages = cloneDeep(data.pages);
+          if (data.canvasSize)
+            designerStore.canvasSize = cloneDeep(data.canvasSize);
           if (data.guides) designerStore.guides = cloneDeep(data.guides);
           if (data.zoom !== undefined) designerStore.zoom = data.zoom;
-          if (data.showGrid !== undefined) designerStore.showGrid = data.showGrid;
-          if (data.allowDragOutsideCanvas !== undefined) designerStore.allowDragOutsideCanvas = data.allowDragOutsideCanvas;
-          if (data.headerHeight !== undefined) designerStore.headerHeight = data.headerHeight;
-          if (data.footerHeight !== undefined) designerStore.footerHeight = data.footerHeight;
-          if (data.showHeaderLine !== undefined) designerStore.showHeaderLine = data.showHeaderLine;
-          if (data.showFooterLine !== undefined) designerStore.showFooterLine = data.showFooterLine;
-          if (data.showMinimap !== undefined) designerStore.showMinimap = data.showMinimap;
-          if (data.canvasBackground !== undefined) designerStore.canvasBackground = data.canvasBackground;
-          if (data.pageSpacingX !== undefined) designerStore.pageSpacingX = data.pageSpacingX;
-          if (data.pageSpacingY !== undefined) designerStore.pageSpacingY = data.pageSpacingY;
+          if (data.showGrid !== undefined)
+            designerStore.showGrid = data.showGrid;
+          if (data.allowDragOutsideCanvas !== undefined)
+            designerStore.allowDragOutsideCanvas = data.allowDragOutsideCanvas;
+          if (data.headerHeight !== undefined)
+            designerStore.headerHeight = data.headerHeight;
+          if (data.footerHeight !== undefined)
+            designerStore.footerHeight = data.footerHeight;
+          if (data.showHeaderLine !== undefined)
+            designerStore.showHeaderLine = data.showHeaderLine;
+          if (data.showFooterLine !== undefined)
+            designerStore.showFooterLine = data.showFooterLine;
+          if (data.showMinimap !== undefined)
+            designerStore.showMinimap = data.showMinimap;
+          if (data.canvasBackground !== undefined)
+            designerStore.canvasBackground = data.canvasBackground;
+          if (data.pageSpacingX !== undefined)
+            designerStore.pageSpacingX = data.pageSpacingX;
+          if (data.pageSpacingY !== undefined)
+            designerStore.pageSpacingY = data.pageSpacingY;
           if (data.unit !== undefined) designerStore.unit = data.unit;
-          if (data.watermark !== undefined) designerStore.watermark = cloneDeep(data.watermark);
+          if (data.watermark !== undefined)
+            designerStore.watermark = cloneDeep(data.watermark);
           designerStore.testData = cloneDeep(data.testData || {});
           designerStore.setAvailableVariables(readAvailableVariables(t));
-          
+
           // Reset selection and history
           designerStore.selectedElementId = null;
           designerStore.selectedGuideId = null;
           designerStore.historyPast = [];
           designerStore.historyFuture = [];
-          
+
           this.currentTemplateId = t.id || id;
         }
       } finally {
@@ -761,6 +1000,6 @@ export const useTemplateStore = defineStore('templates', {
           this.isLoading = false;
         }, 100);
       }
-    }
-  }
+    },
+  },
 });

@@ -16,7 +16,11 @@ export interface RGBA {
   a: number; // 0-1
 }
 
-export function hsvToRgb(h: number, s: number, v: number): { r: number; g: number; b: number } {
+export function hsvToRgb(
+  h: number,
+  s: number,
+  v: number,
+): { r: number; g: number; b: number } {
   h = h % 360;
   if (h < 0) h += 360;
   s = Math.max(0, Math.min(1, s));
@@ -26,30 +30,48 @@ export function hsvToRgb(h: number, s: number, v: number): { r: number; g: numbe
   const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
   const m = v - c;
 
-  let r = 0, g = 0, b = 0;
+  let r = 0,
+    g = 0,
+    b = 0;
 
   if (h >= 0 && h < 60) {
-    r = c; g = x; b = 0;
+    r = c;
+    g = x;
+    b = 0;
   } else if (h >= 60 && h < 120) {
-    r = x; g = c; b = 0;
+    r = x;
+    g = c;
+    b = 0;
   } else if (h >= 120 && h < 180) {
-    r = 0; g = c; b = x;
+    r = 0;
+    g = c;
+    b = x;
   } else if (h >= 180 && h < 240) {
-    r = 0; g = x; b = c;
+    r = 0;
+    g = x;
+    b = c;
   } else if (h >= 240 && h < 300) {
-    r = x; g = 0; b = c;
+    r = x;
+    g = 0;
+    b = c;
   } else {
-    r = c; g = 0; b = x;
+    r = c;
+    g = 0;
+    b = x;
   }
 
   return {
     r: Math.round((r + m) * 255),
     g: Math.round((g + m) * 255),
-    b: Math.round((b + m) * 255)
+    b: Math.round((b + m) * 255),
   };
 }
 
-export function rgbToHsv(r: number, g: number, b: number): { h: number; s: number; v: number } {
+export function rgbToHsv(
+  r: number,
+  g: number,
+  b: number,
+): { h: number; s: number; v: number } {
   r /= 255;
   g /= 255;
   b /= 255;
@@ -57,16 +79,22 @@ export function rgbToHsv(r: number, g: number, b: number): { h: number; s: numbe
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   const d = max - min;
-  
+
   let h = 0;
   const s = max === 0 ? 0 : d / max;
   const v = max;
 
   if (max !== min) {
     switch (max) {
-      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-      case g: h = (b - r) / d + 2; break;
-      case b: h = (r - g) / d + 4; break;
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      case b:
+        h = (r - g) / d + 4;
+        break;
     }
     h /= 6;
   }
@@ -76,12 +104,15 @@ export function rgbToHsv(r: number, g: number, b: number): { h: number; s: numbe
 
 export function parseColor(color: string): HSVA | null {
   if (!color) return null;
-  if (color === 'transparent') return { h: 0, s: 0, v: 0, a: 0 };
+  if (color === "transparent") return { h: 0, s: 0, v: 0, a: 0 };
 
   // Hex
-  if (color.startsWith('#')) {
+  if (color.startsWith("#")) {
     const hex = color.slice(1);
-    let r = 0, g = 0, b = 0, a = 1;
+    let r = 0,
+      g = 0,
+      b = 0,
+      a = 1;
 
     if (hex.length === 3) {
       r = parseInt(hex[0] + hex[0], 16);
@@ -105,8 +136,10 @@ export function parseColor(color: string): HSVA | null {
   }
 
   // RGB/RGBA
-  if (color.startsWith('rgb')) {
-    const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+  if (color.startsWith("rgb")) {
+    const match = color.match(
+      /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/,
+    );
     if (match) {
       const r = parseInt(match[1]);
       const g = parseInt(match[2]);
@@ -124,7 +157,7 @@ export function toHex(h: number, s: number, v: number, a: number = 1): string {
   const { r, g, b } = hsvToRgb(h, s, v);
   const toHexVal = (n: number) => {
     const hex = Math.round(n).toString(16);
-    return hex.length === 1 ? '0' + hex : hex;
+    return hex.length === 1 ? "0" + hex : hex;
   };
 
   if (a >= 1) {
@@ -135,7 +168,12 @@ export function toHex(h: number, s: number, v: number, a: number = 1): string {
   }
 }
 
-export function toRgbaString(h: number, s: number, v: number, a: number = 1): string {
+export function toRgbaString(
+  h: number,
+  s: number,
+  v: number,
+  a: number = 1,
+): string {
   const { r, g, b } = hsvToRgb(h, s, v);
   return `rgba(${r}, ${g}, ${b}, ${parseFloat(a.toFixed(2))})`;
 }

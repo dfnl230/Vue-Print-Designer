@@ -1,1 +1,1 @@
-export { usePrint } from './usePrint';
+export { usePrint } from "./usePrint";

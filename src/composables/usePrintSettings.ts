@@ -1,7 +1,11 @@
-import { computed, reactive, ref, watch, type ComputedRef } from 'vue';
+import { computed, reactive, ref, watch, type ComputedRef } from "vue";
 
-export type PrintMode = 'browser' | 'local' | 'remote';
-export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
+export type PrintMode = "browser" | "local" | "remote";
+export type ConnectionStatus =
+  | "disconnected"
+  | "connecting"
+  | "connected"
+  | "error";
 
 export interface PrintOptions {
   printer: string;
@@ -10,11 +14,11 @@ export interface PrintOptions {
   intervalMs: number;
   timeout?: number;
   pageRange: string;
-  pageSet: '' | 'odd' | 'even';
-  scale: '' | 'noscale' | 'shrink' | 'fit';
-  orientation: '' | 'portrait' | 'landscape';
-  colorMode: '' | 'color' | 'monochrome';
-  sidesMode: '' | 'simplex' | 'duplex' | 'duplexshort' | 'duplexlong';
+  pageSet: "" | "odd" | "even";
+  scale: "" | "noscale" | "shrink" | "fit";
+  orientation: "" | "portrait" | "landscape";
+  colorMode: "" | "color" | "monochrome";
+  sidesMode: "" | "simplex" | "duplex" | "duplexshort" | "duplexlong";
   paperSize: string;
   trayBin: string;
 }
@@ -69,7 +73,7 @@ export interface LocalPrinterCaps {
   colorSupported?: boolean;
 }
 
-export type PrintQuality = 'fast' | 'normal' | 'high' | 'ultra';
+export type PrintQuality = "fast" | "normal" | "high" | "ultra";
 
 interface PrintSettingsState {
   printMode: ReturnType<typeof ref<PrintMode>>;
@@ -97,8 +101,13 @@ interface PrintSettingsState {
   fetchLocalPrinters: () => Promise<LocalPrinterInfo[]>;
   fetchRemoteClients: () => Promise<RemoteClientInfo[]>;
   fetchRemotePrinters: (clientId?: string) => Promise<RemotePrinterInfo[]>;
-  fetchLocalPrinterCaps: (printer: string) => Promise<LocalPrinterCaps | undefined>;
-  submitRemoteTask: (payload: Record<string, any>, timeoutMs?: number) => Promise<any>;
+  fetchLocalPrinterCaps: (
+    printer: string,
+  ) => Promise<LocalPrinterCaps | undefined>;
+  submitRemoteTask: (
+    payload: Record<string, any>,
+    timeoutMs?: number,
+  ) => Promise<any>;
   cancelLocalRetry: () => void;
   cancelRemoteRetry: () => void;
   connectLocal: () => Promise<void>;
@@ -108,44 +117,44 @@ interface PrintSettingsState {
 }
 
 const storageKeys = {
-  printMode: 'print-designer-print-mode',
-  preferredPrintMode: 'print-designer-preferred-print-mode',
-  silentPrint: 'print-designer-silent-print',
-  exportImageMerged: 'print-designer-export-image-merged',
-  printQuality: 'print-designer-print-quality',
-  localSettings: 'print-designer-local-settings',
-  remoteSettings: 'print-designer-remote-settings',
-  localPrintOptions: 'print-designer-local-print-options',
-  remotePrintOptions: 'print-designer-remote-print-options',
-  remoteAuthToken: 'print-designer-remote-auth-token',
-  remoteSelectedClientId: 'print-designer-remote-selected-client-id'
+  printMode: "print-designer-print-mode",
+  preferredPrintMode: "print-designer-preferred-print-mode",
+  silentPrint: "print-designer-silent-print",
+  exportImageMerged: "print-designer-export-image-merged",
+  printQuality: "print-designer-print-quality",
+  localSettings: "print-designer-local-settings",
+  remoteSettings: "print-designer-remote-settings",
+  localPrintOptions: "print-designer-local-print-options",
+  remotePrintOptions: "print-designer-remote-print-options",
+  remoteAuthToken: "print-designer-remote-auth-token",
+  remoteSelectedClientId: "print-designer-remote-selected-client-id",
 };
 
 const defaultLocalSettings: LocalConnectionSettings = {
-  wsAddress: 'ws://localhost:1122/ws',
-  secretKey: ''
+  wsAddress: "ws://localhost:1122/ws",
+  secretKey: "",
 };
 
 const defaultRemoteSettings: RemoteConnectionSettings = {
-  wsAddress: 'ws://localhost:8080/ws/request',
-  apiBaseUrl: 'http://localhost:8080/api/login',
-  username: '',
-  password: ''
+  wsAddress: "ws://localhost:8080/ws/request",
+  apiBaseUrl: "http://localhost:8080/api/login",
+  username: "",
+  password: "",
 };
 
 const defaultPrintOptions: PrintOptions = {
-  printer: '',
-  jobName: '',
+  printer: "",
+  jobName: "",
   copies: 1,
   intervalMs: 0,
-  pageRange: '',
-  pageSet: '',
-  scale: 'fit',
-  orientation: 'portrait',
-  colorMode: 'color',
-  sidesMode: 'simplex',
-  paperSize: '',
-  trayBin: ''
+  pageRange: "",
+  pageSet: "",
+  scale: "fit",
+  orientation: "portrait",
+  colorMode: "color",
+  sidesMode: "simplex",
+  paperSize: "",
+  trayBin: "",
 };
 
 const loadJson = <T>(key: string, fallback: T): T => {
@@ -162,9 +171,14 @@ const saveJson = (key: string, value: unknown) => {
   localStorage.setItem(key, JSON.stringify(value));
 };
 
-const buildWsUrl = (protocol: string, host: string, port: string, path: string) => {
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  const portPart = port ? `:${port}` : '';
+const buildWsUrl = (
+  protocol: string,
+  host: string,
+  port: string,
+  path: string,
+) => {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const portPart = port ? `:${port}` : "";
   return `${protocol}://${host}${portPart}${normalizedPath}`;
 };
 
@@ -172,9 +186,9 @@ const normalizeWsAddress = (address: string) => address.trim();
 
 const buildWsUrlFromAddress = (address: string) => {
   const normalized = normalizeWsAddress(address);
-  if (!normalized) return 'ws://';
+  if (!normalized) return "ws://";
   if (/^wss?:\/\//i.test(normalized)) return normalized;
-  return `ws://${normalized.replace(/^\/+/, '')}`;
+  return `ws://${normalized.replace(/^\/+/, "")}`;
 };
 
 const appendQueryParam = (url: string, key: string, value: string) => {
@@ -184,12 +198,12 @@ const appendQueryParam = (url: string, key: string, value: string) => {
     parsed.searchParams.set(key, value);
     return parsed.toString();
   } catch {
-    const separator = url.includes('?') ? '&' : '?';
+    const separator = url.includes("?") ? "&" : "?";
     return `${url}${separator}${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
   }
 };
 
-const normalizeBaseUrl = (url: string) => url.replace(/\/+$/, '');
+const normalizeBaseUrl = (url: string) => url.replace(/\/+$/, "");
 
 type MessageWaiter = {
   match: (data: any) => boolean;
@@ -202,102 +216,141 @@ const waitForWsMessage = <T>(
   url: string,
   initMessage: Record<string, any> | null,
   isTarget: (data: any) => data is T,
-  timeoutMs = 5000
-) => new Promise<T>((resolve, reject) => {
-  let settled = false;
-  const socket = new WebSocket(url);
-  const timeoutId = window.setTimeout(() => {
-    if (settled) return;
-    settled = true;
-    socket.close();
-    reject(new Error('WebSocket timeout'));
-  }, timeoutMs);
+  timeoutMs = 5000,
+) =>
+  new Promise<T>((resolve, reject) => {
+    let settled = false;
+    const socket = new WebSocket(url);
+    const timeoutId = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      socket.close();
+      reject(new Error("WebSocket timeout"));
+    }, timeoutMs);
 
-  socket.onopen = () => {
-    if (initMessage) {
-      socket.send(JSON.stringify(initMessage));
-    }
-  };
+    socket.onopen = () => {
+      if (initMessage) {
+        socket.send(JSON.stringify(initMessage));
+      }
+    };
 
-  socket.onmessage = (event) => {
-    if (settled) return;
-    try {
-      const data = JSON.parse(event.data);
-      if (isTarget(data)) {
+    socket.onmessage = (event) => {
+      if (settled) return;
+      try {
+        const data = JSON.parse(event.data);
+        if (isTarget(data)) {
+          settled = true;
+          window.clearTimeout(timeoutId);
+          socket.close();
+          resolve(data);
+        }
+      } catch (error) {
         settled = true;
         window.clearTimeout(timeoutId);
         socket.close();
-        resolve(data);
+        reject(
+          error instanceof Error ? error : new Error("WebSocket parse error"),
+        );
       }
-    } catch (error) {
+    };
+
+    socket.onerror = () => {
+      if (settled) return;
       settled = true;
       window.clearTimeout(timeoutId);
       socket.close();
-      reject(error instanceof Error ? error : new Error('WebSocket parse error'));
-    }
-  };
-
-  socket.onerror = () => {
-    if (settled) return;
-    settled = true;
-    window.clearTimeout(timeoutId);
-    socket.close();
-    reject(new Error('WebSocket error'));
-  };
-});
+      reject(new Error("WebSocket error"));
+    };
+  });
 
 let state: PrintSettingsState | null = null;
 
 const createState = (): PrintSettingsState => {
-  const storedPreferred = localStorage.getItem(storageKeys.preferredPrintMode) as PrintMode | null;
-  const printMode = ref<PrintMode>(storedPreferred || (localStorage.getItem(storageKeys.printMode) as PrintMode) || 'browser');
-  const silentPrint = ref(localStorage.getItem(storageKeys.silentPrint) === 'true');
-  const exportImageMerged = ref(localStorage.getItem(storageKeys.exportImageMerged) !== 'false');
-  const printQualityStr = localStorage.getItem(storageKeys.printQuality) as string | null;
-  const validQualities: PrintQuality[] = ['fast', 'normal', 'high', 'ultra'];
-  const defaultQuality: PrintQuality = (printQualityStr && validQualities.includes(printQualityStr as PrintQuality)) 
-    ? (printQualityStr as PrintQuality) 
-    : 'normal';
+  const storedPreferred = localStorage.getItem(
+    storageKeys.preferredPrintMode,
+  ) as PrintMode | null;
+  const printMode = ref<PrintMode>(
+    storedPreferred ||
+      (localStorage.getItem(storageKeys.printMode) as PrintMode) ||
+      "browser",
+  );
+  const silentPrint = ref(
+    localStorage.getItem(storageKeys.silentPrint) === "true",
+  );
+  const exportImageMerged = ref(
+    localStorage.getItem(storageKeys.exportImageMerged) !== "false",
+  );
+  const printQualityStr = localStorage.getItem(storageKeys.printQuality) as
+    | string
+    | null;
+  const validQualities: PrintQuality[] = ["fast", "normal", "high", "ultra"];
+  const defaultQuality: PrintQuality =
+    printQualityStr && validQualities.includes(printQualityStr as PrintQuality)
+      ? (printQualityStr as PrintQuality)
+      : "normal";
 
   const printQuality = ref<PrintQuality>(defaultQuality);
 
-  const localSettings = reactive(loadJson(storageKeys.localSettings, defaultLocalSettings));
+  const localSettings = reactive(
+    loadJson(storageKeys.localSettings, defaultLocalSettings),
+  );
   if (!localSettings.wsAddress) {
-    const legacy = localSettings as LocalConnectionSettings & { host?: string; port?: string; path?: string; protocol?: string };
+    const legacy = localSettings as LocalConnectionSettings & {
+      host?: string;
+      port?: string;
+      path?: string;
+      protocol?: string;
+    };
     if (legacy.host || legacy.port || legacy.path) {
-      const host = legacy.host || 'localhost';
-      const portPart = legacy.port ? `:${legacy.port}` : '';
-      const path = legacy.path || '/ws';
-      const protocol = legacy.protocol || 'ws';
+      const host = legacy.host || "localhost";
+      const portPart = legacy.port ? `:${legacy.port}` : "";
+      const path = legacy.path || "/ws";
+      const protocol = legacy.protocol || "ws";
       localSettings.wsAddress = `${protocol}://${host}${portPart}${path}`;
     }
   }
-  const remoteSettings = reactive(loadJson(storageKeys.remoteSettings, defaultRemoteSettings));
+  const remoteSettings = reactive(
+    loadJson(storageKeys.remoteSettings, defaultRemoteSettings),
+  );
   if (!remoteSettings.wsAddress) {
-    const legacy = remoteSettings as RemoteConnectionSettings & { host?: string; wsPort?: string; wsPath?: string };
+    const legacy = remoteSettings as RemoteConnectionSettings & {
+      host?: string;
+      wsPort?: string;
+      wsPath?: string;
+    };
     if (legacy.host || legacy.wsPort || legacy.wsPath) {
-      const host = legacy.host || 'localhost';
-      const portPart = legacy.wsPort ? `:${legacy.wsPort}` : '';
-      const path = legacy.wsPath || '/ws/request';
+      const host = legacy.host || "localhost";
+      const portPart = legacy.wsPort ? `:${legacy.wsPort}` : "";
+      const path = legacy.wsPath || "/ws/request";
       remoteSettings.wsAddress = `${host}${portPart}${path}`;
     }
   }
 
-  const localStatus = ref<ConnectionStatus>('disconnected');
-  const remoteStatus = ref<ConnectionStatus>('disconnected');
-  const localStatusMessage = ref('');
-  const remoteStatusMessage = ref('');
+  const localStatus = ref<ConnectionStatus>("disconnected");
+  const remoteStatus = ref<ConnectionStatus>("disconnected");
+  const localStatusMessage = ref("");
+  const remoteStatusMessage = ref("");
 
-  const localPrintOptions = reactive(loadJson(storageKeys.localPrintOptions, defaultPrintOptions));
-  const remotePrintOptions = reactive(loadJson(storageKeys.remotePrintOptions, defaultPrintOptions));
+  const localPrintOptions = reactive(
+    loadJson(storageKeys.localPrintOptions, defaultPrintOptions),
+  );
+  const remotePrintOptions = reactive(
+    loadJson(storageKeys.remotePrintOptions, defaultPrintOptions),
+  );
 
-  const remoteAuthToken = ref(localStorage.getItem(storageKeys.remoteAuthToken) || '');
-  const remoteSelectedClientId = ref(localStorage.getItem(storageKeys.remoteSelectedClientId) || '');
+  const remoteAuthToken = ref(
+    localStorage.getItem(storageKeys.remoteAuthToken) || "",
+  );
+  const remoteSelectedClientId = ref(
+    localStorage.getItem(storageKeys.remoteSelectedClientId) || "",
+  );
 
   const localPrinters = ref<LocalPrinterInfo[]>([]);
   const remotePrinters = ref<RemotePrinterInfo[]>([]);
   const remoteClients = ref<RemoteClientInfo[]>([]);
-  const localPrinterCaps = reactive<Record<string, LocalPrinterCaps | undefined>>({});
+  const localPrinterCaps = reactive<
+    Record<string, LocalPrinterCaps | undefined>
+  >({});
 
   const localSocket = ref<WebSocket | null>(null);
   const remoteSocket = ref<WebSocket | null>(null);
@@ -320,17 +373,17 @@ const createState = (): PrintSettingsState => {
 
   const localWsUrl = computed(() => {
     const base = buildWsUrlFromAddress(localSettings.wsAddress);
-    return appendQueryParam(base, 'key', localSettings.secretKey.trim());
+    return appendQueryParam(base, "key", localSettings.secretKey.trim());
   });
 
   const remoteWsUrl = computed(() => {
     const base = buildWsUrlFromAddress(remoteSettings.wsAddress);
-    return appendQueryParam(base, 'token', remoteAuthToken.value.trim());
+    return appendQueryParam(base, "token", remoteAuthToken.value.trim());
   });
 
   watch(printMode, (value) => {
     localStorage.setItem(storageKeys.printMode, value);
-    if (value !== 'browser') {
+    if (value !== "browser") {
       localStorage.setItem(storageKeys.preferredPrintMode, value);
       return;
     }
@@ -349,25 +402,41 @@ const createState = (): PrintSettingsState => {
     localStorage.setItem(storageKeys.printQuality, value.toString());
   });
 
-  watch(localSettings, (value) => {
-    saveJson(storageKeys.localSettings, value);
-    localStatus.value = 'disconnected';
-    localStatusMessage.value = '';
-  }, { deep: true });
+  watch(
+    localSettings,
+    (value) => {
+      saveJson(storageKeys.localSettings, value);
+      localStatus.value = "disconnected";
+      localStatusMessage.value = "";
+    },
+    { deep: true },
+  );
 
-  watch(remoteSettings, (value) => {
-    saveJson(storageKeys.remoteSettings, value);
-    remoteStatus.value = 'disconnected';
-    remoteStatusMessage.value = '';
-  }, { deep: true });
+  watch(
+    remoteSettings,
+    (value) => {
+      saveJson(storageKeys.remoteSettings, value);
+      remoteStatus.value = "disconnected";
+      remoteStatusMessage.value = "";
+    },
+    { deep: true },
+  );
 
-  watch(localPrintOptions, (value) => {
-    saveJson(storageKeys.localPrintOptions, value);
-  }, { deep: true });
+  watch(
+    localPrintOptions,
+    (value) => {
+      saveJson(storageKeys.localPrintOptions, value);
+    },
+    { deep: true },
+  );
 
-  watch(remotePrintOptions, (value) => {
-    saveJson(storageKeys.remotePrintOptions, value);
-  }, { deep: true });
+  watch(
+    remotePrintOptions,
+    (value) => {
+      saveJson(storageKeys.remotePrintOptions, value);
+    },
+    { deep: true },
+  );
 
   watch(remoteAuthToken, (value) => {
     localStorage.setItem(storageKeys.remoteAuthToken, value);
@@ -378,41 +447,47 @@ const createState = (): PrintSettingsState => {
   });
 
   const applyPreferredIfConnected = () => {
-    const preferred = localStorage.getItem(storageKeys.preferredPrintMode) as PrintMode | null;
-    if (!preferred || preferred === 'browser') return;
-    if (printMode.value !== 'browser') return;
+    const preferred = localStorage.getItem(
+      storageKeys.preferredPrintMode,
+    ) as PrintMode | null;
+    if (!preferred || preferred === "browser") return;
+    if (printMode.value !== "browser") return;
 
-    if (preferred === 'local' && localStatus.value === 'connected') {
-      printMode.value = 'local';
+    if (preferred === "local" && localStatus.value === "connected") {
+      printMode.value = "local";
     }
-    if (preferred === 'remote' && remoteStatus.value === 'connected') {
-      printMode.value = 'remote';
+    if (preferred === "remote" && remoteStatus.value === "connected") {
+      printMode.value = "remote";
     }
   };
 
   const ensureValidPrintMode = () => {
-    const localOk = localStatus.value === 'connected';
-    const remoteOk = remoteStatus.value === 'connected';
+    const localOk = localStatus.value === "connected";
+    const remoteOk = remoteStatus.value === "connected";
 
-    if (printMode.value === 'local' && !localOk) {
-      printMode.value = 'browser';
+    if (printMode.value === "local" && !localOk) {
+      printMode.value = "browser";
       return;
     }
 
-    if (printMode.value === 'remote' && !remoteOk) {
-      printMode.value = 'browser';
+    if (printMode.value === "remote" && !remoteOk) {
+      printMode.value = "browser";
       return;
     }
 
     if (!localOk && !remoteOk) {
-      printMode.value = 'browser';
+      printMode.value = "browser";
     }
   };
 
-  watch([localStatus, remoteStatus], () => {
-    ensureValidPrintMode();
-    applyPreferredIfConnected();
-  }, { immediate: true });
+  watch(
+    [localStatus, remoteStatus],
+    () => {
+      ensureValidPrintMode();
+      applyPreferredIfConnected();
+    },
+    { immediate: true },
+  );
 
   const resolveWaiters = (waiters: MessageWaiter[], data: any) => {
     waiters.slice().forEach((waiter) => {
@@ -455,8 +530,8 @@ const createState = (): PrintSettingsState => {
       localSocket.value.close();
     }
     localSocket.value = null;
-    localStatus.value = 'disconnected';
-    localStatusMessage.value = '';
+    localStatus.value = "disconnected";
+    localStatusMessage.value = "";
   };
 
   const cancelRemoteRetry = () => {
@@ -466,21 +541,21 @@ const createState = (): PrintSettingsState => {
       remoteSocket.value.close();
     }
     remoteSocket.value = null;
-    remoteStatus.value = 'disconnected';
-    remoteStatusMessage.value = '';
+    remoteStatus.value = "disconnected";
+    remoteStatusMessage.value = "";
   };
 
   const scheduleLocalReconnect = () => {
     if (localManualDisconnect.value) return;
     if (localRetryTimer.value) return;
     if (localRetryCount.value >= maxRetries) {
-      localStatus.value = 'error';
-      localStatusMessage.value = 'Local connection failed';
+      localStatus.value = "error";
+      localStatusMessage.value = "Local connection failed";
       localRetryCount.value = 0;
       return;
     }
     localRetryCount.value += 1;
-    localStatus.value = 'connecting';
+    localStatus.value = "connecting";
     localRetryTimer.value = window.setTimeout(() => {
       localRetryTimer.value = null;
       connectLocal();
@@ -491,13 +566,13 @@ const createState = (): PrintSettingsState => {
     if (remoteManualDisconnect.value) return;
     if (remoteRetryTimer.value) return;
     if (remoteRetryCount.value >= maxRetries) {
-      remoteStatus.value = 'error';
-      remoteStatusMessage.value = 'Remote connection failed';
+      remoteStatus.value = "error";
+      remoteStatusMessage.value = "Remote connection failed";
       remoteRetryCount.value = 0;
       return;
     }
     remoteRetryCount.value += 1;
-    remoteStatus.value = 'connecting';
+    remoteStatus.value = "connecting";
     remoteRetryTimer.value = window.setTimeout(() => {
       remoteRetryTimer.value = null;
       connectRemote();
@@ -509,32 +584,33 @@ const createState = (): PrintSettingsState => {
     waiters: MessageWaiter[],
     payload: Record<string, any>,
     match: (data: any) => data is T,
-    timeoutMs = 5000
-  ) => new Promise<T>((resolve, reject) => {
-    const socket = socketRef.value;
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
-      reject(new Error('WebSocket not connected'));
-      return;
-    }
+    timeoutMs = 5000,
+  ) =>
+    new Promise<T>((resolve, reject) => {
+      const socket = socketRef.value;
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        reject(new Error("WebSocket not connected"));
+        return;
+      }
 
-    const timeoutId = window.setTimeout(() => {
-      const idx = waiters.findIndex(w => w.resolve === resolve);
-      if (idx >= 0) waiters.splice(idx, 1);
-      reject(new Error('WebSocket timeout'));
-    }, timeoutMs);
+      const timeoutId = window.setTimeout(() => {
+        const idx = waiters.findIndex((w) => w.resolve === resolve);
+        if (idx >= 0) waiters.splice(idx, 1);
+        reject(new Error("WebSocket timeout"));
+      }, timeoutMs);
 
-    waiters.push({ match, resolve, reject, timeoutId });
-    socket.send(JSON.stringify(payload));
-  });
+      waiters.push({ match, resolve, reject, timeoutId });
+      socket.send(JSON.stringify(payload));
+    });
 
   const attachLocalHandlers = (socket: WebSocket) => {
     socket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        if (data?.type === 'printer_list') {
+        if (data?.type === "printer_list") {
           localPrinters.value = Array.isArray(data.data) ? data.data : [];
         }
-        if (data?.type === 'printer_caps' && data.printer) {
+        if (data?.type === "printer_caps" && data.printer) {
           localPrinterCaps[data.printer] = data?.data || {};
         }
         resolveWaiters(localWaiters, data);
@@ -545,17 +621,17 @@ const createState = (): PrintSettingsState => {
 
     socket.onclose = () => {
       localSocket.value = null;
-      if (localStatus.value !== 'error') {
-        localStatus.value = 'disconnected';
+      if (localStatus.value !== "error") {
+        localStatus.value = "disconnected";
       }
-      rejectAllWaiters(localWaiters, new Error('WebSocket closed'));
+      rejectAllWaiters(localWaiters, new Error("WebSocket closed"));
       scheduleLocalReconnect();
     };
 
     socket.onerror = () => {
-      localStatus.value = 'error';
-      localStatusMessage.value = 'Local connection failed';
-      rejectAllWaiters(localWaiters, new Error('WebSocket error'));
+      localStatus.value = "error";
+      localStatusMessage.value = "Local connection failed";
+      rejectAllWaiters(localWaiters, new Error("WebSocket error"));
       scheduleLocalReconnect();
     };
   };
@@ -564,19 +640,23 @@ const createState = (): PrintSettingsState => {
     socket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        if (data?.cmd === 'clients_list') {
+        if (data?.cmd === "clients_list") {
           remoteClients.value = Array.isArray(data.clients) ? data.clients : [];
           if (remoteClients.value.length > 0) {
-            const exists = remoteClients.value.some(c => c.client_id === remoteSelectedClientId.value);
+            const exists = remoteClients.value.some(
+              (c) => c.client_id === remoteSelectedClientId.value,
+            );
             if (!exists) {
-              const onlineClient = remoteClients.value.find(c => c.online) || remoteClients.value[0];
-              remoteSelectedClientId.value = onlineClient?.client_id || '';
+              const onlineClient =
+                remoteClients.value.find((c) => c.online) ||
+                remoteClients.value[0];
+              remoteSelectedClientId.value = onlineClient?.client_id || "";
             }
           } else {
-            remoteSelectedClientId.value = '';
+            remoteSelectedClientId.value = "";
           }
         }
-        if (data?.cmd === 'printers_list') {
+        if (data?.cmd === "printers_list") {
           const list = Array.isArray(data.printers) ? data.printers : [];
           remotePrinters.value = list.map((p: RemotePrinterInfo) => {
             if (!p.paper_spec && p.capabilities?.config?.paperSize) {
@@ -593,17 +673,17 @@ const createState = (): PrintSettingsState => {
 
     socket.onclose = () => {
       remoteSocket.value = null;
-      if (remoteStatus.value !== 'error') {
-        remoteStatus.value = 'disconnected';
+      if (remoteStatus.value !== "error") {
+        remoteStatus.value = "disconnected";
       }
-      rejectAllWaiters(remoteWaiters, new Error('WebSocket closed'));
+      rejectAllWaiters(remoteWaiters, new Error("WebSocket closed"));
       scheduleRemoteReconnect();
     };
 
     socket.onerror = () => {
-      remoteStatus.value = 'error';
-      remoteStatusMessage.value = 'Remote connection failed';
-      rejectAllWaiters(remoteWaiters, new Error('WebSocket error'));
+      remoteStatus.value = "error";
+      remoteStatusMessage.value = "Remote connection failed";
+      rejectAllWaiters(remoteWaiters, new Error("WebSocket error"));
       scheduleRemoteReconnect();
     };
   };
@@ -611,32 +691,32 @@ const createState = (): PrintSettingsState => {
   const connectLocal = async () => {
     if (localConnectPromise) return localConnectPromise;
     if (localSocket.value && localSocket.value.readyState === WebSocket.OPEN) {
-      localStatus.value = 'connected';
+      localStatus.value = "connected";
       return Promise.resolve();
     }
 
     localManualDisconnect.value = false;
-    localStatus.value = 'connecting';
-    localStatusMessage.value = '';
+    localStatus.value = "connecting";
+    localStatusMessage.value = "";
 
     const socket = new WebSocket(localWsUrl.value);
     localSocket.value = socket;
     attachLocalHandlers(socket);
 
     localConnectPromise = new Promise<void>((resolve, reject) => {
-      socket.addEventListener('open', () => {
-        localStatus.value = 'connected';
+      socket.addEventListener("open", () => {
+        localStatus.value = "connected";
         clearLocalRetry();
         localConnectPromise = null;
-        socket.send(JSON.stringify({ type: 'get_printers' }));
+        socket.send(JSON.stringify({ type: "get_printers" }));
         resolve();
       });
-      socket.addEventListener('error', () => {
-        localStatus.value = 'error';
-        localStatusMessage.value = 'Local connection failed';
+      socket.addEventListener("error", () => {
+        localStatus.value = "error";
+        localStatusMessage.value = "Local connection failed";
         localConnectPromise = null;
         scheduleLocalReconnect();
-        reject(new Error('WebSocket error'));
+        reject(new Error("WebSocket error"));
       });
     });
 
@@ -650,37 +730,44 @@ const createState = (): PrintSettingsState => {
       localSocket.value.close();
     }
     localSocket.value = null;
-    localStatus.value = 'disconnected';
-    localStatusMessage.value = '';
-    printMode.value = 'browser';
+    localStatus.value = "disconnected";
+    localStatusMessage.value = "";
+    printMode.value = "browser";
   };
 
   const connectRemote = async () => {
     if (remoteConnectPromise) return remoteConnectPromise;
-    if (remoteSocket.value && remoteSocket.value.readyState === WebSocket.OPEN) {
-      remoteStatus.value = 'connected';
+    if (
+      remoteSocket.value &&
+      remoteSocket.value.readyState === WebSocket.OPEN
+    ) {
+      remoteStatus.value = "connected";
       return Promise.resolve();
     }
 
     remoteManualDisconnect.value = false;
-    remoteStatus.value = 'connecting';
-    remoteStatusMessage.value = '';
+    remoteStatus.value = "connecting";
+    remoteStatusMessage.value = "";
 
     remoteConnectPromise = (async () => {
       try {
-        if (!remoteSettings.apiBaseUrl || !remoteSettings.username || !remoteSettings.password) {
-          remoteStatus.value = 'error';
-          remoteStatusMessage.value = 'Missing remote connection fields';
+        if (
+          !remoteSettings.apiBaseUrl ||
+          !remoteSettings.username ||
+          !remoteSettings.password
+        ) {
+          remoteStatus.value = "error";
+          remoteStatusMessage.value = "Missing remote connection fields";
           return;
         }
 
         const loginResponse = await fetch(remoteSettings.apiBaseUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             username: remoteSettings.username,
-            password: remoteSettings.password
-          })
+            password: remoteSettings.password,
+          }),
         });
 
         if (!loginResponse.ok) {
@@ -690,7 +777,7 @@ const createState = (): PrintSettingsState => {
 
         const loginData = await loginResponse.json();
         if (!loginData?.token) {
-          throw new Error('Missing auth token');
+          throw new Error("Missing auth token");
         }
 
         remoteAuthToken.value = loginData.token;
@@ -700,22 +787,23 @@ const createState = (): PrintSettingsState => {
         attachRemoteHandlers(socket);
 
         await new Promise<void>((resolve, reject) => {
-          socket.addEventListener('open', () => {
-            remoteStatus.value = 'connected';
+          socket.addEventListener("open", () => {
+            remoteStatus.value = "connected";
             clearRemoteRetry();
-            socket.send(JSON.stringify({ cmd: 'get_clients' }));
+            socket.send(JSON.stringify({ cmd: "get_clients" }));
             resolve();
           });
-          socket.addEventListener('error', () => {
-            remoteStatus.value = 'error';
-            remoteStatusMessage.value = 'Remote connection failed';
+          socket.addEventListener("error", () => {
+            remoteStatus.value = "error";
+            remoteStatusMessage.value = "Remote connection failed";
             scheduleRemoteReconnect();
-            reject(new Error('WebSocket error'));
+            reject(new Error("WebSocket error"));
           });
         });
       } catch (error) {
-        remoteStatus.value = 'error';
-        remoteStatusMessage.value = (error as Error).message || 'Remote connection failed';
+        remoteStatus.value = "error";
+        remoteStatusMessage.value =
+          (error as Error).message || "Remote connection failed";
         scheduleRemoteReconnect();
       } finally {
         remoteConnectPromise = null;
@@ -732,18 +820,22 @@ const createState = (): PrintSettingsState => {
       remoteSocket.value.close();
     }
     remoteSocket.value = null;
-    remoteStatus.value = 'disconnected';
-    remoteStatusMessage.value = '';
-    printMode.value = 'browser';
+    remoteStatus.value = "disconnected";
+    remoteStatusMessage.value = "";
+    printMode.value = "browser";
   };
 
   const fetchLocalPrinters = async () => {
     await connectLocal();
-    const data = await sendWithWait<{ type: 'printer_list'; data: LocalPrinterInfo[] }>(
+    const data = await sendWithWait<{
+      type: "printer_list";
+      data: LocalPrinterInfo[];
+    }>(
       localSocket,
       localWaiters,
-      { type: 'get_printers' },
-      (msg): msg is { type: 'printer_list'; data: LocalPrinterInfo[] } => msg?.type === 'printer_list'
+      { type: "get_printers" },
+      (msg): msg is { type: "printer_list"; data: LocalPrinterInfo[] } =>
+        msg?.type === "printer_list",
     );
     localPrinters.value = Array.isArray(data.data) ? data.data : [];
     return localPrinters.value;
@@ -754,11 +846,21 @@ const createState = (): PrintSettingsState => {
     if (localPrinterCaps[printer]) return localPrinterCaps[printer];
 
     await connectLocal();
-    const data = await sendWithWait<{ type: 'printer_caps'; printer: string; data: LocalPrinterCaps }>(
+    const data = await sendWithWait<{
+      type: "printer_caps";
+      printer: string;
+      data: LocalPrinterCaps;
+    }>(
       localSocket,
       localWaiters,
-      { type: 'get_printer_caps', printer },
-      (msg): msg is { type: 'printer_caps'; printer: string; data: LocalPrinterCaps } => msg?.type === 'printer_caps'
+      { type: "get_printer_caps", printer },
+      (
+        msg,
+      ): msg is {
+        type: "printer_caps";
+        printer: string;
+        data: LocalPrinterCaps;
+      } => msg?.type === "printer_caps",
     );
 
     localPrinterCaps[printer] = data?.data || {};
@@ -767,22 +869,29 @@ const createState = (): PrintSettingsState => {
 
   const fetchRemoteClients = async () => {
     await connectRemote();
-    const data = await sendWithWait<{ cmd: 'clients_list'; clients: RemoteClientInfo[] }>(
+    const data = await sendWithWait<{
+      cmd: "clients_list";
+      clients: RemoteClientInfo[];
+    }>(
       remoteSocket,
       remoteWaiters,
-      { cmd: 'get_clients' },
-      (msg): msg is { cmd: 'clients_list'; clients: RemoteClientInfo[] } => msg?.cmd === 'clients_list'
+      { cmd: "get_clients" },
+      (msg): msg is { cmd: "clients_list"; clients: RemoteClientInfo[] } =>
+        msg?.cmd === "clients_list",
     );
 
     remoteClients.value = Array.isArray(data.clients) ? data.clients : [];
     if (remoteClients.value.length > 0) {
-      const exists = remoteClients.value.some(c => c.client_id === remoteSelectedClientId.value);
+      const exists = remoteClients.value.some(
+        (c) => c.client_id === remoteSelectedClientId.value,
+      );
       if (!exists) {
-        const onlineClient = remoteClients.value.find(c => c.online) || remoteClients.value[0];
-        remoteSelectedClientId.value = onlineClient?.client_id || '';
+        const onlineClient =
+          remoteClients.value.find((c) => c.online) || remoteClients.value[0];
+        remoteSelectedClientId.value = onlineClient?.client_id || "";
       }
     } else {
-      remoteSelectedClientId.value = '';
+      remoteSelectedClientId.value = "";
     }
     return remoteClients.value;
   };
@@ -795,11 +904,15 @@ const createState = (): PrintSettingsState => {
     }
 
     await connectRemote();
-    const data = await sendWithWait<{ cmd: 'printers_list'; printers: RemotePrinterInfo[] }>(
+    const data = await sendWithWait<{
+      cmd: "printers_list";
+      printers: RemotePrinterInfo[];
+    }>(
       remoteSocket,
       remoteWaiters,
-      { cmd: 'get_printers', client_id: targetClientId },
-      (msg): msg is { cmd: 'printers_list'; printers: RemotePrinterInfo[] } => msg?.cmd === 'printers_list'
+      { cmd: "get_printers", client_id: targetClientId },
+      (msg): msg is { cmd: "printers_list"; printers: RemotePrinterInfo[] } =>
+        msg?.cmd === "printers_list",
     );
 
     const list = Array.isArray(data.printers) ? data.printers : [];
@@ -822,19 +935,34 @@ const createState = (): PrintSettingsState => {
   const startLocalPrintersPolling = () => {
     if (localPrintersPoller.value) return;
     localPrintersPoller.value = window.setInterval(() => {
-      if (localStatus.value !== 'connected') return;
+      if (localStatus.value !== "connected") return;
       fetchLocalPrinters().catch(() => {});
     }, localPrintersPollIntervalMs);
   };
 
-  const submitRemoteTask = async (payload: Record<string, any>, timeoutMs: number = 30000) => {
+  const submitRemoteTask = async (
+    payload: Record<string, any>,
+    timeoutMs: number = 30000,
+  ) => {
     await connectRemote();
-    return await sendWithWait<{ cmd: 'task_result'; task_id?: string; status?: string; message?: string }>(
+    return await sendWithWait<{
+      cmd: "task_result";
+      task_id?: string;
+      status?: string;
+      message?: string;
+    }>(
       remoteSocket,
       remoteWaiters,
       payload,
-      (msg): msg is { cmd: 'task_result'; task_id?: string; status?: string; message?: string } => msg?.cmd === 'task_result',
-      timeoutMs
+      (
+        msg,
+      ): msg is {
+        cmd: "task_result";
+        task_id?: string;
+        status?: string;
+        message?: string;
+      } => msg?.cmd === "task_result",
+      timeoutMs,
     );
   };
 
@@ -848,30 +976,36 @@ const createState = (): PrintSettingsState => {
   const startRemoteClientsPolling = () => {
     if (remoteClientsPoller.value) return;
     remoteClientsPoller.value = window.setInterval(() => {
-      if (remoteStatus.value !== 'connected') return;
+      if (remoteStatus.value !== "connected") return;
       fetchRemoteClients().catch(() => {});
     }, remoteClientsPollIntervalMs);
   };
 
-  watch(remoteStatus, (status) => {
-    if (status === 'connected') {
-      fetchRemoteClients().catch(() => {});
-      startRemoteClientsPolling();
-      return;
-    }
-    stopRemoteClientsPolling();
-  }, { immediate: true });
+  watch(
+    remoteStatus,
+    (status) => {
+      if (status === "connected") {
+        fetchRemoteClients().catch(() => {});
+        startRemoteClientsPolling();
+        return;
+      }
+      stopRemoteClientsPolling();
+    },
+    { immediate: true },
+  );
 
-  watch(localStatus, (status) => {
-    if (status === 'connected') {
-      fetchLocalPrinters().catch(() => {});
-      startLocalPrintersPolling();
-      return;
-    }
-    stopLocalPrintersPolling();
-  }, { immediate: true });
-
-
+  watch(
+    localStatus,
+    (status) => {
+      if (status === "connected") {
+        fetchLocalPrinters().catch(() => {});
+        startLocalPrintersPolling();
+        return;
+      }
+      stopLocalPrintersPolling();
+    },
+    { immediate: true },
+  );
 
   return {
     printMode,
@@ -906,7 +1040,7 @@ const createState = (): PrintSettingsState => {
     connectLocal,
     disconnectLocal,
     connectRemote,
-    disconnectRemote
+    disconnectRemote,
   };
 };
 

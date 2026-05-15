@@ -1,10 +1,8 @@
 <script setup lang="ts">
-
-
 defineProps<{
   label: string;
   value?: string | number | boolean;
-  type?: 'text' | 'number' | 'textarea' | 'switch';
+  type?: "text" | "number" | "textarea" | "switch";
   placeholder?: string;
   min?: number;
   max?: number;
@@ -12,23 +10,27 @@ defineProps<{
   disabled?: boolean;
 }>();
 
-const emit = defineEmits(['update:value']);
+const emit = defineEmits(["update:value"]);
 
 const handleInput = (e: Event) => {
   const target = e.target as HTMLInputElement;
-  emit('update:value', target.value);
+  emit("update:value", target.value);
 };
 </script>
 
 <template>
   <div v-if="type === 'switch'" class="flex items-center justify-between">
-    <label class="text-sm text-gray-700 dark:text-gray-200 font-medium">{{ label }}</label>
-    <button 
+    <label class="text-sm text-gray-700 dark:text-gray-200 font-medium">{{
+      label
+    }}</label>
+    <button
       type="button"
       :disabled="disabled"
       @click="$emit('update:value', !value)"
       class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-      :class="value ? 'bg-blue-600 dark:bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'"
+      :class="
+        value ? 'bg-blue-600 dark:bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'
+      "
     >
       <span class="sr-only">Toggle {{ label }}</span>
       <span
@@ -40,8 +42,10 @@ const handleInput = (e: Event) => {
   </div>
 
   <div v-else>
-    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">{{ label }}</label>
-    
+    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">{{
+      label
+    }}</label>
+
     <textarea
       v-if="type === 'textarea'"
       :value="value === undefined || value === null ? '' : String(value)"

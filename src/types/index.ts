@@ -30,15 +30,15 @@ export interface Size {
 }
 
 export enum ElementType {
-  TEXT = 'text',
-  IMAGE = 'image',
-  TABLE = 'table',
-  PAGE_NUMBER = 'pageNumber',
-  BARCODE = 'barcode',
-  QRCODE = 'qrcode',
-  LINE = 'line',
-  RECT = 'rect',
-  CIRCLE = 'circle'
+  TEXT = "text",
+  IMAGE = "image",
+  TABLE = "table",
+  PAGE_NUMBER = "pageNumber",
+  BARCODE = "barcode",
+  QRCODE = "qrcode",
+  LINE = "line",
+  RECT = "rect",
+  CIRCLE = "circle",
 }
 
 export interface ElementStyle {
@@ -46,9 +46,9 @@ export interface ElementStyle {
   fontSize?: number;
   fontWeight?: string;
   fontStyle?: string;
-  textAlign?: 'left' | 'center' | 'right';
-  verticalAlign?: 'top' | 'middle' | 'bottom';
-  textDecoration?: 'none' | 'underline' | 'line-through' | 'overline';
+  textAlign?: "left" | "center" | "right";
+  verticalAlign?: "top" | "middle" | "bottom";
+  textDecoration?: "none" | "underline" | "line-through" | "overline";
   color?: string;
   backgroundColor?: string;
   border?: string;
@@ -68,14 +68,14 @@ export interface ElementStyle {
   footerColor?: string;
   headerFontSize?: number;
   footerFontSize?: number;
-  headerTextAlign?: 'left' | 'center' | 'right';
-  footerTextAlign?: 'left' | 'center' | 'right';
-  writingMode?: 'horizontal-tb' | 'vertical-rl';
+  headerTextAlign?: "left" | "center" | "right";
+  footerTextAlign?: "left" | "center" | "right";
+  writingMode?: "horizontal-tb" | "vertical-rl";
   // Barcode specific
   barcodeFormat?: string;
   showText?: boolean;
   // QRCode specific
-  qrErrorCorrection?: 'L' | 'M' | 'Q' | 'H';
+  qrErrorCorrection?: "L" | "M" | "Q" | "H";
   // Shape specific
   borderRadius?: number;
   // Text specific
@@ -112,7 +112,7 @@ export interface PrintElement {
   style: ElementStyle;
   // Pagination-specific (optional)
   labelText?: string;
-  labelPosition?: 'before' | 'after';
+  labelPosition?: "before" | "after";
   labelFontSize?: number;
   labelColor?: string;
   labelFontFamily?: string;
@@ -124,7 +124,7 @@ export interface PrintElement {
   labelBorderColor?: string;
   format?: string; // For page number
   // pagination frame border composed controls
-  frameBorderStyle?: 'solid' | 'dashed' | 'dotted';
+  frameBorderStyle?: "solid" | "dashed" | "dotted";
   frameBorderWidth?: number;
   frameBorderColor?: string;
 }
@@ -152,8 +152,8 @@ export interface CustomElementTemplate {
   ext?: Record<string, any>;
 }
 
-export type ListContextMenuMode = 'replace' | 'append';
-export type ListContextMenuSource = 'template' | 'customElement';
+export type ListContextMenuMode = "replace" | "append";
+export type ListContextMenuSource = "template" | "customElement";
 
 export interface ListContextMenuActionContext {
   source: ListContextMenuSource;
@@ -179,10 +179,22 @@ export interface ListContextMenuConfig {
   items: ListContextMenuItem[];
 }
 
-export type TemplateMenuActionKey = 'edit' | 'copy' | 'delete' | 'testData' | 'variablesPanel';
+export type TemplateMenuActionKey =
+  | "edit"
+  | "copy"
+  | "delete"
+  | "testData"
+  | "variablesPanel";
 
-export type TemplateModalMode = 'create' | 'edit' | 'copy';
-export type TemplateModalFieldType = 'input' | 'number' | 'textarea' | 'select' | 'radio' | 'date' | 'datetime';
+export type TemplateModalMode = "create" | "edit" | "copy";
+export type TemplateModalFieldType =
+  | "input"
+  | "number"
+  | "textarea"
+  | "select"
+  | "radio"
+  | "date"
+  | "datetime";
 
 export interface TemplateModalFieldOption {
   label: string;
@@ -213,7 +225,6 @@ export interface VariableTreeItem {
   children?: VariableTreeItem[];
   isArray?: boolean;
 }
-
 
 export interface TemplateModalFormConfig {
   create?: TemplateModalConfigItem;
@@ -246,7 +257,7 @@ export interface CustomElementEditSnapshot {
   canvasBackground: string;
   pageSpacingX?: number;
   pageSpacingY?: number;
-  unit?: 'mm' | 'px' | 'pt' | 'in' | 'cm';
+  unit?: "mm" | "px" | "pt" | "in" | "cm";
   watermark?: WatermarkSettings;
   testData?: Record<string, any>;
   currentPageIndex: number;
@@ -254,7 +265,7 @@ export interface CustomElementEditSnapshot {
   selectedElementIds: string[];
   selectedGuideId: string | null;
   highlightedGuideId: string | null;
-  highlightedEdge: 'left' | 'top' | 'right' | 'bottom' | null;
+  highlightedEdge: "left" | "top" | "right" | "bottom" | null;
   highlightedAlignedElementIds: string[];
 }
 
@@ -267,7 +278,9 @@ export interface DesignerState {
   customElementContextMenuConfig?: ListContextMenuConfig | null;
   templateModalFormConfig?: TemplateModalFormConfig | null;
   customElementModalFormConfig?: TemplateModalFormConfig | null;
-  contextMenuEventEmitter?: ((eventName: string, detail: Record<string, any>) => void) | null;
+  contextMenuEventEmitter?:
+    | ((eventName: string, detail: Record<string, any>) => void)
+    | null;
   crudScopeId?: string;
   testData: Record<string, any>;
   variables: Record<string, any>;
@@ -279,10 +292,10 @@ export interface DesignerState {
   selectedElementIds: string[];
   selectedGuideId: string | null;
   highlightedGuideId: string | null;
-  highlightedEdge: 'left' | 'top' | 'right' | 'bottom' | null;
+  highlightedEdge: "left" | "top" | "right" | "bottom" | null;
   highlightedAlignedElementIds: string[];
   canvasSize: Size; // A4 usually
-  unit?: 'mm' | 'px' | 'pt' | 'in' | 'cm';
+  unit?: "mm" | "px" | "pt" | "in" | "cm";
   watermark?: WatermarkSettings;
   zoom: number;
   isDragging: boolean;
@@ -314,7 +327,11 @@ export interface DesignerState {
   showCloudLink?: boolean;
   tableSelection?: {
     elementId: string;
-    cells: { rowIndex: number; colField: string; section?: 'body' | 'footer' }[];
+    cells: {
+      rowIndex: number;
+      colField: string;
+      section?: "body" | "footer";
+    }[];
   } | null;
   showVariablesPanel?: boolean;
   availableVariables?: VariableTreeItem[];
@@ -322,7 +339,7 @@ export interface DesignerState {
 
 export interface Guide {
   id: string;
-  type: 'horizontal' | 'vertical';
+  type: "horizontal" | "vertical";
   position: number; // pixel position
 }
 
@@ -334,8 +351,17 @@ export interface PropertyFieldOption {
 
 export interface PropertyField {
   label: string;
-  type: 'number' | 'text' | 'textarea' | 'color' | 'action' | 'select' | 'switch' | 'code' | 'image';
-  target: 'element' | 'style' | 'data';
+  type:
+    | "number"
+    | "text"
+    | "textarea"
+    | "color"
+    | "action"
+    | "select"
+    | "switch"
+    | "code"
+    | "image";
+  target: "element" | "style" | "data";
   key?: string;
   placeholder?: string;
   min?: number;
@@ -349,7 +375,7 @@ export interface PropertyField {
 
 export interface PropertySection {
   title: string;
-  tab?: 'properties' | 'style' | 'advanced';
+  tab?: "properties" | "style" | "advanced";
   fields: PropertyField[];
 }
 

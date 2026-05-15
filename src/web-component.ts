@@ -1,10 +1,10 @@
-import { createApp, nextTick, ref, h } from 'vue';
-import { createPinia, setActivePinia } from 'pinia';
-import i18n, { createI18nInstance } from './locales';
-import baseStyles from './style.css?inline';
-import PrintDesigner from './components/PrintDesigner.vue';
-import { useTheme } from './composables/useTheme';
-import { usePrint } from './utils/print';
+import { createApp, nextTick, ref, h } from "vue";
+import { createPinia, setActivePinia } from "pinia";
+import i18n, { createI18nInstance } from "./locales";
+import baseStyles from "./style.css?inline";
+import PrintDesigner from "./components/PrintDesigner.vue";
+import { useTheme } from "./composables/useTheme";
+import { usePrint } from "./utils/print";
 import {
   usePrintSettings,
   type PrintMode,
@@ -14,28 +14,48 @@ import {
   type LocalPrinterInfo,
   type RemotePrinterInfo,
   type LocalPrinterCaps,
-  type RemoteClientInfo
-} from './composables/usePrintSettings';
-import { useDesignerStore } from './stores/designer';
-import { useTemplateStore } from './stores/templates';
-import { cloneDeep } from 'lodash';
-import { v4 as uuidv4 } from 'uuid';
-import { setCrudConfig, setCrudMode, getCrudConfig, buildEndpoint, buildFetchOptions, type CrudMode, type CrudEndpoints, type EndpointConfig } from './utils/crudConfig';
-import { loader } from '@guolao/vue-monaco-editor';
-import type { ListContextMenuConfig, ListContextMenuSource, ListContextMenuItem, TemplateModalFormConfig, DesignerFontOption as InternalDesignerFontOption } from './types';
-import { canDeleteEntity, canEditEntity, normalizeEntityConstraints, mergeExt } from './utils/entityConstraints';
-import { buildTestDataFromPages } from './utils/variables';
+  type RemoteClientInfo,
+} from "./composables/usePrintSettings";
+import { useDesignerStore } from "./stores/designer";
+import { useTemplateStore } from "./stores/templates";
+import { cloneDeep } from "lodash";
+import { v4 as uuidv4 } from "uuid";
+import {
+  setCrudConfig,
+  setCrudMode,
+  getCrudConfig,
+  buildEndpoint,
+  buildFetchOptions,
+  type CrudMode,
+  type CrudEndpoints,
+  type EndpointConfig,
+} from "./utils/crudConfig";
+import { loader } from "@guolao/vue-monaco-editor";
+import type {
+  ListContextMenuConfig,
+  ListContextMenuSource,
+  ListContextMenuItem,
+  TemplateModalFormConfig,
+  DesignerFontOption as InternalDesignerFontOption,
+} from "./types";
+import {
+  canDeleteEntity,
+  canEditEntity,
+  normalizeEntityConstraints,
+  mergeExt,
+} from "./utils/entityConstraints";
+import { buildTestDataFromPages } from "./utils/variables";
 
 loader.config({
-  'vs/nls': {
+  "vs/nls": {
     availableLanguages: {
-      '*': 'en'
-    }
-  }
+      "*": "en",
+    },
+  },
 });
 
 export type DesignerExportRequest = {
-  type: 'pdf' | 'html' | 'images' | 'pdfBlob' | 'imageBlob';
+  type: "pdf" | "html" | "images" | "pdfBlob" | "imageBlob";
   filename?: string;
   filenamePrefix?: string;
   merged?: boolean;
@@ -56,14 +76,14 @@ export type DesignerPrintDefaults = {
   remotePrintOptions?: Partial<PrintOptions>;
 };
 
-const designerFontStorageKey = 'print-designer-font-family';
+const designerFontStorageKey = "print-designer-font-family";
 
 const applyStoredBrandVars = () => {
-  const stored = localStorage.getItem('print-designer-brand-vars');
+  const stored = localStorage.getItem("print-designer-brand-vars");
   if (!stored) return;
   try {
     const vars = JSON.parse(stored) as Record<string, string>;
-    if (!vars || typeof vars !== 'object') return;
+    if (!vars || typeof vars !== "object") return;
     const root = document.documentElement;
     Object.entries(vars).forEach(([key, value]) => {
       root.style.setProperty(key, value);
@@ -73,17 +93,18 @@ const applyStoredBrandVars = () => {
   }
 };
 
-const getStoredDesignerFont = () => localStorage.getItem(designerFontStorageKey)?.trim() || '';
+const getStoredDesignerFont = () =>
+  localStorage.getItem(designerFontStorageKey)?.trim() || "";
 
 const normalizeTemplateVariableKey = (rawKey: string) => {
-  const key = String(rawKey || '').trim();
-  if (!key) return '';
-  return key.startsWith('@') ? key.slice(1).trim() : key;
+  const key = String(rawKey || "").trim();
+  if (!key) return "";
+  return key.startsWith("@") ? key.slice(1).trim() : key;
 };
 
 const normalizeTemplateVariableMap = (data: Record<string, any>) => {
   const result: Record<string, any> = {};
-  if (!data || typeof data !== 'object') return result;
+  if (!data || typeof data !== "object") return result;
   Object.entries(data).forEach(([rawKey, value]) => {
     const key = normalizeTemplateVariableKey(rawKey);
     if (!key) return;
@@ -92,16 +113,19 @@ const normalizeTemplateVariableMap = (data: Record<string, any>) => {
   return result;
 };
 
-export type DesignerListContextMenuItem = Omit<ListContextMenuItem, 'hidden' | 'disabled' | 'onClick'>;
+export type DesignerListContextMenuItem = Omit<
+  ListContextMenuItem,
+  "hidden" | "disabled" | "onClick"
+>;
 export interface DesignerListContextMenuConfig {
-  mode?: 'replace' | 'append';
+  mode?: "replace" | "append";
   items: DesignerListContextMenuItem[];
 }
 export type DesignerTemplateModalFormConfig = TemplateModalFormConfig;
 export type DesignerFontOption = InternalDesignerFontOption;
 
-import { toast } from './utils/toast';
-import { uiConfirm } from './utils/confirm';
+import { toast } from "./utils/toast";
+import { uiConfirm } from "./utils/confirm";
 
 class PrintDesignerElement extends HTMLElement {
   private app: ReturnType<typeof createApp> | null = null;
@@ -123,30 +147,38 @@ class PrintDesignerElement extends HTMLElement {
   public isReady: boolean = false;
 
   static get observedAttributes() {
-    return ['lang', 'client-url', 'cloud-url', 'hide-links', 'hide-client-link', 'hide-cloud-link', 'headless'];
+    return [
+      "lang",
+      "client-url",
+      "cloud-url",
+      "hide-links",
+      "hide-client-link",
+      "hide-cloud-link",
+      "headless",
+    ];
   }
 
   attributeChangedCallback(name: string, oldValue: string, newValue: string) {
-    if (name === 'lang' && newValue !== oldValue) {
+    if (name === "lang" && newValue !== oldValue) {
       this.setLanguage(newValue);
     }
-    if (name === 'client-url' && newValue !== oldValue) {
+    if (name === "client-url" && newValue !== oldValue) {
       this.setClientLink(newValue);
     }
-    if (name === 'cloud-url' && newValue !== oldValue) {
+    if (name === "cloud-url" && newValue !== oldValue) {
       this.setCloudLink(newValue);
     }
-    if (name === 'hide-links' && newValue !== oldValue) {
-      this.hideLinks(newValue === 'true' || newValue === '');
+    if (name === "hide-links" && newValue !== oldValue) {
+      this.hideLinks(newValue === "true" || newValue === "");
     }
-    if (name === 'hide-client-link' && newValue !== oldValue) {
-      this.hideClientLink(newValue === 'true' || newValue === '');
+    if (name === "hide-client-link" && newValue !== oldValue) {
+      this.hideClientLink(newValue === "true" || newValue === "");
     }
-    if (name === 'hide-cloud-link' && newValue !== oldValue) {
-      this.hideCloudLink(newValue === 'true' || newValue === '');
+    if (name === "hide-cloud-link" && newValue !== oldValue) {
+      this.hideCloudLink(newValue === "true" || newValue === "");
     }
-    if (name === 'headless' && newValue !== oldValue) {
-      this._headless.value = newValue === 'true' || newValue === '';
+    if (name === "headless" && newValue !== oldValue) {
+      this._headless.value = newValue === "true" || newValue === "";
     }
   }
 
@@ -188,12 +220,12 @@ class PrintDesignerElement extends HTMLElement {
   }
 
   setLanguage(lang: string) {
-    if (lang === 'zh' || lang === 'en') {
+    if (lang === "zh" || lang === "en") {
       if (this.i18n) {
         // @ts-ignore
         this.i18n.global.locale.value = lang;
       }
-      localStorage.setItem('print-designer-language', lang);
+      localStorage.setItem("print-designer-language", lang);
     }
   }
 
@@ -202,48 +234,51 @@ class PrintDesignerElement extends HTMLElement {
     if (!shadow) return;
 
     // Sync <style> tags
-    const monacoStyles = Array.from(document.querySelectorAll('style')).filter(style => 
-      style.textContent?.includes('.monaco-editor') || 
-      style.id?.startsWith('monaco-') ||
-      style.textContent?.includes('print-designer')
+    const monacoStyles = Array.from(document.querySelectorAll("style")).filter(
+      (style) =>
+        style.textContent?.includes(".monaco-editor") ||
+        style.id?.startsWith("monaco-") ||
+        style.textContent?.includes("print-designer"),
     );
-    
-    monacoStyles.forEach(style => {
-      // Use the style ID if present, or a content-based hash if possible. 
+
+    monacoStyles.forEach((style) => {
+      // Use the style ID if present, or a content-based hash if possible.
       // For simplicity, let's just use a special attribute to track clones.
-      const existingClone = Array.from(shadow.querySelectorAll('style')).find(s => 
-        s.textContent === style.textContent
+      const existingClone = Array.from(shadow.querySelectorAll("style")).find(
+        (s) => s.textContent === style.textContent,
       );
-      
+
       if (!existingClone) {
         const clone = style.cloneNode(true) as HTMLStyleElement;
-        clone.setAttribute('data-monaco-clone', 'true');
+        clone.setAttribute("data-monaco-clone", "true");
         shadow.appendChild(clone);
       }
     });
 
     // Sync <link> tags
-    const monacoLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).filter(link => {
-      const href = link.getAttribute('href') || '';
-      return href.includes('monaco') || href.includes('print-designer');
+    const monacoLinks = Array.from(
+      document.querySelectorAll('link[rel="stylesheet"]'),
+    ).filter((link) => {
+      const href = link.getAttribute("href") || "";
+      return href.includes("monaco") || href.includes("print-designer");
     }) as HTMLLinkElement[];
 
-    monacoLinks.forEach(link => {
+    monacoLinks.forEach((link) => {
       const existingClone = shadow.querySelector(`link[href="${link.href}"]`);
       if (!existingClone) {
         const clone = link.cloneNode(true) as HTMLLinkElement;
-        clone.setAttribute('data-monaco-clone', 'true');
+        clone.setAttribute("data-monaco-clone", "true");
         shadow.appendChild(clone);
       }
     });
   }
 
   private ensureShadowRoot() {
-    const shadow = this.shadowRoot || this.attachShadow({ mode: 'open' });
+    const shadow = this.shadowRoot || this.attachShadow({ mode: "open" });
 
-    if (!shadow.querySelector('style[data-print-designer-inline]')) {
-      const style = document.createElement('style');
-      style.setAttribute('data-print-designer-inline', 'true');
+    if (!shadow.querySelector("style[data-print-designer-inline]")) {
+      const style = document.createElement("style");
+      style.setAttribute("data-print-designer-inline", "true");
       style.textContent = baseStyles;
       shadow.appendChild(style);
     }
@@ -261,34 +296,40 @@ class PrintDesignerElement extends HTMLElement {
     this.headObserver = new MutationObserver(() => {
       this.syncMonacoStyles();
     });
-    this.headObserver.observe(document.head, { childList: true, subtree: true });
+    this.headObserver.observe(document.head, {
+      childList: true,
+      subtree: true,
+    });
 
     const pinia = createPinia();
     setActivePinia(pinia);
 
-    const initialHeadless = this.hasAttribute('headless') && (this.getAttribute('headless') === 'true' || this.getAttribute('headless') === '');
+    const initialHeadless =
+      this.hasAttribute("headless") &&
+      (this.getAttribute("headless") === "true" ||
+        this.getAttribute("headless") === "");
     this._headless.value = initialHeadless;
 
     const app = createApp({
       setup: () => {
         return () => h(PrintDesigner, { headless: this._headless.value });
-      }
+      },
     });
     this.themeApi = useTheme();
     applyStoredBrandVars();
 
     app.use(pinia);
-    
-    const lang = this.getAttribute('lang') as 'zh' | 'en' | null;
+
+    const lang = this.getAttribute("lang") as "zh" | "en" | null;
     const i18n = createI18nInstance(lang || undefined);
     this.i18n = i18n;
     app.use(i18n);
 
     const shadow = this.ensureShadowRoot();
     if (!this.mountEl) {
-      this.mountEl = document.createElement('div');
-      this.mountEl.style.width = '100%';
-      this.mountEl.style.height = '100%';
+      this.mountEl = document.createElement("div");
+      this.mountEl.style.width = "100%";
+      this.mountEl.style.height = "100%";
       shadow.appendChild(this.mountEl);
     }
     const storedDesignerFont = getStoredDesignerFont();
@@ -302,11 +343,11 @@ class PrintDesignerElement extends HTMLElement {
     this.printSettings = usePrintSettings();
     this.designerStore = useDesignerStore(pinia);
     this.designerStore.setCrudScopeId(this._crudScopeId);
-    
+
     this.designerStore.setContextMenuEventEmitter((eventName, detail) => {
       this.dispatchEvent(new CustomEvent(eventName, { detail }));
     });
-    
+
     if (this._pendingClientUrl !== null) {
       this.designerStore.setClientUrl(this._pendingClientUrl);
       this._pendingClientUrl = null;
@@ -333,10 +374,10 @@ class PrintDesignerElement extends HTMLElement {
 
     this.app = app;
     this.isReady = true;
-    
+
     // Dispatch in the next tick to ensure consumers have a chance to add event listeners
     setTimeout(() => {
-      this.dispatchEvent(new CustomEvent('ready'));
+      this.dispatchEvent(new CustomEvent("ready"));
     }, 0);
   }
 
@@ -360,29 +401,40 @@ class PrintDesignerElement extends HTMLElement {
 
   private getPrintPages() {
     const root = this.shadowRoot || this;
-    return Array.from(root.querySelectorAll('.print-page')) as HTMLElement[];
+    return Array.from(root.querySelectorAll(".print-page")) as HTMLElement[];
   }
 
   async print(request: DesignerPrintRequest = {}) {
     if (!this.printApi) return;
     const pages = this.getPrintPages();
-    this.dispatchEvent(new CustomEvent('print', { detail: { request } }));
+    this.dispatchEvent(new CustomEvent("print", { detail: { request } }));
     try {
-      const result = await this.printApi.print(pages, { mode: request.mode, options: request.options });
-      this.dispatchEvent(new CustomEvent('printed', { detail: { request, result } }));
+      const result = await this.printApi.print(pages, {
+        mode: request.mode,
+        options: request.options,
+      });
+      this.dispatchEvent(
+        new CustomEvent("printed", { detail: { request, result } }),
+      );
       return result;
     } catch (error) {
-      this.dispatchEvent(new CustomEvent('error', { detail: { scope: 'print', error } }));
+      this.dispatchEvent(
+        new CustomEvent("error", { detail: { scope: "print", error } }),
+      );
       throw error;
     }
   }
 
   async getPreviewHtml() {
-    if (!this.printApi) return '';
+    if (!this.printApi) return "";
     try {
       return await this.printApi.getPrintHtml(this.getPrintPages());
     } catch (error) {
-      this.dispatchEvent(new CustomEvent('error', { detail: { scope: 'getPreviewHtml', error } }));
+      this.dispatchEvent(
+        new CustomEvent("error", {
+          detail: { scope: "getPreviewHtml", error },
+        }),
+      );
       throw error;
     }
   }
@@ -396,54 +448,85 @@ class PrintDesignerElement extends HTMLElement {
     }
 
     try {
-      this.dispatchEvent(new CustomEvent('export', { detail: { request } }));
-      if (type === 'pdf') {
-        await this.printApi.exportPdf(this.getPrintPages(), request.filename || 'print-design.pdf');
-        this.dispatchEvent(new CustomEvent('exported', { detail: { request } }));
+      this.dispatchEvent(new CustomEvent("export", { detail: { request } }));
+      if (type === "pdf") {
+        await this.printApi.exportPdf(
+          this.getPrintPages(),
+          request.filename || "print-design.pdf",
+        );
+        this.dispatchEvent(
+          new CustomEvent("exported", { detail: { request } }),
+        );
         return;
       }
-      if (type === 'html') {
-        await this.printApi.exportHtml(this.getPrintPages(), request.filename || 'print-design.html');
-        this.dispatchEvent(new CustomEvent('exported', { detail: { request } }));
+      if (type === "html") {
+        await this.printApi.exportHtml(
+          this.getPrintPages(),
+          request.filename || "print-design.html",
+        );
+        this.dispatchEvent(
+          new CustomEvent("exported", { detail: { request } }),
+        );
         return;
       }
-      if (type === 'images') {
-        await this.printApi.exportImages(this.getPrintPages(), request.filenamePrefix || 'print-design');
-        this.dispatchEvent(new CustomEvent('exported', { detail: { request } }));
+      if (type === "images") {
+        await this.printApi.exportImages(
+          this.getPrintPages(),
+          request.filenamePrefix || "print-design",
+        );
+        this.dispatchEvent(
+          new CustomEvent("exported", { detail: { request } }),
+        );
         return;
       }
-      if (type === 'pdfBlob') {
+      if (type === "pdfBlob") {
         const blob = await this.printApi.getPdfBlob(this.getPrintPages());
-        this.dispatchEvent(new CustomEvent('exported', { detail: { request, blob } }));
+        this.dispatchEvent(
+          new CustomEvent("exported", { detail: { request, blob } }),
+        );
         return blob;
       }
-      if (type === 'imageBlob') {
+      if (type === "imageBlob") {
         const blob = await this.printApi.getImageBlob(this.getPrintPages());
-        this.dispatchEvent(new CustomEvent('exported', { detail: { request, blob } }));
+        this.dispatchEvent(
+          new CustomEvent("exported", { detail: { request, blob } }),
+        );
         return blob;
       }
-      throw new Error('export type not supported');
+      throw new Error("export type not supported");
     } catch (error) {
-      this.dispatchEvent(new CustomEvent('error', { detail: { scope: 'export', error } }));
+      this.dispatchEvent(
+        new CustomEvent("error", { detail: { scope: "export", error } }),
+      );
       throw error;
     } finally {
       this.printSettings.exportImageMerged.value = previousMerged;
     }
   }
 
-  setBranding(payload: { title?: string; logoUrl?: string; showTitle?: boolean; showLogo?: boolean } = {}) {
+  setBranding(
+    payload: {
+      title?: string;
+      logoUrl?: string;
+      showTitle?: boolean;
+      showLogo?: boolean;
+    } = {},
+  ) {
     if (!this.designerStore) return;
     this.designerStore.setBranding(payload);
   }
 
-  setBrandVars(vars: Record<string, string>, options: { persist?: boolean } = {}) {
-    if (!vars || typeof vars !== 'object') return;
+  setBrandVars(
+    vars: Record<string, string>,
+    options: { persist?: boolean } = {},
+  ) {
+    if (!vars || typeof vars !== "object") return;
     const root = document.documentElement;
     Object.entries(vars).forEach(([key, value]) => {
       root.style.setProperty(key, value);
     });
     if (options.persist !== false) {
-      localStorage.setItem('print-designer-brand-vars', JSON.stringify(vars));
+      localStorage.setItem("print-designer-brand-vars", JSON.stringify(vars));
     }
   }
 
@@ -454,11 +537,11 @@ class PrintDesignerElement extends HTMLElement {
 
   setDesignerFont(fontFamily: string, options: { persist?: boolean } = {}) {
     if (!this.mountEl) return;
-    const normalized = (fontFamily || '').trim();
+    const normalized = (fontFamily || "").trim();
     if (normalized) {
       this.mountEl.style.fontFamily = normalized;
     } else {
-      this.mountEl.style.removeProperty('font-family');
+      this.mountEl.style.removeProperty("font-family");
     }
     if (options.persist !== false) {
       if (normalized) {
@@ -472,10 +555,12 @@ class PrintDesignerElement extends HTMLElement {
   setFontOptions(options: DesignerFontOption[] = []) {
     const normalized = Array.isArray(options)
       ? options
-          .filter((item): item is DesignerFontOption => Boolean(item && typeof item.value === 'string'))
+          .filter((item): item is DesignerFontOption =>
+            Boolean(item && typeof item.value === "string"),
+          )
           .map((item) => ({
-            label: String(item.label ?? '').trim(),
-            value: String(item.value).trim()
+            label: String(item.label ?? "").trim(),
+            value: String(item.value).trim(),
           }))
       : [];
 
@@ -487,10 +572,10 @@ class PrintDesignerElement extends HTMLElement {
   }
 
   getPrintQuality() {
-    return this.printSettings?.printQuality.value ?? 'normal';
+    return this.printSettings?.printQuality.value ?? "normal";
   }
 
-  setPrintQuality(quality: 'fast' | 'normal' | 'high' | 'ultra') {
+  setPrintQuality(quality: "fast" | "normal" | "high" | "ultra") {
     if (this.printSettings) {
       this.printSettings.printQuality.value = quality;
     }
@@ -501,10 +586,16 @@ class PrintDesignerElement extends HTMLElement {
     return cloneDeep(this.designerStore.testData || {});
   }
 
-  async setTestData(data: Record<string, any>, options: { merge?: boolean } = {}) {
-    if (!this.designerStore || !data || typeof data !== 'object') return;
+  async setTestData(
+    data: Record<string, any>,
+    options: { merge?: boolean } = {},
+  ) {
+    if (!this.designerStore || !data || typeof data !== "object") return;
     if (options.merge) {
-      this.designerStore.testData = { ...(this.designerStore.testData || {}), ...data };
+      this.designerStore.testData = {
+        ...(this.designerStore.testData || {}),
+        ...data,
+      };
     } else {
       this.designerStore.testData = data;
     }
@@ -516,28 +607,40 @@ class PrintDesignerElement extends HTMLElement {
     return cloneDeep(this.designerStore.variables || {});
   }
 
-  async setVariables(data: Record<string, any>, options: { merge?: boolean } = {}) {
-    if (!this.designerStore || !data || typeof data !== 'object') return;
+  async setVariables(
+    data: Record<string, any>,
+    options: { merge?: boolean } = {},
+  ) {
+    if (!this.designerStore || !data || typeof data !== "object") return;
     if (options.merge) {
-      this.designerStore.variables = { ...(this.designerStore.variables || {}), ...data };
+      this.designerStore.variables = {
+        ...(this.designerStore.variables || {}),
+        ...data,
+      };
     } else {
       this.designerStore.variables = data;
     }
     await nextTick();
   }
 
-  async setTemplateVariables(data: Record<string, any>, options: { merge?: boolean } = {}) {
-    if (!this.designerStore || !data || typeof data !== 'object') return;
+  async setTemplateVariables(
+    data: Record<string, any>,
+    options: { merge?: boolean } = {},
+  ) {
+    if (!this.designerStore || !data || typeof data !== "object") return;
     const normalizedData = normalizeTemplateVariableMap(data);
     if (options.merge) {
-      this.designerStore.variables = { ...(this.designerStore.variables || {}), ...normalizedData };
+      this.designerStore.variables = {
+        ...(this.designerStore.variables || {}),
+        ...normalizedData,
+      };
     } else {
       this.designerStore.variables = normalizedData;
     }
     await nextTick();
   }
 
-  setAvailableVariables(variables: import('./types').VariableTreeItem[]) {
+  setAvailableVariables(variables: import("./types").VariableTreeItem[]) {
     if (!this.designerStore) return;
     this.designerStore.setAvailableVariables(variables);
   }
@@ -549,14 +652,14 @@ class PrintDesignerElement extends HTMLElement {
     for (const [key, value] of Object.entries(testData)) {
       if (Array.isArray(value)) {
         result[key] = [];
-      } else if (typeof value === 'object' && value !== null) {
+      } else if (typeof value === "object" && value !== null) {
         result[key] = {};
-      } else if (typeof value === 'number') {
+      } else if (typeof value === "number") {
         result[key] = 0;
-      } else if (typeof value === 'boolean') {
+      } else if (typeof value === "boolean") {
         result[key] = false;
       } else {
-        result[key] = '';
+        result[key] = "";
       }
     }
     return result;
@@ -583,8 +686,10 @@ class PrintDesignerElement extends HTMLElement {
       watermark: cloneDeep(this.designerStore.watermark),
       testData: cloneDeep(this.designerStore.testData || {}),
       ext: {
-        availableVariables: cloneDeep(this.designerStore.availableVariables || [])
-      }
+        availableVariables: cloneDeep(
+          this.designerStore.availableVariables || [],
+        ),
+      },
     };
   }
 
@@ -596,21 +701,33 @@ class PrintDesignerElement extends HTMLElement {
     if (Array.isArray(data.pages) && data.pages.length > 0) {
       this.designerStore.pages = cloneDeep(data.pages);
     }
-    if (data.canvasSize) this.designerStore.canvasSize = cloneDeep(data.canvasSize);
+    if (data.canvasSize)
+      this.designerStore.canvasSize = cloneDeep(data.canvasSize);
     if (data.guides) this.designerStore.guides = cloneDeep(data.guides);
     if (data.zoom !== undefined) this.designerStore.zoom = data.zoom;
-    if (data.showGrid !== undefined) this.designerStore.showGrid = data.showGrid;
-    if (data.allowDragOutsideCanvas !== undefined) this.designerStore.allowDragOutsideCanvas = data.allowDragOutsideCanvas;
-    if (data.headerHeight !== undefined) this.designerStore.headerHeight = data.headerHeight;
-    if (data.footerHeight !== undefined) this.designerStore.footerHeight = data.footerHeight;
-    if (data.showHeaderLine !== undefined) this.designerStore.showHeaderLine = data.showHeaderLine;
-    if (data.showFooterLine !== undefined) this.designerStore.showFooterLine = data.showFooterLine;
-    if (data.showMinimap !== undefined) this.designerStore.showMinimap = data.showMinimap;
-    if (data.canvasBackground !== undefined) this.designerStore.canvasBackground = data.canvasBackground;
-    if (data.pageSpacingX !== undefined) this.designerStore.pageSpacingX = data.pageSpacingX;
-    if (data.pageSpacingY !== undefined) this.designerStore.pageSpacingY = data.pageSpacingY;
+    if (data.showGrid !== undefined)
+      this.designerStore.showGrid = data.showGrid;
+    if (data.allowDragOutsideCanvas !== undefined)
+      this.designerStore.allowDragOutsideCanvas = data.allowDragOutsideCanvas;
+    if (data.headerHeight !== undefined)
+      this.designerStore.headerHeight = data.headerHeight;
+    if (data.footerHeight !== undefined)
+      this.designerStore.footerHeight = data.footerHeight;
+    if (data.showHeaderLine !== undefined)
+      this.designerStore.showHeaderLine = data.showHeaderLine;
+    if (data.showFooterLine !== undefined)
+      this.designerStore.showFooterLine = data.showFooterLine;
+    if (data.showMinimap !== undefined)
+      this.designerStore.showMinimap = data.showMinimap;
+    if (data.canvasBackground !== undefined)
+      this.designerStore.canvasBackground = data.canvasBackground;
+    if (data.pageSpacingX !== undefined)
+      this.designerStore.pageSpacingX = data.pageSpacingX;
+    if (data.pageSpacingY !== undefined)
+      this.designerStore.pageSpacingY = data.pageSpacingY;
     if (data.unit !== undefined) this.designerStore.unit = data.unit;
-    if (data.watermark !== undefined) this.designerStore.watermark = cloneDeep(data.watermark);
+    if (data.watermark !== undefined)
+      this.designerStore.watermark = cloneDeep(data.watermark);
     this.designerStore.testData = cloneDeep(data.testData || {});
     const availableVariables = Array.isArray(data?.ext?.availableVariables)
       ? cloneDeep(data.ext.availableVariables)
@@ -632,7 +749,9 @@ class PrintDesignerElement extends HTMLElement {
       this.printSettings.silentPrint.value = Boolean(payload.silentPrint);
     }
     if (payload.exportImageMerged !== undefined) {
-      this.printSettings.exportImageMerged.value = Boolean(payload.exportImageMerged);
+      this.printSettings.exportImageMerged.value = Boolean(
+        payload.exportImageMerged,
+      );
     }
     if (payload.localSettings) {
       Object.assign(this.printSettings.localSettings, payload.localSettings);
@@ -641,10 +760,16 @@ class PrintDesignerElement extends HTMLElement {
       Object.assign(this.printSettings.remoteSettings, payload.remoteSettings);
     }
     if (payload.localPrintOptions) {
-      Object.assign(this.printSettings.localPrintOptions, payload.localPrintOptions);
+      Object.assign(
+        this.printSettings.localPrintOptions,
+        payload.localPrintOptions,
+      );
     }
     if (payload.remotePrintOptions) {
-      Object.assign(this.printSettings.remotePrintOptions, payload.remotePrintOptions);
+      Object.assign(
+        this.printSettings.remotePrintOptions,
+        payload.remotePrintOptions,
+      );
     }
   }
 
@@ -653,7 +778,9 @@ class PrintDesignerElement extends HTMLElement {
     return this.printSettings.fetchLocalPrinters();
   }
 
-  async fetchLocalPrinterCaps(printer: string): Promise<LocalPrinterCaps | undefined> {
+  async fetchLocalPrinterCaps(
+    printer: string,
+  ): Promise<LocalPrinterCaps | undefined> {
     if (!this.printSettings || !printer) return undefined;
     return this.printSettings.fetchLocalPrinterCaps(printer);
   }
@@ -670,9 +797,13 @@ class PrintDesignerElement extends HTMLElement {
 
   setCrudMode(mode: CrudMode) {
     setCrudMode(mode, this._crudScopeId);
-    if (mode === 'remote') {
+    if (mode === "remote") {
       this.templateStore?.loadTemplates().then(() => {
-        if (this.templateStore && !this.templateStore.currentTemplateId && this.templateStore.templates.length > 0) {
+        if (
+          this.templateStore &&
+          !this.templateStore.currentTemplateId &&
+          this.templateStore.templates.length > 0
+        ) {
           this.templateStore.loadTemplate(this.templateStore.templates[0].id);
         }
       });
@@ -680,10 +811,25 @@ class PrintDesignerElement extends HTMLElement {
     }
   }
 
-  setCrudEndpoints(endpoints: CrudEndpoints, options: { baseUrl?: string; headers?: Record<string, string>; fetcher?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response> } = {}) {
-    const finalBaseUrl = options.baseUrl !== undefined ? options.baseUrl : endpoints.baseUrl;
+  setCrudEndpoints(
+    endpoints: CrudEndpoints,
+    options: {
+      baseUrl?: string;
+      headers?: Record<string, string>;
+      fetcher?: (
+        input: RequestInfo | URL,
+        init?: RequestInit,
+      ) => Promise<Response>;
+    } = {},
+  ) {
+    const finalBaseUrl =
+      options.baseUrl !== undefined ? options.baseUrl : endpoints.baseUrl;
     setCrudConfig(
-      { endpoints: { ...endpoints, baseUrl: finalBaseUrl }, headers: options.headers, fetcher: options.fetcher },
+      {
+        endpoints: { ...endpoints, baseUrl: finalBaseUrl },
+        headers: options.headers,
+        fetcher: options.fetcher,
+      },
       this._crudScopeId,
     );
   }
@@ -696,7 +842,7 @@ class PrintDesignerElement extends HTMLElement {
     return this.templateStore.templates.map((t) => ({
       id: t.id,
       name: t.name,
-      updatedAt: t.updatedAt
+      updatedAt: t.updatedAt,
     }));
   }
 
@@ -718,29 +864,44 @@ class PrintDesignerElement extends HTMLElement {
     return this.getCustomElements(options);
   }
 
-  async upsertTemplate(template: { id?: string; name: string; data?: any; updatedAt?: number; [key: string]: any }, options: { setCurrent?: boolean } = {}) {
+  async upsertTemplate(
+    template: {
+      id?: string;
+      name: string;
+      data?: any;
+      updatedAt?: number;
+      [key: string]: any;
+    },
+    options: { setCurrent?: boolean } = {},
+  ) {
     if (!this.templateStore) return null;
-    if (!template || typeof template.name !== 'string') return null;
-    const { mode, endpoints, headers, fetcher } = getCrudConfig(this._crudScopeId);
+    if (!template || typeof template.name !== "string") return null;
+    const { mode, endpoints, headers, fetcher } = getCrudConfig(
+      this._crudScopeId,
+    );
     const id = template.id || uuidv4();
     const index = this.templateStore.templates.findIndex((t) => t.id === id);
     const existing: any = index >= 0 ? this.templateStore.templates[index] : {};
     if (index >= 0 && !canEditEntity(existing)) {
-      toast.warning(i18n.global.t('toast.templateReadOnly'));
+      toast.warning(i18n.global.t("toast.templateReadOnly"));
       return null;
     }
-    const nextAvailableVariables = Array.isArray(template?.ext?.availableVariables)
+    const nextAvailableVariables = Array.isArray(
+      template?.ext?.availableVariables,
+    )
       ? cloneDeep(template.ext.availableVariables)
-      : (Array.isArray(existing?.ext?.availableVariables)
+      : Array.isArray(existing?.ext?.availableVariables)
         ? cloneDeep(existing.ext.availableVariables)
-        : []);
+        : [];
     const next = normalizeEntityConstraints({
       id,
       name: template.name,
       data: template.data || this.templateStore.templates[index]?.data || {},
       updatedAt: template.updatedAt || Date.now(),
       permissions: template.permissions ?? existing?.permissions,
-      ext: mergeExt(existing?.ext, template.ext, { availableVariables: nextAvailableVariables })
+      ext: mergeExt(existing?.ext, template.ext, {
+        availableVariables: nextAvailableVariables,
+      }),
     });
     if (index >= 0) {
       this.templateStore.templates[index] = next;
@@ -750,61 +911,75 @@ class PrintDesignerElement extends HTMLElement {
     if (options.setCurrent) {
       this.templateStore.currentTemplateId = id;
     }
-    if (mode === 'remote') {
+    if (mode === "remote") {
       try {
-        const cachedTemplate = (this.templateStore as any).templateDetailCache?.[id] || {};
+        const cachedTemplate =
+          (this.templateStore as any).templateDetailCache?.[id] || {};
         const requestPayload = normalizeEntityConstraints({
           id: next.id,
           name: next.name,
           data: next.data || cachedTemplate.data || {},
           updatedAt: next.updatedAt || cachedTemplate.updatedAt,
           permissions: next.permissions ?? cachedTemplate.permissions,
-          ext: mergeExt(
-            cachedTemplate.ext,
-            next.ext,
-            {
-              availableVariables: Array.isArray((next as any)?.ext?.availableVariables)
-                ? cloneDeep((next as any).ext.availableVariables)
-                : cloneDeep(cachedTemplate?.ext?.availableVariables || [])
-            }
-          )
+          ext: mergeExt(cachedTemplate.ext, next.ext, {
+            availableVariables: Array.isArray(
+              (next as any)?.ext?.availableVariables,
+            )
+              ? cloneDeep((next as any).ext.availableVariables)
+              : cloneDeep(cachedTemplate?.ext?.availableVariables || []),
+          }),
         });
-        const url = buildEndpoint(endpoints.templates?.upsert || '', undefined, this._crudScopeId);
-        const fetchOptions = buildFetchOptions(endpoints.templates?.upsert, 'POST', headers, requestPayload);
+        const url = buildEndpoint(
+          endpoints.templates?.upsert || "",
+          undefined,
+          this._crudScopeId,
+        );
+        const fetchOptions = buildFetchOptions(
+          endpoints.templates?.upsert,
+          "POST",
+          headers,
+          requestPayload,
+        );
         const res = await (fetcher || fetch)(url, fetchOptions);
         const result = await res.json();
-        const resultObj = result && typeof result === 'object' ? result : {};
-        const mergedExt = { ...(requestPayload.ext || {}), ...(resultObj.ext || {}) };
+        const resultObj = result && typeof result === "object" ? result : {};
+        const mergedExt = {
+          ...(requestPayload.ext || {}),
+          ...(resultObj.ext || {}),
+        };
         const remoteId = resultObj.id || requestPayload.id;
-        const targetIndex = this.templateStore.templates.findIndex((t) => t.id === requestPayload.id);
+        const targetIndex = this.templateStore.templates.findIndex(
+          (t) => t.id === requestPayload.id,
+        );
         const updated = normalizeEntityConstraints({
           id: remoteId,
           name: resultObj.name || requestPayload.name,
           data: resultObj.data || requestPayload.data,
           updatedAt: resultObj.updatedAt || requestPayload.updatedAt,
           permissions: resultObj.permissions ?? requestPayload.permissions,
-          ext: mergeExt(
-            mergedExt,
-            {
-              availableVariables: Array.isArray(resultObj?.ext?.availableVariables)
-                ? cloneDeep(resultObj.ext.availableVariables)
-                : cloneDeep(requestPayload?.ext?.availableVariables || [])
-            }
-          )
+          ext: mergeExt(mergedExt, {
+            availableVariables: Array.isArray(
+              resultObj?.ext?.availableVariables,
+            )
+              ? cloneDeep(resultObj.ext.availableVariables)
+              : cloneDeep(requestPayload?.ext?.availableVariables || []),
+          }),
         });
-        if (targetIndex >= 0) this.templateStore.templates[targetIndex] = updated;
+        if (targetIndex >= 0)
+          this.templateStore.templates[targetIndex] = updated;
         else this.templateStore.templates.push(updated);
-        (this.templateStore as any).templateDetailCache = (this.templateStore as any).templateDetailCache || {};
+        (this.templateStore as any).templateDetailCache =
+          (this.templateStore as any).templateDetailCache || {};
         (this.templateStore as any).templateDetailCache[remoteId] = updated;
         if (this.templateStore.currentTemplateId === requestPayload.id) {
           this.templateStore.currentTemplateId = remoteId;
         }
-        
+
         await this.templateStore.loadTemplates();
         return remoteId;
       } catch (e) {
-        console.error('Failed to upsert template', e);
-        toast.error(i18n.global.t('toast.templateUpsertFailed'));
+        console.error("Failed to upsert template", e);
+        toast.error(i18n.global.t("toast.templateUpsertFailed"));
         return next.id;
       }
     }
@@ -812,29 +987,43 @@ class PrintDesignerElement extends HTMLElement {
     return next.id;
   }
 
-  setTemplates(templates: Array<{ id: string; name: string; data?: any; updatedAt?: number; [key: string]: any }>, options: { currentTemplateId?: string } = {}) {
+  setTemplates(
+    templates: Array<{
+      id: string;
+      name: string;
+      data?: any;
+      updatedAt?: number;
+      [key: string]: any;
+    }>,
+    options: { currentTemplateId?: string } = {},
+  ) {
     if (!this.templateStore) return;
     if (!Array.isArray(templates)) return;
     const { mode } = getCrudConfig(this._crudScopeId);
     this.templateStore.templates = templates
-      .filter((t) => t && typeof t.id === 'string' && typeof t.name === 'string')
-      .map((t) => normalizeEntityConstraints({
-        id: t.id,
-        name: t.name,
-        data: t.data || {},
-        updatedAt: t.updatedAt || Date.now(),
-        permissions: t.permissions,
-        ext: mergeExt(
-          t.ext || {},
-          {
+      .filter(
+        (t) => t && typeof t.id === "string" && typeof t.name === "string",
+      )
+      .map((t) =>
+        normalizeEntityConstraints({
+          id: t.id,
+          name: t.name,
+          data: t.data || {},
+          updatedAt: t.updatedAt || Date.now(),
+          permissions: t.permissions,
+          ext: mergeExt(t.ext || {}, {
             availableVariables: Array.isArray(t?.ext?.availableVariables)
               ? cloneDeep(t.ext.availableVariables)
-              : []
-          }
-        )
-      }));
-    let targetId = options.currentTemplateId || this.templateStore.currentTemplateId;
-    if (targetId && !this.templateStore.templates.some((t) => t.id === targetId)) {
+              : [],
+          }),
+        }),
+      );
+    let targetId =
+      options.currentTemplateId || this.templateStore.currentTemplateId;
+    if (
+      targetId &&
+      !this.templateStore.templates.some((t) => t.id === targetId)
+    ) {
       targetId = null;
     }
     if (!targetId && this.templateStore.templates.length > 0) {
@@ -846,21 +1035,27 @@ class PrintDesignerElement extends HTMLElement {
         this.templateStore.loadTemplate(targetId);
       }
     }
-    if (mode !== 'remote') {
+    if (mode !== "remote") {
       this.templateStore.saveToLocalStorage();
     }
   }
 
   async deleteTemplate(id: string, options: { confirm?: boolean } = {}) {
     if (!this.templateStore) return;
-    const existing = this.templateStore.templates.find(t => t.id === id);
+    const existing = this.templateStore.templates.find((t) => t.id === id);
     if (existing && !canDeleteEntity(existing)) {
-      toast.warning(i18n.global.t('toast.templateDeleteNotAllowed'));
+      toast.warning(i18n.global.t("toast.templateDeleteNotAllowed"));
       return;
     }
     if (options.confirm !== false) {
-      const tpl = this.templateStore.templates.find(t => t.id === id);
-      if (tpl && !await uiConfirm.show(`Are you sure you want to delete template "${tpl.name}"?`)) return;
+      const tpl = this.templateStore.templates.find((t) => t.id === id);
+      if (
+        tpl &&
+        !(await uiConfirm.show(
+          `Are you sure you want to delete template "${tpl.name}"?`,
+        ))
+      )
+        return;
     }
     await this.templateStore.deleteTemplate(id);
   }
@@ -877,24 +1072,44 @@ class PrintDesignerElement extends HTMLElement {
     if (options.includeElement) {
       return cloneDeep(this.designerStore.customElements);
     }
-    return this.designerStore.customElements.map((el) => ({ id: el.id, name: el.name }));
+    return this.designerStore.customElements.map((el) => ({
+      id: el.id,
+      name: el.name,
+    }));
   }
 
   getCustomElement(id: string) {
     if (!this.designerStore) return null;
-    const element = this.designerStore.customElements.find((el) => el.id === id);
+    const element = this.designerStore.customElements.find(
+      (el) => el.id === id,
+    );
     return element ? cloneDeep(element) : null;
   }
 
-  async upsertCustomElement(customElement: { id?: string; name: string; element: any; [key: string]: any }) {
+  async upsertCustomElement(customElement: {
+    id?: string;
+    name: string;
+    element: any;
+    [key: string]: any;
+  }) {
     if (!this.designerStore) return null;
-    if (!customElement || typeof customElement.name !== 'string' || !customElement.element) return null;
-    const { mode, endpoints, headers, fetcher } = getCrudConfig(this._crudScopeId);
+    if (
+      !customElement ||
+      typeof customElement.name !== "string" ||
+      !customElement.element
+    )
+      return null;
+    const { mode, endpoints, headers, fetcher } = getCrudConfig(
+      this._crudScopeId,
+    );
     const id = customElement.id || uuidv4();
-    const index = this.designerStore.customElements.findIndex((el) => el.id === id);
-    const existing: any = index >= 0 ? this.designerStore.customElements[index] : {};
+    const index = this.designerStore.customElements.findIndex(
+      (el) => el.id === id,
+    );
+    const existing: any =
+      index >= 0 ? this.designerStore.customElements[index] : {};
     if (index >= 0 && !canEditEntity(existing)) {
-      toast.warning(i18n.global.t('toast.customElementReadOnly'));
+      toast.warning(i18n.global.t("toast.customElementReadOnly"));
       return null;
     }
     const next = normalizeEntityConstraints({
@@ -903,50 +1118,68 @@ class PrintDesignerElement extends HTMLElement {
       element: cloneDeep(customElement.element),
       testData: customElement.testData,
       permissions: customElement.permissions ?? existing?.permissions,
-      ext: mergeExt(existing?.ext, customElement.ext)
+      ext: mergeExt(existing?.ext, customElement.ext),
     });
     if (index >= 0) {
       this.designerStore.customElements.splice(index, 1, next);
     } else {
       this.designerStore.customElements.push(next);
     }
-    if (mode === 'remote') {
+    if (mode === "remote") {
       try {
-        const cachedCustomElement = (this.designerStore as any).customElementDetailCache?.[id] || {};
+        const cachedCustomElement =
+          (this.designerStore as any).customElementDetailCache?.[id] || {};
         const requestPayload = normalizeEntityConstraints({
           id: next.id,
           name: next.name,
           element: cloneDeep(next.element || cachedCustomElement.element || {}),
           testData: next.testData || cachedCustomElement.testData,
           permissions: next.permissions ?? cachedCustomElement.permissions,
-          ext: mergeExt(cachedCustomElement.ext, next.ext)
+          ext: mergeExt(cachedCustomElement.ext, next.ext),
         });
-        const url = buildEndpoint(endpoints.customElements?.upsert || '', undefined, this._crudScopeId);
-        const fetchOptions = buildFetchOptions(endpoints.customElements?.upsert, 'POST', headers, requestPayload);
+        const url = buildEndpoint(
+          endpoints.customElements?.upsert || "",
+          undefined,
+          this._crudScopeId,
+        );
+        const fetchOptions = buildFetchOptions(
+          endpoints.customElements?.upsert,
+          "POST",
+          headers,
+          requestPayload,
+        );
         const res = await (fetcher || fetch)(url, fetchOptions);
         const result = await res.json();
-        const resultObj = result && typeof result === 'object' ? result : {};
-        const mergedExt = { ...(requestPayload.ext || {}), ...(resultObj.ext || {}) };
+        const resultObj = result && typeof result === "object" ? result : {};
+        const mergedExt = {
+          ...(requestPayload.ext || {}),
+          ...(resultObj.ext || {}),
+        };
         const remoteId = resultObj.id || requestPayload.id;
-        const targetIndex = this.designerStore.customElements.findIndex((el) => el.id === requestPayload.id);
+        const targetIndex = this.designerStore.customElements.findIndex(
+          (el) => el.id === requestPayload.id,
+        );
         const updated = normalizeEntityConstraints({
           id: remoteId,
           name: resultObj.name || requestPayload.name,
           element: cloneDeep(resultObj.element || requestPayload.element),
           testData: resultObj.testData || requestPayload.testData,
           permissions: resultObj.permissions ?? requestPayload.permissions,
-          ext: mergedExt
+          ext: mergedExt,
         });
-        if (targetIndex >= 0) this.designerStore.customElements.splice(targetIndex, 1, updated);
+        if (targetIndex >= 0)
+          this.designerStore.customElements.splice(targetIndex, 1, updated);
         else this.designerStore.customElements.push(updated);
-        (this.designerStore as any).customElementDetailCache = (this.designerStore as any).customElementDetailCache || {};
-        (this.designerStore as any).customElementDetailCache[remoteId] = updated;
-        
+        (this.designerStore as any).customElementDetailCache =
+          (this.designerStore as any).customElementDetailCache || {};
+        (this.designerStore as any).customElementDetailCache[remoteId] =
+          updated;
+
         await this.designerStore.loadCustomElements();
         return remoteId;
       } catch (e) {
-        console.error('Failed to upsert custom element', e);
-        toast.error(i18n.global.t('toast.customElementUpsertFailed'));
+        console.error("Failed to upsert custom element", e);
+        toast.error(i18n.global.t("toast.customElementUpsertFailed"));
         return next.id;
       }
     }
@@ -954,63 +1187,91 @@ class PrintDesignerElement extends HTMLElement {
     return next.id;
   }
 
-  setCustomElements(customElements: Array<{ id: string; name: string; element: any; [key: string]: any }>) {
+  setCustomElements(
+    customElements: Array<{
+      id: string;
+      name: string;
+      element: any;
+      [key: string]: any;
+    }>,
+  ) {
     if (!this.designerStore) return;
     if (!Array.isArray(customElements)) return;
     const { mode } = getCrudConfig(this._crudScopeId);
     this.designerStore.customElements = customElements
-      .filter((el) => el && typeof el.id === 'string' && typeof el.name === 'string' && el.element)
-      .map((el) => normalizeEntityConstraints({
-        id: el.id,
-        name: el.name,
-        element: cloneDeep(el.element),
-        testData: el.testData,
-        permissions: el.permissions,
-        ext: el.ext || {}
-      }));
-    if (mode !== 'remote') {
+      .filter(
+        (el) =>
+          el &&
+          typeof el.id === "string" &&
+          typeof el.name === "string" &&
+          el.element,
+      )
+      .map((el) =>
+        normalizeEntityConstraints({
+          id: el.id,
+          name: el.name,
+          element: cloneDeep(el.element),
+          testData: el.testData,
+          permissions: el.permissions,
+          ext: el.ext || {},
+        }),
+      );
+    if (mode !== "remote") {
       this.designerStore.saveCustomElements();
     }
   }
 
   async deleteCustomElement(id: string, options: { confirm?: boolean } = {}) {
     if (!this.designerStore) return;
-    const existing = this.designerStore.customElements.find(e => e.id === id);
+    const existing = this.designerStore.customElements.find((e) => e.id === id);
     if (existing && !canDeleteEntity(existing)) {
-      toast.warning(i18n.global.t('toast.customElementDeleteNotAllowed'));
+      toast.warning(i18n.global.t("toast.customElementDeleteNotAllowed"));
       return;
     }
     if (options.confirm !== false) {
-      const el = this.designerStore.customElements.find(e => e.id === id);
-      if (el && !await uiConfirm.show(`Are you sure you want to delete custom element "${el.name}"?`)) return;
+      const el = this.designerStore.customElements.find((e) => e.id === id);
+      if (
+        el &&
+        !(await uiConfirm.show(
+          `Are you sure you want to delete custom element "${el.name}"?`,
+        ))
+      )
+        return;
     }
     await this.designerStore.removeCustomElement(id);
   }
 
   private normalizeListContextMenuConfig(
     source: ListContextMenuSource,
-    input: DesignerListContextMenuConfig | DesignerListContextMenuItem[]
+    input: DesignerListContextMenuConfig | DesignerListContextMenuItem[],
   ): ListContextMenuConfig | null {
     const config = Array.isArray(input) ? { items: input } : input;
     if (!config || !Array.isArray(config.items)) return null;
 
     const items = config.items
-      .filter((item): item is DesignerListContextMenuItem => 
-        Boolean(item && typeof item.key === 'string' && item.key && typeof item.label === 'string')
+      .filter((item): item is DesignerListContextMenuItem =>
+        Boolean(
+          item &&
+          typeof item.key === "string" &&
+          item.key &&
+          typeof item.label === "string",
+        ),
       )
-      .map((item) => ({ ...item } as ListContextMenuItem));
+      .map((item) => ({ ...item }) as ListContextMenuItem);
 
     if (items.length === 0) return null;
 
     return {
-      mode: config.mode === 'replace' ? 'replace' : 'append',
-      items
+      mode: config.mode === "replace" ? "replace" : "append",
+      items,
     };
   }
 
-  setTemplateContextMenu(config: DesignerListContextMenuConfig | DesignerListContextMenuItem[]) {
+  setTemplateContextMenu(
+    config: DesignerListContextMenuConfig | DesignerListContextMenuItem[],
+  ) {
     if (!this.designerStore) return;
-    const normalized = this.normalizeListContextMenuConfig('template', config);
+    const normalized = this.normalizeListContextMenuConfig("template", config);
     this.designerStore.setTemplateContextMenuConfig(normalized);
   }
 
@@ -1019,9 +1280,14 @@ class PrintDesignerElement extends HTMLElement {
     this.designerStore.setTemplateContextMenuConfig(null);
   }
 
-  setCustomElementContextMenu(config: DesignerListContextMenuConfig | DesignerListContextMenuItem[]) {
+  setCustomElementContextMenu(
+    config: DesignerListContextMenuConfig | DesignerListContextMenuItem[],
+  ) {
     if (!this.designerStore) return;
-    const normalized = this.normalizeListContextMenuConfig('customElement', config);
+    const normalized = this.normalizeListContextMenuConfig(
+      "customElement",
+      config,
+    );
     this.designerStore.setCustomElementContextMenuConfig(normalized);
   }
 
@@ -1057,7 +1323,7 @@ class PrintDesignerElement extends HTMLElement {
   }
 }
 
-const elementName = 'print-designer';
+const elementName = "print-designer";
 if (!customElements.get(elementName)) {
   customElements.define(elementName, PrintDesignerElement);
 }

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick, provide } from 'vue';
-import cloneDeep from 'lodash/cloneDeep';
-import { useDesignerStore } from '@/stores/designer';
-import Canvas from '@/components/canvas/Canvas.vue';
+import { ref, onMounted, onUnmounted, nextTick, provide } from "vue";
+import cloneDeep from "lodash/cloneDeep";
+import { useDesignerStore } from "@/stores/designer";
+import Canvas from "@/components/canvas/Canvas.vue";
 
 const props = defineProps<{
   payload?: any;
@@ -11,12 +11,15 @@ const props = defineProps<{
 
 const root = ref<HTMLElement | null>(null);
 const store = useDesignerStore();
-const token = props.token || new URLSearchParams(window.location.search).get('printToken') || '';
+const token =
+  props.token ||
+  new URLSearchParams(window.location.search).get("printToken") ||
+  "";
 const origin = window.location.origin;
 
 // Registry for async render tasks (like QRCode, Barcode)
 const renderTasks = ref<Promise<void>[]>([]);
-provide('registerRenderTask', (task: Promise<void>) => {
+provide("registerRenderTask", (task: Promise<void>) => {
   renderTasks.value.push(task);
 });
 
@@ -29,7 +32,9 @@ const postToParent = (type: string) => {
     win.parent.postMessage({ type, token }, origin);
   }
   // Also dispatch a custom event for local usage
-  window.dispatchEvent(new CustomEvent(`print-renderer:${type}`, { detail: { token } }));
+  window.dispatchEvent(
+    new CustomEvent(`print-renderer:${type}`, { detail: { token } }),
+  );
 };
 
 const waitForFonts = async (timeoutMs = 2000) => {
@@ -38,27 +43,32 @@ const waitForFonts = async (timeoutMs = 2000) => {
   if (!fonts || !fonts.ready) return;
   await Promise.race([
     fonts.ready,
-    new Promise(resolve => setTimeout(resolve, timeoutMs))
+    new Promise((resolve) => setTimeout(resolve, timeoutMs)),
   ]);
 };
 
 const waitForImages = async (timeoutMs = 2000) => {
   const doc = getDoc();
   const images = Array.from(doc.images || []) as HTMLImageElement[];
-  const pending = images.filter(img => !img.complete);
+  const pending = images.filter((img) => !img.complete);
   if (pending.length === 0) return;
 
   await Promise.race([
-    Promise.all(pending.map(img => new Promise<void>(resolve => {
-      const done = () => {
-        img.removeEventListener('load', done);
-        img.removeEventListener('error', done);
-        resolve();
-      };
-      img.addEventListener('load', done, { once: true });
-      img.addEventListener('error', done, { once: true });
-    }))),
-    new Promise(resolve => setTimeout(resolve, timeoutMs))
+    Promise.all(
+      pending.map(
+        (img) =>
+          new Promise<void>((resolve) => {
+            const done = () => {
+              img.removeEventListener("load", done);
+              img.removeEventListener("error", done);
+              resolve();
+            };
+            img.addEventListener("load", done, { once: true });
+            img.addEventListener("error", done, { once: true });
+          }),
+      ),
+    ),
+    new Promise((resolve) => setTimeout(resolve, timeoutMs)),
   ]);
 };
 
@@ -81,7 +91,7 @@ const applyPayload = async (payload: any) => {
     selectedElementIds: [],
     guides: [],
     testData: payload.testData || {},
-    variables: payload.variables || {}
+    variables: payload.variables || {},
   });
 
   if (payload.watermark) {
@@ -93,7 +103,7 @@ const applyPayload = async (payload: any) => {
 
   store.setIsExporting(true);
   const doc = getDoc();
-  doc.body.classList.add('exporting');
+  doc.body.classList.add("exporting");
 
   // Reset render tasks before nextTick
   renderTasks.value = [];
@@ -104,35 +114,36 @@ const applyPayload = async (payload: any) => {
   await waitForFonts();
   await waitForImages();
   requestAnimationFrame(() => {
-    postToParent('print-renderer-rendered');
+    postToParent("print-renderer-rendered");
   });
 };
 
 const onMessage = (event: MessageEvent) => {
   if (event.origin !== origin) return;
   const data = event.data as { type?: string; token?: string; payload?: any };
-  if (!data || data.type !== 'print-renderer-payload' || data.token !== token) return;
+  if (!data || data.type !== "print-renderer-payload" || data.token !== token)
+    return;
   applyPayload(data.payload || {});
 };
 
 onMounted(() => {
   const doc = getDoc();
   const win = getWin();
-  
-  doc.body.style.margin = '0';
-  doc.body.style.background = '#ffffff';
-  win.addEventListener('message', onMessage);
-  
+
+  doc.body.style.margin = "0";
+  doc.body.style.background = "#ffffff";
+  win.addEventListener("message", onMessage);
+
   if (props.payload) {
     applyPayload(props.payload);
   } else {
-    postToParent('print-renderer-ready');
+    postToParent("print-renderer-ready");
   }
 });
 
 onUnmounted(() => {
   const win = getWin();
-  win.removeEventListener('message', onMessage);
+  win.removeEventListener("message", onMessage);
 });
 </script>
 

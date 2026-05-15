@@ -23,20 +23,20 @@ Vue Print Designer is a visual print designer for business forms, labels, receip
 
 ## UI Preview
 
-| Designer main view and canvas | Print preview | Print parameter settings |
-| --- | --- | --- |
+| Designer main view and canvas                                                                                                            | Print preview                                                                                                                       | Print parameter settings                                                                                                               |
+| ---------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/1.png" alt="Designer main view" width="240" /> | <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/2.png" alt="Print preview" width="240" /> | <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/3.png" alt="Print parameters" width="240" /> |
 
-| System settings and preferences | Shortcut reference | Advanced table editing |
-| --- | --- | --- |
+| System settings and preferences                                                                                                       | Shortcut reference                                                                                                              | Advanced table editing                                                                                                               |
+| ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/4.png" alt="System settings" width="240" /> | <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/5.png" alt="Shortcuts" width="240" /> | <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/6.png" alt="Advanced table" width="240" /> |
 
 ## Integration Example
 
 To help developers get started quickly, we provide a complete integration example based on **Vue 3 + Element Plus**. This project demonstrates how to embed the print designer into a real-world business application.
 
-| Parameter Debugging | Designer | Dark Mode |
-| --- | --- | --- |
+| Parameter Debugging                                                                                                                           | Designer                                                                                                                                      | Dark Mode                                                                                                                                     |
+| --------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/11.png" alt="Integration example 11" width="240" /> | <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/12.png" alt="Integration example 12" width="240" /> | <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/13.png" alt="Integration example 13" width="240" /> |
 
 - **Repository**: [https://github.com/0ldFive/vue-designer-sample](https://github.com/0ldFive/vue-designer-sample)
@@ -72,8 +72,8 @@ PrintDot Client is the companion desktop print helper (Wails + Vue) for device d
 - Key capabilities: device discovery, stable connection & forwarding queue, lightweight background mode
 - Project: https://github.com/0ldFive/PrintDot-Client
 
-| Main view - device status & connection | Settings - preferences & options |
-| --- | --- |
+| Main view - device status & connection                                                                                                   | Settings - preferences & options                                                                                                        |
+| ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/7.png" alt="PrintDot main view" width="140" /> | <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/8.png" alt="PrintDot settings" width="140" /> |
 
 <p>
@@ -123,15 +123,15 @@ Import in the entry file:
 
 ```ts
 // main.ts
-import 'vue-print-designer';
-import 'vue-print-designer/style.css';
+import "vue-print-designer";
+import "vue-print-designer/style.css";
 ```
 
 Use the custom element in your template:
 
 ```vue
 <template>
-    <print-designer id="designer"></print-designer>
+  <print-designer id="designer"></print-designer>
 </template>
 ```
 
@@ -142,75 +142,89 @@ Use the custom element in your template:
 ```vue
 <script lang="ts">
 export default {
-    mounted() {
-        const el = this.$refs.designerRef as any;
-        // Initialize branding and theme
-        el.setBranding({ title: 'Business Print Designer', showLogo: true });
-        el.setTheme('light');
-        // Initialize templates or variables
-        el.loadTemplateData(/* data from your API */);
-        el.setVariables({ orderNo: 'A001' }, { merge: true });
-    }
+  mounted() {
+    const el = this.$refs.designerRef as any;
+    // Initialize branding and theme
+    el.setBranding({ title: "Business Print Designer", showLogo: true });
+    el.setTheme("light");
+    // Initialize templates or variables
+    el.loadTemplateData(/* data from your API */);
+    el.setVariables({ orderNo: "A001" }, { merge: true });
+  },
 };
 </script>
 
 <template>
-    <print-designer ref="designerRef"></print-designer>
+  <print-designer ref="designerRef"></print-designer>
 </template>
 ```
 
 **Business pages (print/export anywhere)**
 
 ```ts
-const el = document.querySelector('print-designer') as any;
+const el = document.querySelector("print-designer") as any;
 
 // Print
-await el.print({ mode: 'browser' });
+await el.print({ mode: "browser" });
 
 // Export PDF / image / html / blob
-await el.export({ type: 'pdf', filename: 'order-20240223.pdf' });
-await el.export({ type: 'html', filename: 'order-20240223.html' });
-const pdfBlob = await el.export({ type: 'pdfBlob' });
+await el.export({ type: "pdf", filename: "order-20240223.pdf" });
+await el.export({ type: "html", filename: "order-20240223.html" });
+const pdfBlob = await el.export({ type: "pdfBlob" });
 ```
 
 #### 3) Event hooks
 
 ```ts
-el.addEventListener('ready', () => {});
-el.addEventListener('printed', (e) => {});
-el.addEventListener('exported', (e) => {
-    const blob = e.detail?.blob;
+el.addEventListener("ready", () => {});
+el.addEventListener("printed", (e) => {});
+el.addEventListener("exported", (e) => {
+  const blob = e.detail?.blob;
 });
-el.addEventListener('error', (e) => {
-    console.error(e.detail?.scope, e.detail?.error);
+el.addEventListener("error", (e) => {
+  console.error(e.detail?.scope, e.detail?.error);
 });
 ```
-
-
 
 ## Project Structure
 
 ```
-src/
-├── assets/               # Static assets (logo, icons)
-├── components/           # Vue components
-│   ├── canvas/           # Canvas components
-│   ├── common/           # Common components (color picker, modals)
-│   ├── elements/         # Print elements (text, image, table, barcode)
-│   ├── layout/           # Layout (header, sidebar, properties)
-│   ├── print/            # Print renderer
-│   └── properties/       # Property panels
-├── composables/          # Vue composables
-│   ├── useAutoSave.ts    # Auto save
-│   ├── usePrintSettings.ts # Print settings
-│   └── useTheme.ts       # Theme management
+src/                      # Project source root
+├── App.vue               # Root application component
+├── main.ts               # App bootstrap entry
+├── style.css             # Global styles
+├── web-component.ts      # Web Components registration entry
+├── web-component.d.ts    # Web Components type declarations
+├── vite-env.d.ts         # Vite environment type declarations
+├── assets/               # Static assets
+├── components/           # UI and editor components
+│   ├── PrintDesigner.vue # Main designer container component
+│   ├── canvas/           # Canvas area components
+│   ├── common/           # Shared UI components (modals, pickers)
+│   ├── elements/         # Print element components (text/image/table)
+│   ├── layout/           # Layout components (header/sidebar/panels)
+│   ├── print/            # Print rendering components
+│   └── properties/       # Property editor components
+├── composables/          # Reusable Vue composables
 ├── constants/            # Constants
-├── locales/              # i18n
+├── locales/              # i18n resources
 ├── stores/               # Pinia stores
-├── types/                # TypeScript types
-├── utils/                # Utilities
-├── web-component.ts      # Web Components entry
-└── main.ts               # App entry
+├── types/                # Type declarations
+└── utils/                # Shared utility functions
+    ├── print.ts          # Compatibility export entry (forwarder)
+    ├── print/            # Print capability main modules
+    │   ├── index.ts      # Print module unified exports
+    │   ├── usePrint.ts   # Print/export orchestration entry
+    │   ├── dom.ts        # Print-related DOM helpers
+    │   ├── printChannel.ts # Local/remote print channels
+    │   ├── renderEngine.ts # Render engine compatibility export entry
+    │   └── renderEngine/ # Render engine submodules
+    │       ├── index.ts  # Render engine composition entry
+    │       ├── types.ts  # Shared render types
+    │       ├── pagination.ts # Pagination and layout correction logic
+    │       ├── iframeRenderer.ts # iframe rendering implementation
+    │       └── imageRenderer.ts # Image/PDF rendering implementation
+    └── ...               # Other shared utility helpers
 ```
 
 ## i18n

@@ -1,4 +1,4 @@
-import { ElementType, type PrintElement } from '../types';
+import { ElementType, type PrintElement } from "../types";
 
 const defaultTableScript = `// RMB Uppercase Conversion
 try {
@@ -133,120 +133,149 @@ try {
 }`;
 
 // 使用注册表模式管理各元素的默认配置
-type ElementConfigGenerator = (t: (key: string) => string) => Partial<PrintElement>;
+type ElementConfigGenerator = (
+  t: (key: string) => string,
+) => Partial<PrintElement>;
 
-export const elementConfigRegistry: Partial<Record<ElementType, ElementConfigGenerator>> = {
+export const elementConfigRegistry: Partial<
+  Record<ElementType, ElementConfigGenerator>
+> = {
   [ElementType.TEXT]: (t) => ({
-    content: t('canvas.newText'),
-    style: { backgroundColor: 'transparent', borderColor: 'transparent' }
+    content: t("canvas.newText"),
+    style: { backgroundColor: "transparent", borderColor: "transparent" },
   }),
 
   [ElementType.IMAGE]: () => ({
-    style: { backgroundColor: 'transparent', borderColor: 'transparent' }
+    style: { backgroundColor: "transparent", borderColor: "transparent" },
   }),
 
   [ElementType.BARCODE]: () => ({
     height: 80,
-    content: '12345678',
-    style: { backgroundColor: 'transparent', borderColor: 'transparent' }
+    content: "12345678",
+    style: { backgroundColor: "transparent", borderColor: "transparent" },
   }),
 
   [ElementType.QRCODE]: () => ({
     width: 100,
-    content: 'https://example.com',
-    style: { backgroundColor: 'transparent', borderColor: 'transparent' }
+    content: "https://example.com",
+    style: { backgroundColor: "transparent", borderColor: "transparent" },
   }),
 
   [ElementType.LINE]: () => ({
     height: 20,
-    style: { borderColor: '#000000' }
+    style: { borderColor: "#000000" },
   }),
 
   [ElementType.RECT]: () => ({
     width: 100,
-    style: { backgroundColor: 'transparent', borderColor: '#000000' }
+    style: { backgroundColor: "transparent", borderColor: "#000000" },
   }),
 
   [ElementType.CIRCLE]: () => ({
     width: 100,
-    style: { backgroundColor: 'transparent', borderColor: '#000000' }
+    style: { backgroundColor: "transparent", borderColor: "#000000" },
   }),
 
   [ElementType.PAGE_NUMBER]: () => ({
     width: 52,
     height: 20,
-    format: '1/Total',
-    labelColor: '#000000',
-    labelBackgroundColor: 'transparent',
-    labelBorderColor: 'transparent',
-    style: { backgroundColor: 'transparent', borderColor: '#000000' }
+    format: "1/Total",
+    labelColor: "#000000",
+    labelBackgroundColor: "transparent",
+    labelBorderColor: "transparent",
+    style: { backgroundColor: "transparent", borderColor: "#000000" },
   }),
 
   [ElementType.TABLE]: (t) => ({
     height: 150,
-    columnsVariable: '',
-    footerDataVariable: '',
+    columnsVariable: "",
+    footerDataVariable: "",
     columns: [
-      { field: 'id', header: t('canvas.defaultTableHeaders.id'), width: 50 },
-      { field: 'name', header: t('canvas.defaultTableHeaders.name'), width: 100 },
-      { field: 'qty', header: t('canvas.defaultTableHeaders.qty'), width: 60 },
-      { field: 'price', header: t('canvas.defaultTableHeaders.price'), width: 80 },
-      { field: 'total', header: t('canvas.defaultTableHeaders.total'), width: 80 },
+      { field: "id", header: t("canvas.defaultTableHeaders.id"), width: 50 },
+      {
+        field: "name",
+        header: t("canvas.defaultTableHeaders.name"),
+        width: 100,
+      },
+      { field: "qty", header: t("canvas.defaultTableHeaders.qty"), width: 60 },
+      {
+        field: "price",
+        header: t("canvas.defaultTableHeaders.price"),
+        width: 80,
+      },
+      {
+        field: "total",
+        header: t("canvas.defaultTableHeaders.total"),
+        width: 80,
+      },
     ],
     data: Array.from({ length: 30 }, (_, i) => ({
       id: i + 1,
-      name: `${t('canvas.defaultTableData.item')} ${i + 1}`,
+      name: `${t("canvas.defaultTableData.item")} ${i + 1}`,
       qty: (i % 5) + 1,
-      price: 100 + (i * 10),
-      total: ((i % 5) + 1) * (100 + (i * 10))
+      price: 100 + i * 10,
+      total: ((i % 5) + 1) * (100 + i * 10),
     })),
     showFooter: true,
     tfootRepeat: true,
     autoPaginate: true,
     repeatPerPage: false,
     footerData: [
-      { id: { value: t('canvas.defaultTableData.pageSum') }, qty: { value: '', field: '{#pageQty}' }, total: { value: '', field: '{#pageSum}' } },
-      { id: { value: t('canvas.defaultTableData.total') }, qty: { value: '', field: '{#totalQty}' }, total: { value: '', field: '{#totalSum}' } },
-      { id: { value: t('canvas.defaultTableData.inWords') }, total: { value: '', field: '{#totalCap}' } }
+      {
+        id: { value: t("canvas.defaultTableData.pageSum") },
+        qty: { value: "", field: "{#pageQty}" },
+        total: { value: "", field: "{#pageSum}" },
+      },
+      {
+        id: { value: t("canvas.defaultTableData.total") },
+        qty: { value: "", field: "{#totalQty}" },
+        total: { value: "", field: "{#totalSum}" },
+      },
+      {
+        id: { value: t("canvas.defaultTableData.inWords") },
+        total: { value: "", field: "{#totalCap}" },
+      },
     ],
     customScript: defaultTableScript,
     style: {
-      backgroundColor: 'transparent',
-      borderColor: '#000000',
-      headerBackgroundColor: '#f3f4f6',
-      headerColor: '#000000',
-      footerBackgroundColor: '#f9fafb',
-      footerColor: '#000000',
-      textAlign: 'left',
-      headerTextAlign: 'left',
-      footerTextAlign: 'left'
-    }
-  })
+      backgroundColor: "transparent",
+      borderColor: "#000000",
+      headerBackgroundColor: "#f3f4f6",
+      headerColor: "#000000",
+      footerBackgroundColor: "#f9fafb",
+      footerColor: "#000000",
+      textAlign: "left",
+      headerTextAlign: "left",
+      footerTextAlign: "left",
+    },
+  }),
 };
 
 export function createNewElement(
   type: ElementType,
   x: number,
   y: number,
-  t: (key: string) => string
-): Omit<PrintElement, 'id'> {
+  t: (key: string) => string,
+): Omit<PrintElement, "id"> {
   // 1. 提取所有元素的通用基础属性兜底
-  const baseElement: Omit<PrintElement, 'id'> = {
+  const baseElement: Omit<PrintElement, "id"> = {
     type,
     x,
     y,
     width: 200,
     height: 100,
-    variable: '',
+    variable: "",
     style: {
       fontSize: 14,
-      color: '#000000',
-    }
+      color: "#000000",
+    },
   };
 
   // 2. 从注册表中获取特定元素的专属配置
   const generateSpecificConfig = elementConfigRegistry[type];
-  const specificConfig = generateSpecificConfig ? generateSpecificConfig(t) : {};
+  const specificConfig = generateSpecificConfig
+    ? generateSpecificConfig(t)
+    : {};
 
   // 3. 深度合并特定配置与基础配置（注意 style 对象的合并）
   return {
@@ -254,7 +283,7 @@ export function createNewElement(
     ...specificConfig,
     style: {
       ...baseElement.style,
-      ...(specificConfig.style || {})
-    }
+      ...(specificConfig.style || {}),
+    },
   };
 }

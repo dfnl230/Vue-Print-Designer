@@ -27,8 +27,8 @@ This project is open source under the AGPL-3.0 license. The project name, logo, 
 - Using the logo/name outside this project to market your product as officially endorsed or affiliated is not allowed.
 - 在本项目之外将 Logo/名称用于营销并暗示官方背书或合作是不允许的。
 
-## Commercial branding changes / 商业改动
+## Commercial use clarification / 商业使用说明
 
-Commercial use is allowed under AGPL-3.0, but <strong>branding changes (logo/name/notice removal or replacement)</strong> require a commercial license.
+If your use is commercial or involves <strong>branding changes (logo/name/notice removal or replacement)</strong>, you must obtain a commercial license in advance.
 
-允许商业使用，但<strong>涉及品牌变更（Logo/名称/署名移除或替换）</strong>需获得商业授权。
+若为商业使用或涉及<strong>品牌变更（Logo/名称/署名移除或替换）</strong>，必须事先获得商业授权。

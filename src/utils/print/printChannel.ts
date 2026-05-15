@@ -1,6 +1,10 @@
-import { usePrintSettings, type PrintMode, type PrintOptions } from '@/composables/usePrintSettings';
-import { toast } from '@/utils/toast';
-import i18n from '@/locales';
+import {
+  usePrintSettings,
+  type PrintMode,
+  type PrintOptions,
+} from "@/composables/usePrintSettings";
+import { toast } from "@/utils/toast";
+import i18n from "@/locales";
 
 type RefLike<T> = { value: T };
 
@@ -20,8 +24,13 @@ type PrintExecutorDeps = {
   localWsUrl: RefLike<string | undefined>;
   remoteSelectedClientId: RefLike<string | undefined>;
   fetchRemoteClients: () => Promise<any>;
-  fetchRemotePrinters: (clientId: string) => Promise<Array<{ printer_name?: string }>>;
-  submitRemoteTask: (payload: Record<string, any>, timeoutMs?: number) => Promise<any>;
+  fetchRemotePrinters: (
+    clientId: string,
+  ) => Promise<Array<{ printer_name?: string }>>;
+  submitRemoteTask: (
+    payload: Record<string, any>,
+    timeoutMs?: number,
+  ) => Promise<any>;
   getPdfBlob: (content: HTMLElement | string | HTMLElement[]) => Promise<Blob>;
   browserPrint: (content: HTMLElement | string | HTMLElement[]) => Promise<any>;
 };
@@ -30,14 +39,18 @@ const blobToDataUrl = (blob: Blob) =>
   new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => resolve(reader.result as string);
-    reader.onerror = () => reject(new Error('Failed to read PDF blob'));
+    reader.onerror = () => reject(new Error("Failed to read PDF blob"));
     reader.readAsDataURL(blob);
   });
 
-const buildPrintPayload = (options: PrintOptions, content: string, key?: string) => {
+const buildPrintPayload = (
+  options: PrintOptions,
+  content: string,
+  key?: string,
+) => {
   const payload: Record<string, any> = {
     printer: options.printer,
-    content
+    content,
   };
 
   if (key) payload.key = key;
@@ -45,19 +58,19 @@ const buildPrintPayload = (options: PrintOptions, content: string, key?: string)
     payload.job = {
       ...(options.jobName ? { name: options.jobName } : {}),
       ...(options.copies ? { copies: options.copies } : {}),
-      ...(options.intervalMs ? { intervalMs: options.intervalMs } : {})
+      ...(options.intervalMs ? { intervalMs: options.intervalMs } : {}),
     };
   }
   if (options.pageRange || options.pageSet) {
     payload.pages = {
       ...(options.pageRange ? { range: options.pageRange } : {}),
-      ...(options.pageSet ? { set: options.pageSet } : {})
+      ...(options.pageSet ? { set: options.pageSet } : {}),
     };
   }
   if (options.scale || options.orientation) {
     payload.layout = {
       ...(options.scale ? { scale: options.scale } : {}),
-      ...(options.orientation ? { orientation: options.orientation } : {})
+      ...(options.orientation ? { orientation: options.orientation } : {}),
     };
   }
   if (options.colorMode) {
@@ -77,7 +90,7 @@ const buildPrintPayload = (options: PrintOptions, content: string, key?: string)
 
 export const createPrintExecutor = (deps: PrintExecutorDeps) => {
   let localSocket: WebSocket | null = null;
-  let localSocketUrl = '';
+  let localSocketUrl = "";
   let localSocketPromise: Promise<WebSocket> | null = null;
   let localQueue: Promise<any> = Promise.resolve();
 
@@ -86,12 +99,16 @@ export const createPrintExecutor = (deps: PrintExecutorDeps) => {
       localSocket.close();
     }
     localSocket = null;
-    localSocketUrl = '';
+    localSocketUrl = "";
     localSocketPromise = null;
   };
 
   const getLocalSocket = (url: string) => {
-    if (localSocket && localSocket.readyState === WebSocket.OPEN && localSocketUrl === url) {
+    if (
+      localSocket &&
+      localSocket.readyState === WebSocket.OPEN &&
+      localSocketUrl === url
+    ) {
       return Promise.resolve(localSocket);
     }
     if (localSocketPromise) return localSocketPromise;
@@ -100,20 +117,20 @@ export const createPrintExecutor = (deps: PrintExecutorDeps) => {
     localSocketPromise = new Promise<WebSocket>((resolve, reject) => {
       const socket = new WebSocket(url);
       const handleOpen = () => {
-        socket.removeEventListener('open', handleOpen);
-        socket.removeEventListener('error', handleError);
+        socket.removeEventListener("open", handleOpen);
+        socket.removeEventListener("error", handleError);
         localSocket = socket;
         localSocketPromise = null;
         resolve(socket);
       };
       const handleError = () => {
-        socket.removeEventListener('open', handleOpen);
-        socket.removeEventListener('error', handleError);
+        socket.removeEventListener("open", handleOpen);
+        socket.removeEventListener("error", handleError);
         resetLocalSocket();
-        reject(new Error('Print connection failed'));
+        reject(new Error("Print connection failed"));
       };
-      socket.addEventListener('open', handleOpen);
-      socket.addEventListener('error', handleError);
+      socket.addEventListener("open", handleOpen);
+      socket.addEventListener("error", handleError);
     });
 
     return localSocketPromise;
@@ -122,8 +139,8 @@ export const createPrintExecutor = (deps: PrintExecutorDeps) => {
   const sendLocalWsPrint = (
     url: string,
     payload: Record<string, any>,
-    _waitFor: 'status',
-    timeoutMs: number = 30000
+    _waitFor: "status",
+    timeoutMs: number = 30000,
   ) => {
     localQueue = localQueue
       .catch(() => undefined)
@@ -136,14 +153,14 @@ export const createPrintExecutor = (deps: PrintExecutorDeps) => {
               if (resolved) return;
               resolved = true;
               resetLocalSocket();
-              reject(new Error('Print request timeout'));
+              reject(new Error("Print request timeout"));
             }, timeoutMs);
 
             const cleanup = () => {
               if (!socket) return;
-              socket.removeEventListener('message', handleMessage);
-              socket.removeEventListener('error', handleError);
-              socket.removeEventListener('close', handleClose);
+              socket.removeEventListener("message", handleMessage);
+              socket.removeEventListener("error", handleError);
+              socket.removeEventListener("close", handleClose);
             };
 
             const handleMessage = (event: MessageEvent) => {
@@ -151,35 +168,37 @@ export const createPrintExecutor = (deps: PrintExecutorDeps) => {
               try {
                 const msg = JSON.parse(event.data);
                 if (
-                  msg.status === 'success' ||
-                  msg.status === 'error' ||
-                  msg.status === 'ok' ||
-                  msg.type === 'print_result'
+                  msg.status === "success" ||
+                  msg.status === "error" ||
+                  msg.status === "ok" ||
+                  msg.type === "print_result"
                 ) {
                   resolved = true;
                   window.clearTimeout(timeoutId);
                   cleanup();
                   if (
-                    msg.status === 'success' ||
-                    msg.status === 'ok' ||
-                    (msg.type === 'print_result' && msg.status !== 'error')
+                    msg.status === "success" ||
+                    msg.status === "ok" ||
+                    (msg.type === "print_result" && msg.status !== "error")
                   ) {
                     resolve(msg);
                   } else {
-                    reject(new Error(msg.message || 'Print failed'));
+                    reject(new Error(msg.message || "Print failed"));
                   }
                 }
               } catch (error) {
-                if (event.data === 'success' || event.data === 'ok') {
+                if (event.data === "success" || event.data === "ok") {
                   resolved = true;
                   window.clearTimeout(timeoutId);
                   cleanup();
-                  resolve({ status: 'success', message: event.data });
+                  resolve({ status: "success", message: event.data });
                 } else {
                   resolved = true;
                   window.clearTimeout(timeoutId);
                   cleanup();
-                  reject(error instanceof Error ? error : new Error('Print failed'));
+                  reject(
+                    error instanceof Error ? error : new Error("Print failed"),
+                  );
                 }
               }
             };
@@ -190,7 +209,7 @@ export const createPrintExecutor = (deps: PrintExecutorDeps) => {
               window.clearTimeout(timeoutId);
               cleanup();
               resetLocalSocket();
-              reject(new Error('Print connection failed'));
+              reject(new Error("Print connection failed"));
             };
 
             const handleClose = () => {
@@ -199,49 +218,63 @@ export const createPrintExecutor = (deps: PrintExecutorDeps) => {
               window.clearTimeout(timeoutId);
               cleanup();
               resetLocalSocket();
-              reject(new Error('Print connection closed'));
+              reject(new Error("Print connection closed"));
             };
 
             try {
               socket = await getLocalSocket(url);
-              socket.addEventListener('message', handleMessage);
-              socket.addEventListener('error', handleError);
-              socket.addEventListener('close', handleClose);
+              socket.addEventListener("message", handleMessage);
+              socket.addEventListener("error", handleError);
+              socket.addEventListener("close", handleClose);
               socket.send(JSON.stringify(payload));
             } catch (error) {
               resolved = true;
               window.clearTimeout(timeoutId);
               cleanup();
-              reject(error instanceof Error ? error : new Error('Print connection failed'));
+              reject(
+                error instanceof Error
+                  ? error
+                  : new Error("Print connection failed"),
+              );
             }
-          })
+          }),
       );
 
     return localQueue;
   };
 
-  const print = async (content: HTMLElement | string | HTMLElement[], request?: PrintRequest) => {
+  const print = async (
+    content: HTMLElement | string | HTMLElement[],
+    request?: PrintRequest,
+  ) => {
     const mode = request?.mode || deps.printMode.value;
 
-    if (mode === 'browser') {
+    if (mode === "browser") {
       return await deps.browserPrint(content);
     }
 
-    const connectionOk = mode === 'local' ? deps.localStatus.value === 'connected' : deps.remoteStatus.value === 'connected';
+    const connectionOk =
+      mode === "local"
+        ? deps.localStatus.value === "connected"
+        : deps.remoteStatus.value === "connected";
     if (!connectionOk) {
       return await deps.browserPrint(content);
     }
 
-    const options = request?.options || (mode === 'local' ? deps.localPrintOptions : deps.remotePrintOptions);
+    const options =
+      request?.options ||
+      (mode === "local" ? deps.localPrintOptions : deps.remotePrintOptions);
     const currentOptions = { ...options };
 
-    if (mode === 'remote' && deps.silentPrint.value) {
+    if (mode === "remote" && deps.silentPrint.value) {
       if (!deps.remoteSelectedClientId.value) {
         await deps.fetchRemoteClients();
       }
       if (!currentOptions.printer && deps.remoteSelectedClientId.value) {
-        const printers = await deps.fetchRemotePrinters(deps.remoteSelectedClientId.value);
-        const fallbackPrinter = printers[0]?.printer_name || '';
+        const printers = await deps.fetchRemotePrinters(
+          deps.remoteSelectedClientId.value,
+        );
+        const fallbackPrinter = printers[0]?.printer_name || "";
         if (fallbackPrinter) {
           currentOptions.printer = fallbackPrinter;
           deps.remotePrintOptions.printer = fallbackPrinter;
@@ -249,10 +282,13 @@ export const createPrintExecutor = (deps: PrintExecutorDeps) => {
       }
     }
 
-    if (mode === 'local' && deps.silentPrint.value && !currentOptions.printer) {
+    if (mode === "local" && deps.silentPrint.value && !currentOptions.printer) {
       const { fetchLocalPrinters } = usePrintSettings();
       const localPrinters = await fetchLocalPrinters();
-      const fallbackPrinter = localPrinters.find(p => p.isDefault)?.name || localPrinters[0]?.name || '';
+      const fallbackPrinter =
+        localPrinters.find((p) => p.isDefault)?.name ||
+        localPrinters[0]?.name ||
+        "";
       if (fallbackPrinter) {
         currentOptions.printer = fallbackPrinter;
         deps.localPrintOptions.printer = fallbackPrinter;
@@ -260,31 +296,43 @@ export const createPrintExecutor = (deps: PrintExecutorDeps) => {
     }
 
     if (!currentOptions.printer) {
-      toast.error(i18n.global.t('toast.printerRequired'));
-      throw new Error('Printer is required');
+      toast.error(i18n.global.t("toast.printerRequired"));
+      throw new Error("Printer is required");
     }
 
     try {
       const pdfBlob = await deps.getPdfBlob(content);
       const dataUrl = await blobToDataUrl(pdfBlob);
 
-      if (mode === 'local') {
-        const payload = buildPrintPayload(currentOptions, dataUrl, deps.localSettings.secretKey.trim());
-        return await sendLocalWsPrint(deps.localWsUrl.value as string, payload, 'status', currentOptions.timeout || 30000);
+      if (mode === "local") {
+        const payload = buildPrintPayload(
+          currentOptions,
+          dataUrl,
+          deps.localSettings.secretKey.trim(),
+        );
+        return await sendLocalWsPrint(
+          deps.localWsUrl.value as string,
+          payload,
+          "status",
+          currentOptions.timeout || 30000,
+        );
       }
 
       if (!deps.remoteSelectedClientId.value) {
-        toast.error(i18n.global.t('toast.clientRequired'));
-        throw new Error('Client is required');
+        toast.error(i18n.global.t("toast.clientRequired"));
+        throw new Error("Client is required");
       }
 
       const payload = buildPrintPayload(currentOptions, dataUrl);
-      payload.cmd = 'submit_task';
+      payload.cmd = "submit_task";
       payload.client_id = deps.remoteSelectedClientId.value;
-      return await deps.submitRemoteTask(payload, currentOptions.timeout || 30000);
+      return await deps.submitRemoteTask(
+        payload,
+        currentOptions.timeout || 30000,
+      );
     } catch (error) {
-      console.error('Print failed', error);
-      toast.error(i18n.global.t('toast.printFailed'));
+      console.error("Print failed", error);
+      toast.error(i18n.global.t("toast.printFailed"));
       throw error;
     }
   };

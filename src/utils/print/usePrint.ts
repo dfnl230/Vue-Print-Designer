@@ -1,15 +1,15 @@
-import { nextTick } from 'vue';
-import cloneDeep from 'lodash/cloneDeep';
-import { v4 as uuidv4 } from 'uuid';
-import { useDesignerStore } from '@/stores/designer';
-import { ElementType, type Page } from '@/types';
-import { usePrintSettings } from '@/composables/usePrintSettings';
-import { toast } from '@/utils/toast';
-import i18n from '@/locales';
-import baseStyles from '@/style.css?inline';
-import { isShadowDomContent, lockViewportScroll } from './dom';
-import { createPrintExecutor } from './printChannel';
-import { createRenderEngine } from './renderEngine';
+import { nextTick } from "vue";
+import cloneDeep from "lodash/cloneDeep";
+import { v4 as uuidv4 } from "uuid";
+import { useDesignerStore } from "@/stores/designer";
+import { ElementType, type Page } from "@/types";
+import { usePrintSettings } from "@/composables/usePrintSettings";
+import { toast } from "@/utils/toast";
+import i18n from "@/locales";
+import baseStyles from "@/style.css?inline";
+import { isShadowDomContent, lockViewportScroll } from "./dom";
+import { createPrintExecutor } from "./printChannel";
+import { createRenderEngine } from "./renderEngine";
 
 export const usePrint = () => {
   const store = useDesignerStore();
@@ -26,7 +26,7 @@ export const usePrint = () => {
     fetchRemoteClients,
     fetchRemotePrinters,
     submitRemoteTask,
-    exportImageMerged
+    exportImageMerged,
   } = usePrintSettings();
 
   const createRepeatedPages = (originalPages: Page[]): Page[] => {
@@ -44,26 +44,28 @@ export const usePrint = () => {
     const footerBoundary = canvasHeight - (store.footerHeight + marginBottom);
 
     const repeatHeaders = hasHeader
-      ? basePage.elements.filter(e => {
+      ? basePage.elements.filter((e) => {
           const bounds = store.getElementBoundsAtPosition(e, e.x, e.y);
           return bounds.maxY <= headerBoundary;
         })
       : [];
 
     const repeatFooters = hasFooter
-      ? basePage.elements.filter(e => {
+      ? basePage.elements.filter((e) => {
           const bounds = store.getElementBoundsAtPosition(e, e.x, e.y);
           return bounds.minY >= footerBoundary;
         })
       : [];
 
     const repeatPerPageElements = basePage.elements.filter(
-      e => e.type !== ElementType.TABLE && e.repeatPerPage === true
+      (e) => e.type !== ElementType.TABLE && e.repeatPerPage === true,
     );
-    const repeatMap = new Map<string, typeof basePage.elements[number]>();
-    [...repeatHeaders, ...repeatFooters, ...repeatPerPageElements].forEach(el => {
-      repeatMap.set(el.id, el);
-    });
+    const repeatMap = new Map<string, (typeof basePage.elements)[number]>();
+    [...repeatHeaders, ...repeatFooters, ...repeatPerPageElements].forEach(
+      (el) => {
+        repeatMap.set(el.id, el);
+      },
+    );
     const repeatedElements = Array.from(repeatMap.values());
     if (repeatedElements.length === 0) return original;
 
@@ -80,7 +82,7 @@ export const usePrint = () => {
   };
 
   const prepareEnvironment = async (
-    options: { mutateStore?: boolean; setExporting?: boolean } = {}
+    options: { mutateStore?: boolean; setExporting?: boolean } = {},
   ) => {
     const mutateStore = options.mutateStore === true;
     const setExporting = options.setExporting === true;
@@ -93,7 +95,8 @@ export const usePrint = () => {
     const previousShowFooterLine = store.showFooterLine;
     const previousShowCornerMarkers = store.showCornerMarkers;
     const previousIsExporting = Boolean(store.isExporting);
-    const previousBodyHasExporting = document.body.classList.contains('exporting');
+    const previousBodyHasExporting =
+      document.body.classList.contains("exporting");
 
     const previousHtmlOverflowX = document.documentElement.style.overflowX;
     const previousHtmlOverflowY = document.documentElement.style.overflowY;
@@ -112,22 +115,25 @@ export const usePrint = () => {
 
     if (setExporting) {
       store.setIsExporting(true);
-      document.body.classList.add('exporting');
+      document.body.classList.add("exporting");
     }
 
     if (mutateStore || setExporting) {
-      document.documentElement.style.overflowX = 'hidden';
-      document.documentElement.style.overflowY = 'hidden';
-      document.body.style.overflowX = 'hidden';
-      document.body.style.overflowY = 'hidden';
+      document.documentElement.style.overflowX = "hidden";
+      document.documentElement.style.overflowY = "hidden";
+      document.body.style.overflowX = "hidden";
+      document.body.style.overflowY = "hidden";
 
       await nextTick();
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
 
     return () => {
-      if (document.body.classList.contains('exporting') && !previousBodyHasExporting) {
-        document.body.classList.remove('exporting');
+      if (
+        document.body.classList.contains("exporting") &&
+        !previousBodyHasExporting
+      ) {
+        document.body.classList.remove("exporting");
       }
 
       if (store.isExporting !== previousIsExporting) {
@@ -161,35 +167,37 @@ export const usePrint = () => {
     resolveRenderSource,
     processContentForImage,
     generatePageImages,
-    createPdfDocument
+    createPdfDocument,
   } = createRenderEngine({
     store,
     createRepeatedPages,
-    prepareEnvironment
+    prepareEnvironment,
   });
 
   const exportPdf = async (
     content?: HTMLElement | string | HTMLElement[],
-    filename = 'print-design.pdf'
+    filename = "print-design.pdf",
   ) => {
     try {
       const targetContent =
-        content || (Array.from(document.querySelectorAll('.print-page')) as HTMLElement[]);
+        content ||
+        (Array.from(document.querySelectorAll(".print-page")) as HTMLElement[]);
       const pdf = await createPdfDocument(targetContent);
       pdf.save(filename);
     } catch (error) {
-      console.error('Export PDF failed', error);
-      toast.error(i18n.global.t('toast.exportPdfFailed'));
+      console.error("Export PDF failed", error);
+      toast.error(i18n.global.t("toast.exportPdfFailed"));
     }
   };
 
   const exportHtml = async (
     content?: HTMLElement | string | HTMLElement[],
-    filename = 'print-design.html'
+    filename = "print-design.html",
   ) => {
     try {
       const targetContent =
-        content || (Array.from(document.querySelectorAll('.print-page')) as HTMLElement[]);
+        content ||
+        (Array.from(document.querySelectorAll(".print-page")) as HTMLElement[]);
       const html = await getPrintHtml(targetContent as HTMLElement[]);
 
       const fullHtml = `<!DOCTYPE html>
@@ -215,37 +223,39 @@ export const usePrint = () => {
 </body>
 </html>`;
 
-      const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+      const blob = new Blob([fullHtml], { type: "text/html;charset=utf-8" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = filename.endsWith('.html') ? filename : `${filename}.html`;
+      a.download = filename.endsWith(".html") ? filename : `${filename}.html`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Export HTML failed', error);
-      toast.error('Export HTML failed');
+      console.error("Export HTML failed", error);
+      toast.error("Export HTML failed");
     }
   };
 
-  const browserPrint = async (content: HTMLElement | string | HTMLElement[]) => {
+  const browserPrint = async (
+    content: HTMLElement | string | HTMLElement[],
+  ) => {
     const restoreViewport = lockViewportScroll(!isShadowDomContent(content));
     try {
       const pdf = await createPdfDocument(content);
-      const blob = pdf.output('blob');
+      const blob = pdf.output("blob");
       const blobUrl = URL.createObjectURL(blob);
 
       const isEdge = /Edg\//.test(navigator.userAgent);
       if (isEdge) {
-        const popup = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+        const popup = window.open(blobUrl, "_blank", "noopener,noreferrer");
         if (!popup) {
           URL.revokeObjectURL(blobUrl);
           return;
         }
 
-        popup.addEventListener('beforeunload', () => {
+        popup.addEventListener("beforeunload", () => {
           URL.revokeObjectURL(blobUrl);
         });
 
@@ -259,18 +269,18 @@ export const usePrint = () => {
             }, 1000);
           }
         };
-        return { status: 'success', mode: 'browser' };
+        return { status: "success", mode: "browser" };
       }
 
-      await new Promise<void>(resolve => {
-        const iframe = document.createElement('iframe');
-        iframe.style.position = 'fixed';
-        iframe.style.left = '0';
-        iframe.style.top = '0';
-        iframe.style.width = '0px';
-        iframe.style.height = '0px';
-        iframe.style.border = '0';
-        iframe.style.visibility = 'hidden';
+      await new Promise<void>((resolve) => {
+        const iframe = document.createElement("iframe");
+        iframe.style.position = "fixed";
+        iframe.style.left = "0";
+        iframe.style.top = "0";
+        iframe.style.width = "0px";
+        iframe.style.height = "0px";
+        iframe.style.border = "0";
+        iframe.style.visibility = "hidden";
         iframe.src = blobUrl;
         document.body.appendChild(iframe);
 
@@ -291,10 +301,10 @@ export const usePrint = () => {
           }, 1000);
         };
       });
-      return { status: 'success', mode: 'browser' };
+      return { status: "success", mode: "browser" };
     } catch (error) {
-      console.error('Print failed', error);
-      toast.error('Print failed');
+      console.error("Print failed", error);
+      toast.error("Print failed");
       throw error;
     } finally {
       restoreViewport();
@@ -302,7 +312,7 @@ export const usePrint = () => {
   };
 
   const stitchImages = async (images: string[]): Promise<string> => {
-    if (images.length === 0) return '';
+    if (images.length === 0) return "";
 
     const firstImg = await new Promise<HTMLImageElement>((resolve, reject) => {
       const img = new Image();
@@ -315,11 +325,11 @@ export const usePrint = () => {
     const imgHeight = firstImg.height;
     const totalHeight = imgHeight * images.length;
 
-    const canvas = document.createElement('canvas');
+    const canvas = document.createElement("canvas");
     canvas.width = imgWidth;
     canvas.height = totalHeight;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Could not get canvas context');
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Could not get canvas context");
 
     ctx.drawImage(firstImg, 0, 0);
 
@@ -335,18 +345,24 @@ export const usePrint = () => {
       });
     }
 
-    return canvas.toDataURL('image/jpeg', 0.8);
+    return canvas.toDataURL("image/jpeg", 0.8);
   };
 
   const exportImages = async (
     content?: HTMLElement | string | HTMLElement[],
-    filenamePrefix = 'print-design'
+    filenamePrefix = "print-design",
   ) => {
     try {
       const targetContent =
-        content || (Array.from(document.querySelectorAll('.print-page')) as HTMLElement[]);
-      const restore = await prepareEnvironment({ mutateStore: false, setExporting: false });
-      const restoreViewport = lockViewportScroll(!isShadowDomContent(targetContent));
+        content ||
+        (Array.from(document.querySelectorAll(".print-page")) as HTMLElement[]);
+      const restore = await prepareEnvironment({
+        mutateStore: false,
+        setExporting: false,
+      });
+      const restoreViewport = lockViewportScroll(
+        !isShadowDomContent(targetContent),
+      );
 
       const width = store.canvasSize.width;
       const height = store.canvasSize.height;
@@ -360,7 +376,7 @@ export const usePrint = () => {
         width,
         height,
         true,
-        source.getComputedStyleFn
+        source.getComputedStyleFn,
       );
 
       try {
@@ -371,14 +387,14 @@ export const usePrint = () => {
         if (exportImageMerged.value) {
           const finalImage = await stitchImages(pageImages);
 
-          const link = document.createElement('a');
+          const link = document.createElement("a");
           link.href = finalImage;
           link.download = `${filenamePrefix}.jpg`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
         } else {
-          const jsZipModule = await import('jszip');
+          const jsZipModule = await import("jszip");
           const JSZip = (jsZipModule as any)?.default || jsZipModule;
           const zip = new JSZip();
           await Promise.all(
@@ -386,12 +402,12 @@ export const usePrint = () => {
               const response = await fetch(dataUrl);
               const blob = await response.blob();
               zip.file(`${filenamePrefix}-${index + 1}.jpg`, blob);
-            })
+            }),
           );
 
-          const zipBlob = await zip.generateAsync({ type: 'blob' });
+          const zipBlob = await zip.generateAsync({ type: "blob" });
           const zipUrl = URL.createObjectURL(zipBlob);
-          const link = document.createElement('a');
+          const link = document.createElement("a");
           link.href = zipUrl;
           link.download = `${filenamePrefix}.zip`;
           document.body.appendChild(link);
@@ -410,17 +426,25 @@ export const usePrint = () => {
         restore();
       }
     } catch (error) {
-      console.error('Export Images failed', error);
-      toast.error('Export Images failed');
+      console.error("Export Images failed", error);
+      toast.error("Export Images failed");
     }
   };
 
-  const getImageBlob = async (content: HTMLElement | string | HTMLElement[]) => {
+  const getImageBlob = async (
+    content: HTMLElement | string | HTMLElement[],
+  ) => {
     try {
       const targetContent =
-        content || (Array.from(document.querySelectorAll('.print-page')) as HTMLElement[]);
-      const restore = await prepareEnvironment({ mutateStore: false, setExporting: false });
-      const restoreViewport = lockViewportScroll(!isShadowDomContent(targetContent));
+        content ||
+        (Array.from(document.querySelectorAll(".print-page")) as HTMLElement[]);
+      const restore = await prepareEnvironment({
+        mutateStore: false,
+        setExporting: false,
+      });
+      const restoreViewport = lockViewportScroll(
+        !isShadowDomContent(targetContent),
+      );
 
       const width = store.canvasSize.width;
       const height = store.canvasSize.height;
@@ -434,13 +458,13 @@ export const usePrint = () => {
         width,
         height,
         true,
-        source.getComputedStyleFn
+        source.getComputedStyleFn,
       );
 
       try {
         const pageImages = await generatePageImages(container, width, height);
 
-        if (pageImages.length === 0) throw new Error('No images generated');
+        if (pageImages.length === 0) throw new Error("No images generated");
 
         const finalImage = await stitchImages(pageImages);
         const response = await fetch(finalImage);
@@ -456,7 +480,7 @@ export const usePrint = () => {
         restore();
       }
     } catch (error) {
-      console.error('Get Image Blob failed', error);
+      console.error("Get Image Blob failed", error);
       throw error;
     }
   };
@@ -464,9 +488,9 @@ export const usePrint = () => {
   const getPdfBlob = async (content: HTMLElement | string | HTMLElement[]) => {
     try {
       const pdf = await createPdfDocument(content);
-      return pdf.output('blob');
+      return pdf.output("blob");
     } catch (error) {
-      console.error('Get PDF Blob failed', error);
+      console.error("Get PDF Blob failed", error);
       throw error;
     }
   };
@@ -485,7 +509,7 @@ export const usePrint = () => {
     fetchRemotePrinters,
     submitRemoteTask,
     getPdfBlob,
-    browserPrint
+    browserPrint,
   });
 
   return {
@@ -495,6 +519,6 @@ export const usePrint = () => {
     exportHtml,
     exportImages,
     getPdfBlob,
-    getImageBlob
+    getImageBlob,
   };
 };
