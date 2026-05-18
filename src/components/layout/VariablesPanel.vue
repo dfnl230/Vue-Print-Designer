@@ -23,7 +23,7 @@ const PANEL_MIN_WIDTH = 220;
 const PANEL_MAX_WIDTH = 520;
 const PANEL_MIN_HEIGHT = 200;
 const PANEL_Z_BASE = 2000;
-const PANEL_Z_ACTIVE = 5100;
+const PANEL_Z_ACTIVE = 5200;
 const panelZIndex = computed(() =>
   isDragging.value || isResizing.value ? PANEL_Z_ACTIVE : PANEL_Z_BASE,
 );

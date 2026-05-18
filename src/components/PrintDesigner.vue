@@ -1121,7 +1121,7 @@ const rulerRanges = computed(() => {
 
               <!-- Guides Overlay -->
               <div
-                class="absolute top-0 left-0 pointer-events-none z-50"
+                class="absolute top-0 left-0 pointer-events-none z-30"
                 :style="{
                   width: `${scrollWidth}px`,
                   height: `${scrollHeight}px`,
