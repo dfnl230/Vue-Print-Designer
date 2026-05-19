@@ -207,7 +207,10 @@ const handleMouseDown = (e: MouseEvent) => {
     // If already selected, do nothing on mouse down to preserve group selection for dragging
   }
 
-  if (store.selectedElementIds.includes(props.element.id)) {
+  if (
+    !props.element.locked &&
+    store.selectedElementIds.includes(props.element.id)
+  ) {
     store.bringElementsToFront(store.selectedElementIds);
   }
 
@@ -234,7 +237,7 @@ const handleMouseMove = (e: MouseEvent) => {
   // If we moved significantly, it's a drag operation
   if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
     if (!hasSnapshot) {
-      store.snapshot();
+      store.snapshot("editor.historyAction.elementMove");
       hasSnapshot = true;
     }
 
@@ -392,7 +395,7 @@ const handleRotateStart = (e: MouseEvent) => {
     currentRotationDisplay.value = newRotation;
 
     if (!hasSnapshot) {
-      store.snapshot();
+      store.snapshot("editor.historyAction.elementRotate");
       hasSnapshot = true;
     }
 
@@ -618,7 +621,7 @@ const handleResizeStart = (e: MouseEvent) => {
     const dy = (moveEvent.clientY - startY) / props.zoom;
 
     if (!hasSnapshot) {
-      store.snapshot();
+      store.snapshot("editor.historyAction.elementResize");
       hasSnapshot = true;
     }
 

@@ -327,6 +327,7 @@ export const useTemplateStore = defineStore("templates", {
         showHeaderLine: designerStore.showHeaderLine,
         showFooterLine: designerStore.showFooterLine,
         showMinimap: designerStore.showMinimap,
+        showHistoryPanel: designerStore.showHistoryPanel,
         canvasBackground: designerStore.canvasBackground,
         pageSpacingX: designerStore.pageSpacingX,
         pageSpacingY: designerStore.pageSpacingY,
@@ -544,6 +545,7 @@ export const useTemplateStore = defineStore("templates", {
         showHeaderLine: designerStore.showHeaderLine,
         showFooterLine: designerStore.showFooterLine,
         showMinimap: designerStore.showMinimap,
+        showHistoryPanel: designerStore.showHistoryPanel,
         canvasBackground: designerStore.canvasBackground,
       };
       const newData = sanitizeTemplateData(nextData);
@@ -889,6 +891,8 @@ export const useTemplateStore = defineStore("templates", {
               designerStore.showFooterLine = data.showFooterLine;
             if (data.showMinimap !== undefined)
               designerStore.showMinimap = data.showMinimap;
+            if (data.showHistoryPanel !== undefined)
+              designerStore.showHistoryPanel = data.showHistoryPanel;
             if (data.canvasBackground !== undefined)
               designerStore.canvasBackground = data.canvasBackground;
             if (data.pageSpacingX !== undefined)
@@ -904,6 +908,8 @@ export const useTemplateStore = defineStore("templates", {
             designerStore.selectedGuideId = null;
             designerStore.historyPast = [];
             designerStore.historyFuture = [];
+            designerStore.historyPastActionKeys = [];
+            designerStore.historyFutureActionKeys = [];
             const currentId = t.id || id;
             this.currentTemplateId = currentId;
 
@@ -975,6 +981,8 @@ export const useTemplateStore = defineStore("templates", {
             designerStore.showFooterLine = data.showFooterLine;
           if (data.showMinimap !== undefined)
             designerStore.showMinimap = data.showMinimap;
+          if (data.showHistoryPanel !== undefined)
+            designerStore.showHistoryPanel = data.showHistoryPanel;
           if (data.canvasBackground !== undefined)
             designerStore.canvasBackground = data.canvasBackground;
           if (data.pageSpacingX !== undefined)
@@ -992,6 +1000,8 @@ export const useTemplateStore = defineStore("templates", {
           designerStore.selectedGuideId = null;
           designerStore.historyPast = [];
           designerStore.historyFuture = [];
+          designerStore.historyPastActionKeys = [];
+          designerStore.historyFutureActionKeys = [];
 
           this.currentTemplateId = t.id || id;
         }

@@ -242,6 +242,8 @@ export interface CustomElementEditSnapshot {
   pages: Page[];
   historyPast: Page[][];
   historyFuture: Page[][];
+  historyPastActionKeys: string[];
+  historyFutureActionKeys: string[];
   canvasSize: Size;
   guides: Guide[];
   zoom: number;
@@ -254,6 +256,7 @@ export interface CustomElementEditSnapshot {
   showHeaderLine: boolean;
   showFooterLine: boolean;
   showMinimap: boolean;
+  showHistoryPanel: boolean;
   canvasBackground: string;
   pageSpacingX?: number;
   pageSpacingY?: number;
@@ -308,6 +311,8 @@ export interface DesignerState {
   showHeaderLine: boolean;
   showFooterLine: boolean;
   showMinimap: boolean;
+  showHistoryPanel: boolean;
+  showDeveloperMode: boolean;
   showHelp: boolean;
   showSettings: boolean;
   canvasBackground: string;
@@ -316,6 +321,8 @@ export interface DesignerState {
   guides: Guide[];
   historyPast: Page[][];
   historyFuture: Page[][];
+  historyPastActionKeys: string[];
+  historyFutureActionKeys: string[];
   clipboard: PrintElement[];
   copiedPage?: Page | null;
   isExporting?: boolean;

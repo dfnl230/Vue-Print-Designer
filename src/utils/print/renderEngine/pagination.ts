@@ -432,8 +432,18 @@ export const createPagination = ({ store }: { store: DesignerStore }) => {
               wrapperHeight <= availableContentHeight &&
               targetTop + wrapperHeight > maxContentBottom
             ) {
+              // 固定元素跨页时保留溢出量，避免多个元素在新页顶端重叠。
+              let overflow = targetTop + wrapperHeight - maxContentBottom;
               targetPageIndex += 1;
-              targetTop = minContentTop;
+              targetTop = minContentTop + Math.max(overflow, 0);
+
+              // 极端情况下（例如 targetTop 初值异常偏大），
+              // 继续把剩余溢出向后页传递，直到可放入可打印区。
+              while (targetTop + wrapperHeight > maxContentBottom + 0.5) {
+                overflow = targetTop + wrapperHeight - maxContentBottom;
+                targetPageIndex += 1;
+                targetTop = minContentTop + Math.max(overflow, 0);
+              }
             } else if (wrapperHeight > availableContentHeight) {
               // 超高固定元素无法完整放入可打印区时，
               // 固定到内容顶部边界，优先避免与页脚重叠。

@@ -641,6 +641,99 @@ onUnmounted(() => {
                 </p>
               </div>
 
+              <div class="border-t border-gray-200 pt-4 space-y-4">
+                <div>
+                  <div class="flex items-center justify-between">
+                    <div class="font-medium text-gray-900">
+                      {{ t("editor.showMinimap") }}
+                    </div>
+                    <button
+                      @click="designerStore.setShowMinimap(!designerStore.showMinimap)"
+                      class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                      :class="
+                        designerStore.showMinimap ? 'bg-blue-600' : 'bg-gray-200'
+                      "
+                    >
+                      <span class="sr-only">{{ t("editor.showMinimap") }}</span>
+                      <span
+                        aria-hidden="true"
+                        class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                        :class="
+                          designerStore.showMinimap
+                            ? 'translate-x-5'
+                            : 'translate-x-0'
+                        "
+                      />
+                    </button>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-2">
+                    {{ t("settings.showMinimapDesc") }}
+                  </p>
+                </div>
+
+                <div>
+                  <div class="flex items-center justify-between">
+                    <div class="font-medium text-gray-900">
+                      {{ t("editor.showHistoryPanel") }}
+                    </div>
+                    <button
+                      @click="designerStore.setShowHistoryPanel(!designerStore.showHistoryPanel)"
+                      class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                      :class="
+                        designerStore.showHistoryPanel
+                          ? 'bg-blue-600'
+                          : 'bg-gray-200'
+                      "
+                    >
+                      <span class="sr-only">{{ t("editor.showHistoryPanel") }}</span>
+                      <span
+                        aria-hidden="true"
+                        class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                        :class="
+                          designerStore.showHistoryPanel
+                            ? 'translate-x-5'
+                            : 'translate-x-0'
+                        "
+                      />
+                    </button>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-2">
+                    {{ t("settings.showHistoryPanelDesc") }}
+                  </p>
+                </div>
+
+                <div>
+                  <div class="flex items-center justify-between">
+                    <div class="font-medium text-gray-900">
+                      {{ t("settings.developerMode") }}
+                    </div>
+                    <button
+                      @click="designerStore.setShowDeveloperMode(!designerStore.showDeveloperMode)"
+                      class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                      :class="
+                        designerStore.showDeveloperMode
+                          ? 'bg-blue-600'
+                          : 'bg-gray-200'
+                      "
+                    >
+                      <span class="sr-only">{{ t("settings.developerMode") }}</span>
+                      <span
+                        aria-hidden="true"
+                        class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                        :class="
+                          designerStore.showDeveloperMode
+                            ? 'translate-x-5'
+                            : 'translate-x-0'
+                        "
+                      />
+                    </button>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-2">
+                    {{ t("settings.developerModeDesc") }}
+                  </p>
+                </div>
+              </div>
+
               <div class="border-t border-gray-200 pt-4">
                 <div class="mb-2 font-medium text-gray-900">
                   {{ t("settings.printQuality") }}

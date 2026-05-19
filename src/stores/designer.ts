@@ -52,6 +52,68 @@ const defaultBranding: BrandingSettings = {
   showLogo: true,
 };
 
+const HISTORY_ACTION = {
+  UNKNOWN: "editor.historyAction.unknown",
+  PAGE_ADD: "editor.historyAction.pageAdd",
+  PAGE_REMOVE: "editor.historyAction.pageRemove",
+  PAGE_PASTE: "editor.historyAction.pagePaste",
+  ELEMENT_ADD: "editor.historyAction.elementAdd",
+  ELEMENT_MOVE: "editor.historyAction.elementMove",
+  ELEMENT_NUDGE: "editor.historyAction.elementNudge",
+  ELEMENT_MOVE_TO_PAGE: "editor.historyAction.elementMoveToPage",
+  ELEMENT_RESIZE: "editor.historyAction.elementResize",
+  ELEMENT_ROTATE: "editor.historyAction.elementRotate",
+  ELEMENT_STYLE: "editor.historyAction.elementStyle",
+  ELEMENT_CONTENT: "editor.historyAction.elementContent",
+  ELEMENT_UPDATE: "editor.historyAction.elementUpdate",
+  ELEMENT_REMOVE: "editor.historyAction.elementRemove",
+  ELEMENT_ALIGN: "editor.historyAction.elementAlign",
+  ELEMENT_LAYER: "editor.historyAction.elementLayer",
+  ELEMENT_LOCK: "editor.historyAction.elementLock",
+  ELEMENT_PASTE: "editor.historyAction.elementPaste",
+  CANVAS_RESIZE: "editor.historyAction.canvasResize",
+  TABLE_MERGE_CELLS: "editor.historyAction.tableMergeCells",
+  TABLE_SPLIT_CELLS: "editor.historyAction.tableSplitCells",
+  TABLE_ALIGN_CELLS: "editor.historyAction.tableAlignCells",
+  TABLE_PAGINATE: "editor.historyAction.tablePaginate",
+} as const;
+
+const hasOwn = (obj: unknown, key: string) =>
+  !!obj && Object.prototype.hasOwnProperty.call(obj, key);
+
+const inferElementUpdateHistoryAction = (updates: Partial<PrintElement>) => {
+  if (hasOwn(updates, "x") || hasOwn(updates, "y")) {
+    return HISTORY_ACTION.ELEMENT_MOVE;
+  }
+
+  if (hasOwn(updates, "width") || hasOwn(updates, "height")) {
+    return HISTORY_ACTION.ELEMENT_RESIZE;
+  }
+
+  if (hasOwn(updates, "locked")) {
+    return HISTORY_ACTION.ELEMENT_LOCK;
+  }
+
+  if (updates.style && typeof updates.style === "object") {
+    if (hasOwn(updates.style, "rotate")) {
+      return HISTORY_ACTION.ELEMENT_ROTATE;
+    }
+    return HISTORY_ACTION.ELEMENT_STYLE;
+  }
+
+  if (
+    hasOwn(updates, "content") ||
+    hasOwn(updates, "variable") ||
+    hasOwn(updates, "data") ||
+    hasOwn(updates, "footerData") ||
+    hasOwn(updates, "columns")
+  ) {
+    return HISTORY_ACTION.ELEMENT_CONTENT;
+  }
+
+  return HISTORY_ACTION.ELEMENT_UPDATE;
+};
+
 const loadWatermark = (): WatermarkSettings => {
   const stored = localStorage.getItem("print-designer-watermark");
   if (!stored) return { ...defaultWatermark };
@@ -63,6 +125,12 @@ const loadWatermark = (): WatermarkSettings => {
   } catch {
     return { ...defaultWatermark };
   }
+};
+
+const loadDeveloperMode = () => {
+  const stored = localStorage.getItem("print-designer-developer-mode");
+  if (stored === null) return true;
+  return stored !== "false";
 };
 
 type LayerMoveMode = "front" | "back" | "forward" | "backward";
@@ -348,6 +416,8 @@ export const useDesignerStore = defineStore("designer", {
     showHeaderLine: false,
     showFooterLine: false,
     showMinimap: false,
+    showHistoryPanel: false,
+    showDeveloperMode: loadDeveloperMode(),
     showHelp: false,
     showSettings: false,
     canvasBackground: "#ffffff",
@@ -356,6 +426,8 @@ export const useDesignerStore = defineStore("designer", {
     guides: [],
     historyPast: [],
     historyFuture: [],
+    historyPastActionKeys: [],
+    historyFutureActionKeys: [],
     clipboard: [],
     copiedPage: null,
     isExporting: false,
@@ -480,6 +552,8 @@ export const useDesignerStore = defineStore("designer", {
       this.guides = [];
       this.historyPast = [];
       this.historyFuture = [];
+      this.historyPastActionKeys = [];
+      this.historyFutureActionKeys = [];
       this.headerHeight = 100;
       this.footerHeight = 100;
       this.showHeaderLine = false;
@@ -493,6 +567,7 @@ export const useDesignerStore = defineStore("designer", {
       this.allowDragOutsideCanvas = false;
       this.showCornerMarkers = true;
       this.showMinimap = false;
+      this.showHistoryPanel = false;
       this.showHelp = false;
       this.showSettings = false;
       this.copiedPage = null;
@@ -506,6 +581,8 @@ export const useDesignerStore = defineStore("designer", {
           pages: cloneDeep(this.pages),
           historyPast: cloneDeep(this.historyPast),
           historyFuture: cloneDeep(this.historyFuture),
+          historyPastActionKeys: cloneDeep(this.historyPastActionKeys),
+          historyFutureActionKeys: cloneDeep(this.historyFutureActionKeys),
           canvasSize: cloneDeep(this.canvasSize),
           guides: cloneDeep(this.guides),
           zoom: this.zoom,
@@ -518,6 +595,7 @@ export const useDesignerStore = defineStore("designer", {
           showHeaderLine: this.showHeaderLine,
           showFooterLine: this.showFooterLine,
           showMinimap: this.showMinimap,
+          showHistoryPanel: this.showHistoryPanel,
           canvasBackground: this.canvasBackground,
           pageSpacingX: this.pageSpacingX,
           pageSpacingY: this.pageSpacingY,
@@ -548,6 +626,8 @@ export const useDesignerStore = defineStore("designer", {
       this.selectedElementIds = [element.id];
       this.historyPast = [];
       this.historyFuture = [];
+      this.historyPastActionKeys = [];
+      this.historyFutureActionKeys = [];
       this.guides = [];
       this.tableSelection = null;
     },
@@ -560,6 +640,8 @@ export const useDesignerStore = defineStore("designer", {
       this.pages = snapshot.pages;
       this.historyPast = snapshot.historyPast || [];
       this.historyFuture = snapshot.historyFuture || [];
+      this.historyPastActionKeys = snapshot.historyPastActionKeys || [];
+      this.historyFutureActionKeys = snapshot.historyFutureActionKeys || [];
       this.canvasSize = snapshot.canvasSize;
       this.guides = snapshot.guides;
       this.zoom = snapshot.zoom;
@@ -573,6 +655,7 @@ export const useDesignerStore = defineStore("designer", {
       this.showHeaderLine = snapshot.showHeaderLine;
       this.showFooterLine = snapshot.showFooterLine;
       this.showMinimap = snapshot.showMinimap;
+      this.showHistoryPanel = snapshot.showHistoryPanel;
       this.canvasBackground = snapshot.canvasBackground;
       this.pageSpacingX = snapshot.pageSpacingX ?? this.pageSpacingX;
       this.pageSpacingY = snapshot.pageSpacingY ?? this.pageSpacingY;
@@ -678,7 +761,7 @@ export const useDesignerStore = defineStore("designer", {
       if (!this.isTemplateEditable) return;
       if (!this.copiedPage) return;
 
-      this.snapshot();
+      this.snapshot(HISTORY_ACTION.PAGE_PASTE);
 
       const newPage = cloneDeep(this.copiedPage);
       newPage.id = uuidv4();
@@ -694,14 +777,14 @@ export const useDesignerStore = defineStore("designer", {
     },
     addPage() {
       if (!this.isTemplateEditable) return;
-      this.snapshot();
+      this.snapshot(HISTORY_ACTION.PAGE_ADD);
       this.pages.push({ id: uuidv4(), elements: [] });
       this.currentPageIndex = this.pages.length - 1;
     },
     removePage(index: number) {
       if (!this.isTemplateEditable) return;
       if (this.pages.length <= 1) return;
-      this.snapshot();
+      this.snapshot(HISTORY_ACTION.PAGE_REMOVE);
       this.pages.splice(index, 1);
       if (this.currentPageIndex >= this.pages.length) {
         this.currentPageIndex = this.pages.length - 1;
@@ -822,7 +905,7 @@ export const useDesignerStore = defineStore("designer", {
       const colSpan = maxColIdx - minColIdx + 1;
 
       // Snapshot for undo
-      this.snapshot();
+      this.snapshot(HISTORY_ACTION.TABLE_MERGE_CELLS);
 
       // Update data
       const newData = cloneDeep(element[targetDataKey] || []);
@@ -916,7 +999,7 @@ export const useDesignerStore = defineStore("designer", {
       if (effectiveColumns.length === 0) return;
 
       // Snapshot
-      this.snapshot();
+      this.snapshot(HISTORY_ACTION.TABLE_SPLIT_CELLS);
 
       const newData = cloneDeep(element[targetDataKey] || []);
       const colFields = effectiveColumns.map((c) => c.field);
@@ -968,7 +1051,7 @@ export const useDesignerStore = defineStore("designer", {
 
       const targetDataKey = section === "footer" ? "footerData" : "data";
 
-      this.snapshot();
+      this.snapshot(HISTORY_ACTION.TABLE_ALIGN_CELLS);
 
       const newData = cloneDeep(element[targetDataKey] || []);
 
@@ -1028,6 +1111,16 @@ export const useDesignerStore = defineStore("designer", {
     setShowMinimap(show: boolean) {
       this.showMinimap = show;
     },
+    setShowHistoryPanel(show: boolean) {
+      this.showHistoryPanel = show;
+    },
+    setShowDeveloperMode(show: boolean) {
+      this.showDeveloperMode = show;
+      localStorage.setItem(
+        "print-designer-developer-mode",
+        show ? "true" : "false",
+      );
+    },
     setShowHelp(show: boolean) {
       this.showHelp = show;
     },
@@ -1037,17 +1130,78 @@ export const useDesignerStore = defineStore("designer", {
     setCanvasBackground(color: string) {
       this.canvasBackground = color;
     },
-    snapshot() {
+    applyTemplateJsonToDesigner(data: Record<string, any>) {
+      if (!data || typeof data !== "object" || Array.isArray(data)) return;
+
+      if (Array.isArray(data.pages) && data.pages.length > 0) {
+        this.pages = cloneDeep(data.pages);
+        if (this.currentPageIndex >= data.pages.length) {
+          this.currentPageIndex = Math.max(data.pages.length - 1, 0);
+        }
+      }
+
+      if (data.canvasSize && typeof data.canvasSize === "object") {
+        this.canvasSize = cloneDeep(data.canvasSize);
+      }
+      if (Array.isArray(data.guides)) {
+        this.guides = cloneDeep(data.guides);
+      }
+      if (typeof data.zoom === "number") this.zoom = data.zoom;
+      if (typeof data.showGrid === "boolean") this.showGrid = data.showGrid;
+      if (typeof data.allowDragOutsideCanvas === "boolean") {
+        this.allowDragOutsideCanvas = data.allowDragOutsideCanvas;
+      }
+      if (typeof data.headerHeight === "number") {
+        this.headerHeight = data.headerHeight;
+      }
+      if (typeof data.footerHeight === "number") {
+        this.footerHeight = data.footerHeight;
+      }
+      if (typeof data.showHeaderLine === "boolean") {
+        this.showHeaderLine = data.showHeaderLine;
+      }
+      if (typeof data.showFooterLine === "boolean") {
+        this.showFooterLine = data.showFooterLine;
+      }
+      if (typeof data.showMinimap === "boolean") {
+        this.showMinimap = data.showMinimap;
+      }
+      if (typeof data.showHistoryPanel === "boolean") {
+        this.showHistoryPanel = data.showHistoryPanel;
+      }
+      if (typeof data.canvasBackground === "string") {
+        this.canvasBackground = data.canvasBackground;
+      }
+
+      this.selectedElementId = null;
+      this.selectedElementIds = [];
+      this.selectedGuideId = null;
+      this.highlightedGuideId = null;
+      this.highlightedEdge = null;
+      this.highlightedAlignedElementIds = [];
+      this.tableSelection = null;
+      this.historyPast = [];
+      this.historyFuture = [];
+      this.historyPastActionKeys = [];
+      this.historyFutureActionKeys = [];
+    },
+    snapshot(actionKey: string = HISTORY_ACTION.UNKNOWN) {
       if (this.historyPast.length >= 20) {
         this.historyPast.shift();
+        this.historyPastActionKeys.shift();
       }
       this.historyPast.push(cloneDeep(this.pages));
+      this.historyPastActionKeys.push(actionKey);
       this.historyFuture = [];
+      this.historyFutureActionKeys = [];
     },
     undo() {
       if (this.historyPast.length === 0) return;
       const prev = this.historyPast.pop()!;
+      const actionKey =
+        this.historyPastActionKeys.pop() || HISTORY_ACTION.UNKNOWN;
       this.historyFuture.push(cloneDeep(this.pages));
+      this.historyFutureActionKeys.push(actionKey);
       this.pages = cloneDeep(prev);
       // Ensure selected element indices still valid
       if (this.selectedElementId) {
@@ -1070,7 +1224,10 @@ export const useDesignerStore = defineStore("designer", {
     redo() {
       if (this.historyFuture.length === 0) return;
       const next = this.historyFuture.pop()!;
+      const actionKey =
+        this.historyFutureActionKeys.pop() || HISTORY_ACTION.UNKNOWN;
       this.historyPast.push(cloneDeep(this.pages));
+      this.historyPastActionKeys.push(actionKey);
       this.pages = cloneDeep(next);
       if (this.currentPageIndex >= this.pages.length) {
         this.currentPageIndex = Math.max(0, this.pages.length - 1);
@@ -1556,7 +1713,7 @@ export const useDesignerStore = defineStore("designer", {
     ) {
       if (!this.isTemplateEditable) return;
       if (createSnapshot) {
-        this.snapshot();
+        this.snapshot(HISTORY_ACTION.ELEMENT_MOVE);
       }
 
       // 1. Gather all necessary data in ONE pass
@@ -1699,7 +1856,7 @@ export const useDesignerStore = defineStore("designer", {
 
       if (movableIds.length === 0) return;
 
-      this.snapshot(); // Snapshot once for the group move
+      this.snapshot(HISTORY_ACTION.ELEMENT_NUDGE); // Snapshot once for the group move
 
       // 1. Identify primary element for snap calculation
       // Prefer the explicitly selected element if it's movable
@@ -1791,7 +1948,7 @@ export const useDesignerStore = defineStore("designer", {
     },
     addElement(element: Omit<PrintElement, "id">, pageIndex?: number) {
       if (!this.isTemplateEditable) return;
-      this.snapshot();
+      this.snapshot(HISTORY_ACTION.ELEMENT_ADD);
       const newElement = { ...element, id: uuidv4() };
       const targetPageIdx =
         pageIndex !== undefined &&
@@ -1810,7 +1967,7 @@ export const useDesignerStore = defineStore("designer", {
       y: number,
     ) {
       if (!this.isTemplateEditable) return;
-      this.snapshot();
+      this.snapshot(HISTORY_ACTION.ELEMENT_MOVE_TO_PAGE);
       let sourcePageIndex = -1;
       let elementIndex = -1;
       let element: PrintElement | undefined;
@@ -1847,11 +2004,13 @@ export const useDesignerStore = defineStore("designer", {
       if (!ids || ids.length === 0) return;
       const idSet = new Set(ids);
       for (const page of this.pages) {
-        const selectedInPage = page.elements.filter((el) => idSet.has(el.id));
+        const selectedInPage = page.elements.filter(
+          (el) => idSet.has(el.id) && !el.locked,
+        );
         if (selectedInPage.length === 0) continue;
         let maxNonSelected = 0;
         for (const el of page.elements) {
-          if (idSet.has(el.id)) continue;
+          if (idSet.has(el.id) && !el.locked) continue;
           maxNonSelected = Math.max(maxNonSelected, el.style.zIndex || 1);
         }
         const needsRaise = selectedInPage.some(
@@ -1910,11 +2069,12 @@ export const useDesignerStore = defineStore("designer", {
 
       if (pageAssignments.length === 0) return;
 
-      this.snapshot();
+      this.snapshot(HISTORY_ACTION.ELEMENT_LAYER);
       for (const { pageIndex, assignments } of pageAssignments) {
         const page = this.pages[pageIndex];
         for (let i = 0; i < page.elements.length; i += 1) {
           const el = page.elements[i];
+          if (el.locked) continue;
           const targetZ = assignments.get(el.id);
           if (!targetZ || getElementZIndex(el) === targetZ) continue;
           page.elements[i] = {
@@ -1967,7 +2127,7 @@ export const useDesignerStore = defineStore("designer", {
     ) {
       if (!this.isTemplateEditable) return;
       if (createSnapshot) {
-        this.snapshot();
+        this.snapshot(inferElementUpdateHistoryAction(updates));
       }
       for (const page of this.pages) {
         const index = page.elements.findIndex((e) => e.id === id);
@@ -2034,7 +2194,7 @@ export const useDesignerStore = defineStore("designer", {
         if (el && el.locked) return;
       }
 
-      this.snapshot();
+      this.snapshot(HISTORY_ACTION.ELEMENT_REMOVE);
       for (const page of this.pages) {
         const index = page.elements.findIndex((e) => e.id === id);
         if (index !== -1) {
@@ -2091,7 +2251,13 @@ export const useDesignerStore = defineStore("designer", {
         this.selectedElementIds = id ? [id] : [];
       }
 
-      if (autoBringToFront && this.selectedElementIds.length > 0) {
+      const hasUnlockedSelected = this.selectedElementIds.some((selectedId) =>
+        this.pages.some((page) =>
+          page.elements.some((el) => el.id === selectedId && !el.locked),
+        ),
+      );
+
+      if (autoBringToFront && hasUnlockedSelected) {
         this.bringElementsToFront(this.selectedElementIds);
       }
 
@@ -2117,7 +2283,12 @@ export const useDesignerStore = defineStore("designer", {
       }
       this.selectedElementIds = ids;
       this.selectedElementId = ids.length > 0 ? ids[ids.length - 1] : null;
-      if (ids.length > 0) {
+      const hasUnlockedSelected = this.selectedElementIds.some((selectedId) =>
+        this.pages.some((page) =>
+          page.elements.some((el) => el.id === selectedId && !el.locked),
+        ),
+      );
+      if (hasUnlockedSelected) {
         this.bringElementsToFront(ids);
       }
       if (ids.length > 0) {
@@ -2145,7 +2316,7 @@ export const useDesignerStore = defineStore("designer", {
 
       if (removableIds.length === 0) return;
 
-      this.snapshot();
+      this.snapshot(HISTORY_ACTION.ELEMENT_REMOVE);
       for (const id of removableIds) {
         for (const page of this.pages) {
           const index = page.elements.findIndex((e) => e.id === id);
@@ -2179,7 +2350,7 @@ export const useDesignerStore = defineStore("designer", {
 
       if (elements.length === 0) return;
 
-      this.snapshot();
+      this.snapshot(HISTORY_ACTION.ELEMENT_ALIGN);
 
       if (elements.length === 1) {
         // Align to canvas (respecting margins)
@@ -2262,7 +2433,7 @@ export const useDesignerStore = defineStore("designer", {
 
       if (targetIds.length === 0) return;
 
-      this.snapshot();
+      this.snapshot(HISTORY_ACTION.ELEMENT_RESIZE);
 
       for (const id of targetIds) {
         for (const page of this.pages) {
@@ -2308,7 +2479,7 @@ export const useDesignerStore = defineStore("designer", {
 
       if (targetIds.length === 0) return;
 
-      this.snapshot();
+      this.snapshot(HISTORY_ACTION.ELEMENT_STYLE);
 
       for (const id of targetIds) {
         for (const page of this.pages) {
@@ -2327,7 +2498,7 @@ export const useDesignerStore = defineStore("designer", {
     toggleLock() {
       if (!this.isTemplateEditable) return;
       if (this.selectedElementIds.length === 0) return;
-      this.snapshot();
+      this.snapshot(HISTORY_ACTION.ELEMENT_LOCK);
 
       // Determine target state based on the primary selected element
       let targetState = true;
@@ -2351,7 +2522,7 @@ export const useDesignerStore = defineStore("designer", {
     },
     setCanvasSize(width: number, height: number) {
       if (!this.isTemplateEditable) return;
-      this.snapshot();
+      this.snapshot(HISTORY_ACTION.CANVAS_RESIZE);
       this.canvasSize = { width, height };
     },
     setShowGrid(show: boolean) {
@@ -2360,7 +2531,7 @@ export const useDesignerStore = defineStore("designer", {
     deletePage(index: number) {
       if (!this.isTemplateEditable) return;
       if (this.pages.length > 1) {
-        this.snapshot();
+        this.snapshot(HISTORY_ACTION.PAGE_REMOVE);
         this.pages.splice(index, 1);
         if (this.currentPageIndex >= this.pages.length) {
           this.currentPageIndex = this.pages.length - 1;
@@ -2392,7 +2563,7 @@ export const useDesignerStore = defineStore("designer", {
       if (!this.isTemplateEditable) return;
       if (this.clipboard.length === 0) return;
 
-      this.snapshot();
+      this.snapshot(HISTORY_ACTION.ELEMENT_PASTE);
 
       const newIds: string[] = [];
       const targetPageIndex = position?.pageIndex ?? this.currentPageIndex;
@@ -2455,7 +2626,7 @@ export const useDesignerStore = defineStore("designer", {
     },
     paginateTable(elementId: string) {
       if (!this.isTemplateEditable) return;
-      this.snapshot();
+      this.snapshot(HISTORY_ACTION.TABLE_PAGINATE);
       // 1. Find Element and Page
       let pageIndex = -1;
       let elementIndex = -1;
@@ -2502,10 +2673,14 @@ export const useDesignerStore = defineStore("designer", {
       const remainingData = element.data.slice(rowsPerPage);
 
       // Update current element
-      this.updateElement(element.id, {
+      this.updateElement(
+        element.id,
+        {
         data: currentData,
         height: HEADER_HEIGHT + currentData.length * ROW_HEIGHT,
-      });
+        },
+        false,
+      );
 
       // 6. Handle Next Page
       const nextPageIdx = pageIndex + 1;

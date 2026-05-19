@@ -27,12 +27,15 @@ const props = defineProps<{
   value: string;
   language: string;
   readOnly?: boolean;
+  showCopyButton?: boolean;
+  showSaveButton?: boolean;
 }>();
 
 const emit = defineEmits<{
   (e: "update:visible", visible: boolean): void;
   (e: "update:value", value: string): void;
   (e: "close"): void;
+  (e: "save"): void;
 }>();
 
 const store = useDesignerStore();
@@ -54,6 +57,88 @@ const editorOptions = computed(() => ({
   contextmenu: true,
 }));
 
+const shouldShowCopyButton = computed(
+  () => props.showCopyButton ?? !!props.readOnly,
+);
+
+const isReadOnly = computed(() => !!props.readOnly);
+
+const shouldShowSaveButton = computed(
+  () => (props.showSaveButton ?? false) && !isReadOnly.value,
+);
+
+const accessModeLabel = computed(() => {
+  return isReadOnly.value
+    ? t("common.readOnly") || "Read Only"
+    : t("common.readWrite") || "Read/Write";
+});
+
+const accessModeClass = computed(() => {
+  return isReadOnly.value
+    ? "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+    : "theme-bg text-white";
+});
+
+const copyState = ref<"idle" | "success">("idle");
+let copyStateTimer: number | null = null;
+
+const copyButtonLabel = computed(() => {
+  if (copyState.value === "success") {
+    return t("common.copied") || "Copied";
+  }
+  return t("common.copy") || "Copy";
+});
+
+const resetCopyState = () => {
+  if (copyStateTimer !== null) {
+    window.clearTimeout(copyStateTimer);
+    copyStateTimer = null;
+  }
+  copyState.value = "idle";
+};
+
+const showCopySuccessFeedback = () => {
+  copyState.value = "success";
+  if (copyStateTimer !== null) {
+    window.clearTimeout(copyStateTimer);
+  }
+  copyStateTimer = window.setTimeout(() => {
+    copyState.value = "idle";
+    copyStateTimer = null;
+  }, 1500);
+};
+
+const copyWithExecCommand = (text: string) => {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "true");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand("copy");
+  document.body.removeChild(textarea);
+  return copied;
+};
+
+const handleCopy = async () => {
+  const text = props.value || "";
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      showCopySuccessFeedback();
+      return;
+    }
+    if (copyWithExecCommand(text)) {
+      showCopySuccessFeedback();
+    }
+  } catch {
+    if (copyWithExecCommand(text)) {
+      showCopySuccessFeedback();
+    }
+  }
+};
+
 const handleChange = (val: string | undefined) => {
   emit("update:value", val || "");
 };
@@ -61,6 +146,10 @@ const handleChange = (val: string | undefined) => {
 const handleClose = () => {
   emit("update:visible", false);
   emit("close");
+};
+
+const handleSave = () => {
+  emit("save");
 };
 
 const handleKeydown = (e: KeyboardEvent) => {
@@ -73,6 +162,9 @@ watch(
   () => props.visible,
   (val) => {
     store.setDisableGlobalShortcuts(val);
+    if (!val) {
+      resetCopyState();
+    }
   },
 );
 
@@ -81,6 +173,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  resetCopyState();
   window.removeEventListener("keydown", handleKeydown);
   if (props.visible) {
     store.setDisableGlobalShortcuts(false);
@@ -111,6 +204,12 @@ onUnmounted(() => {
               class="px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs font-mono uppercase"
               >{{ language }}</span
             >
+            <span
+              class="px-2 py-0.5 rounded text-xs font-medium"
+              :class="accessModeClass"
+            >
+              {{ accessModeLabel }}
+            </span>
           </div>
           <button
             @click="handleClose"
@@ -135,6 +234,25 @@ onUnmounted(() => {
         <div
           class="p-3 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 flex justify-end rounded-b-lg"
         >
+          <button
+            v-if="shouldShowSaveButton"
+            @click="handleSave"
+            class="px-3 py-1.5 theme-bg-strong text-white rounded hover:opacity-90 transition-opacity text-xs mr-2"
+          >
+            {{ t("common.save") }}
+          </button>
+          <button
+            v-if="shouldShowCopyButton"
+            @click="handleCopy"
+            class="px-3 py-1.5 border dark:border-gray-600 font-medium rounded transition-colors text-xs mr-2 min-w-[64px]"
+            :class="
+              copyState === 'success'
+                ? 'theme-border theme-bg text-white'
+                : 'border-gray-300 text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'
+            "
+          >
+            {{ copyButtonLabel }}
+          </button>
           <button
             @click="handleClose"
             class="px-3 py-1.5 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors text-xs"

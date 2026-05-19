@@ -51,6 +51,7 @@ import {
   usePrintSettings,
   type PrintOptions,
 } from "@/composables/usePrintSettings";
+import { useJsonBlobModal } from "@/composables/useJsonBlobModal";
 import { ElementType } from "@/types";
 import PreviewModal from "../PreviewModal.vue";
 import ColorPicker from "@/components/common/ColorPicker.vue";
@@ -60,7 +61,6 @@ import InputModal from "@/components/common/InputModal.vue";
 import { useTemplateStore } from "@/stores/templates";
 import DataObject from "~icons/material-symbols/data-object";
 import CodeEditorModal from "@/components/common/CodeEditorModal.vue";
-import cloneDeep from "lodash/cloneDeep";
 import { useI18n } from "vue-i18n";
 import { formatShortcut } from "@/utils/os";
 import { toast } from "@/utils/toast";
@@ -111,32 +111,6 @@ const { printMode, silentPrint, localPrintOptions, remotePrintOptions } =
   usePrintSettings();
 const printModeValue = computed(() => printMode.value || "browser");
 
-const showJsonModal = ref(false);
-const jsonContent = ref("");
-const modalTitle = ref("");
-const modalLanguage = ref("json");
-
-const handleViewJson = () => {
-  const data = {
-    pages: cloneDeep(store.pages),
-    canvasSize: cloneDeep(store.canvasSize),
-    guides: cloneDeep(store.guides),
-    zoom: store.zoom,
-    showGrid: store.showGrid,
-    allowDragOutsideCanvas: store.allowDragOutsideCanvas,
-    headerHeight: store.headerHeight,
-    footerHeight: store.footerHeight,
-    showHeaderLine: store.showHeaderLine,
-    showFooterLine: store.showFooterLine,
-    showMinimap: store.showMinimap,
-    canvasBackground: store.canvasBackground,
-  };
-  jsonContent.value = JSON.stringify(data, null, 2);
-  modalTitle.value = t("preview.templateJson");
-  modalLanguage.value = "json";
-  showJsonModal.value = true;
-};
-
 const {
   getPrintHtml,
   print,
@@ -147,48 +121,22 @@ const {
   getImageBlob,
 } = usePrint();
 
-const handleViewImageBlob = async () => {
-  try {
-    // Use real DOM elements to ensure computed styles are captured correctly
-    const pages = Array.from(
-      getQueryRoot().querySelectorAll(".print-page"),
-    ) as HTMLElement[];
-    const blob = await getImageBlob(pages);
-
-    const reader = new FileReader();
-    reader.readAsDataURL(blob);
-    reader.onloadend = () => {
-      jsonContent.value = reader.result as string;
-      modalTitle.value = t("editor.viewImageBlob");
-      modalLanguage.value = "text";
-      showJsonModal.value = true;
-    };
-  } catch (e) {
-    console.error(e);
-    toast.error("Failed to generate blob");
-  }
-};
-
-const handleViewPdfBlob = async () => {
-  try {
-    const pages = Array.from(
-      getQueryRoot().querySelectorAll(".print-page"),
-    ) as HTMLElement[];
-    const blob = await getPdfBlob(pages);
-
-    const reader = new FileReader();
-    reader.readAsDataURL(blob);
-    reader.onloadend = () => {
-      jsonContent.value = reader.result as string;
-      modalTitle.value = t("editor.viewPdfBlob");
-      modalLanguage.value = "text";
-      showJsonModal.value = true;
-    };
-  } catch (e) {
-    console.error(e);
-    toast.error("Failed to generate PDF blob");
-  }
-};
+const {
+  showJsonModal,
+  jsonContent,
+  modalTitle,
+  modalLanguage,
+  canSaveJson,
+  handleViewJson,
+  handleViewImageBlob,
+  handleViewPdfBlob,
+  handleSaveJson,
+} = useJsonBlobModal({
+  getPages: () =>
+    Array.from(getQueryRoot().querySelectorAll(".print-page")) as HTMLElement[],
+  getImageBlob,
+  getPdfBlob,
+});
 
 const showPreview = ref(false);
 const previewContent = ref("");
@@ -1168,6 +1116,7 @@ onUnmounted(() => {
           <span>{{ t("editor.exportImage") }}</span>
         </button>
         <button
+          v-if="store.showDeveloperMode"
           @click="
             handleViewImageBlob();
             showExportMenu = false;
@@ -1178,6 +1127,7 @@ onUnmounted(() => {
           <span>{{ t("editor.viewImageBlob") }}</span>
         </button>
         <button
+          v-if="store.showDeveloperMode"
           @click="
             handleViewPdfBlob();
             showExportMenu = false;
@@ -1188,6 +1138,7 @@ onUnmounted(() => {
           <span>{{ t("editor.viewPdfBlob") }}</span>
         </button>
         <button
+          v-if="store.showDeveloperMode"
           @click="
             handleViewJson();
             showExportMenu = false;
@@ -1247,6 +1198,10 @@ onUnmounted(() => {
     :title="modalTitle"
     :value="jsonContent"
     :language="modalLanguage"
-    read-only
+    :read-only="!canSaveJson"
+    :show-save-button="canSaveJson"
+    :show-copy-button="true"
+    @update:value="jsonContent = $event"
+    @save="handleSaveJson"
   />
 </template>

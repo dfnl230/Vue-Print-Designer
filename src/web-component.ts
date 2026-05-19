@@ -679,6 +679,7 @@ class PrintDesignerElement extends HTMLElement {
       showHeaderLine: this.designerStore.showHeaderLine,
       showFooterLine: this.designerStore.showFooterLine,
       showMinimap: this.designerStore.showMinimap,
+      showHistoryPanel: this.designerStore.showHistoryPanel,
       canvasBackground: this.designerStore.canvasBackground,
       pageSpacingX: this.designerStore.pageSpacingX,
       pageSpacingY: this.designerStore.pageSpacingY,
@@ -719,6 +720,8 @@ class PrintDesignerElement extends HTMLElement {
       this.designerStore.showFooterLine = data.showFooterLine;
     if (data.showMinimap !== undefined)
       this.designerStore.showMinimap = data.showMinimap;
+    if (data.showHistoryPanel !== undefined)
+      this.designerStore.showHistoryPanel = data.showHistoryPanel;
     if (data.canvasBackground !== undefined)
       this.designerStore.canvasBackground = data.canvasBackground;
     if (data.pageSpacingX !== undefined)
@@ -737,6 +740,8 @@ class PrintDesignerElement extends HTMLElement {
     this.designerStore.selectedGuideId = null;
     this.designerStore.historyPast = [];
     this.designerStore.historyFuture = [];
+    this.designerStore.historyPastActionKeys = [];
+    this.designerStore.historyFutureActionKeys = [];
     return true;
   }
 

@@ -468,28 +468,6 @@ onUnmounted(() => {
 
       <div class="mt-3 flex items-center justify-between">
         <span class="text-sm text-gray-700 dark:text-gray-200 font-medium">{{
-          t("editor.showMinimap")
-        }}</span>
-        <button
-          @click="store.setShowMinimap(!store.showMinimap)"
-          class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
-          :class="
-            store.showMinimap
-              ? 'bg-blue-600 dark:bg-blue-500'
-              : 'bg-gray-200 dark:bg-gray-700'
-          "
-        >
-          <span class="sr-only">Toggle minimap</span>
-          <span
-            aria-hidden="true"
-            class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-gray-100 shadow ring-0 transition duration-200 ease-in-out"
-            :class="store.showMinimap ? 'translate-x-5' : 'translate-x-0'"
-          />
-        </button>
-      </div>
-
-      <div class="mt-3 flex items-center justify-between">
-        <span class="text-sm text-gray-700 dark:text-gray-200 font-medium">{{
           t("editor.backgroundColor")
         }}</span>
         <ColorPicker

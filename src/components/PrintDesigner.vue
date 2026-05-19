@@ -17,6 +17,7 @@ import Canvas from "./canvas/Canvas.vue";
 import Ruler from "./layout/Ruler.vue";
 import Shortcuts from "./layout/Shortcuts.vue";
 import Minimap from "./layout/Minimap.vue";
+import HistoryPanel from "./layout/HistoryPanel.vue";
 import VariablesPanel from "./layout/VariablesPanel.vue";
 import InputModal from "@/components/common/InputModal.vue";
 import { toast } from "@/utils/toast";
@@ -547,6 +548,7 @@ onMounted(() => {
       () => store.pageSpacingY,
       () => store.watermark,
       () => store.showMinimap,
+      () => store.showHistoryPanel,
     ],
     () => {
       if (templateStore.isLoading) return;
@@ -1505,6 +1507,7 @@ const rulerRanges = computed(() => {
       ref="modalContainer"
       class="print-designer-modals fixed inset-0 pointer-events-none z-[9999]"
     ></div>
+    <HistoryPanel />
     <VariablesPanel />
   </div>
 </template>

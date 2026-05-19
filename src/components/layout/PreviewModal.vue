@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted, watch, inject } from "vue";
 import { useI18n } from "vue-i18n";
 import { usePrint } from "@/utils/print";
+import { useJsonBlobModal } from "@/composables/useJsonBlobModal";
 import { useTemplateStore } from "@/stores/templates";
 import { useDesignerStore } from "@/stores/designer";
 import Printer from "~icons/material-symbols/print";
@@ -13,8 +14,6 @@ import ZoomIn from "~icons/material-symbols/zoom-in";
 import ZoomOut from "~icons/material-symbols/zoom-out";
 import DataObject from "~icons/material-symbols/data-object";
 import CodeEditorModal from "@/components/common/CodeEditorModal.vue";
-import cloneDeep from "lodash/cloneDeep";
-import { toast } from "@/utils/toast";
 
 const props = defineProps<{
   visible: boolean;
@@ -40,10 +39,27 @@ const templateStore = useTemplateStore();
 const previewContainer = ref<HTMLElement | null>(null);
 const wrapperRef = ref<HTMLElement | null>(null);
 const zoomPercent = ref(100);
-const showJsonModal = ref(false);
-const jsonContent = ref("");
-const modalTitle = ref("");
-const modalLanguage = ref("json");
+
+const {
+  showJsonModal,
+  jsonContent,
+  modalTitle,
+  modalLanguage,
+  canSaveJson,
+  handleViewJson,
+  handleViewImageBlob,
+  handleViewPdfBlob,
+  handleSaveJson,
+} = useJsonBlobModal({
+  getPages: () =>
+    previewContainer.value
+      ? (Array.from(
+          previewContainer.value.querySelectorAll(".print-page"),
+        ) as HTMLElement[])
+      : [],
+  getImageBlob,
+  getPdfBlob,
+});
 
 const setPreviewingState = (active: boolean) => {
   document.documentElement.classList.toggle("previewing", active);
@@ -63,71 +79,6 @@ watch(
 
 const handleClose = () => {
   emit("update:visible", false);
-};
-
-const handleViewJson = () => {
-  const data = {
-    pages: cloneDeep(store.pages),
-    canvasSize: cloneDeep(store.canvasSize),
-    guides: cloneDeep(store.guides),
-    zoom: store.zoom,
-    showGrid: store.showGrid,
-    headerHeight: store.headerHeight,
-    footerHeight: store.footerHeight,
-    showHeaderLine: store.showHeaderLine,
-    showFooterLine: store.showFooterLine,
-    showMinimap: store.showMinimap,
-    canvasBackground: store.canvasBackground,
-  };
-  jsonContent.value = JSON.stringify(data, null, 2);
-  modalTitle.value = t("preview.templateJson");
-  modalLanguage.value = "json";
-  showJsonModal.value = true;
-};
-
-const handleViewImageBlob = async () => {
-  try {
-    if (!previewContainer.value) return;
-    // Use elements within the preview container
-    const pages = Array.from(
-      previewContainer.value.querySelectorAll(".print-page"),
-    ) as HTMLElement[];
-    const blob = await getImageBlob(pages);
-
-    const reader = new FileReader();
-    reader.readAsDataURL(blob);
-    reader.onloadend = () => {
-      jsonContent.value = reader.result as string;
-      modalTitle.value = t("editor.viewImageBlob");
-      modalLanguage.value = "text";
-      showJsonModal.value = true;
-    };
-  } catch (e) {
-    console.error(e);
-    toast.error("Failed to generate blob");
-  }
-};
-
-const handleViewPdfBlob = async () => {
-  try {
-    if (!previewContainer.value) return;
-    const pages = Array.from(
-      previewContainer.value.querySelectorAll(".print-page"),
-    ) as HTMLElement[];
-    const blob = await getPdfBlob(pages);
-
-    const reader = new FileReader();
-    reader.readAsDataURL(blob);
-    reader.onloadend = () => {
-      jsonContent.value = reader.result as string;
-      modalTitle.value = t("editor.viewPdfBlob");
-      modalLanguage.value = "text";
-      showJsonModal.value = true;
-    };
-  } catch (e) {
-    console.error(e);
-    toast.error("Failed to generate PDF blob");
-  }
 };
 
 const handlePrint = () => {
@@ -341,6 +292,7 @@ onUnmounted(() => {
             {{ t("editor.exportHtml") }}
           </button>
           <button
+            v-if="store.showDeveloperMode"
             @click="handleViewImageBlob"
             class="px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-100 text-xs text-gray-700 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-100"
           >
@@ -348,6 +300,7 @@ onUnmounted(() => {
             {{ t("editor.viewImageBlob") }}
           </button>
           <button
+            v-if="store.showDeveloperMode"
             @click="handleViewPdfBlob"
             class="px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-100 text-xs text-gray-700 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-100"
           >
@@ -355,6 +308,7 @@ onUnmounted(() => {
             {{ t("editor.viewPdfBlob") }}
           </button>
           <button
+            v-if="store.showDeveloperMode"
             @click="handleViewJson"
             class="px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-100 text-xs text-gray-700 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-100"
           >
@@ -377,7 +331,11 @@ onUnmounted(() => {
     :title="modalTitle"
     :value="jsonContent"
     :language="modalLanguage"
-    read-only
+    :read-only="!canSaveJson"
+    :show-save-button="canSaveJson"
+    :show-copy-button="true"
+    @update:value="jsonContent = $event"
+    @save="handleSaveJson"
   />
 </template>
 
