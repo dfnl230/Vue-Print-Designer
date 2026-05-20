@@ -1101,6 +1101,7 @@ const rulerRanges = computed(() => {
               ref="scrollContainer"
               tabindex="-1"
               class="flex-1 overflow-auto p-8 flex relative canvas-scroll bg-gray-100 focus:outline-none"
+              style="scrollbar-gutter: stable both-edges"
               @scroll="handleScroll"
               @click="
                 (e) => {
