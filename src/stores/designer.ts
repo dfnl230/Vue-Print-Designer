@@ -133,12 +133,10 @@ const loadDeveloperMode = () => {
   return stored !== "false";
 };
 
-const loadAutoOpenVariablesPanelOnTemplateSelect = () => {
-  return (
-    localStorage.getItem(
-      "print-designer-auto-open-variables-panel-on-template-select",
-    ) === "true"
-  );
+const loadTextQuickToolbarEnabled = () => {
+  const stored = localStorage.getItem("print-designer-show-text-quick-toolbar");
+  if (stored === null) return true;
+  return stored !== "false";
 };
 
 type LayerMoveMode = "front" | "back" | "forward" | "backward";
@@ -403,9 +401,6 @@ export const useDesignerStore = defineStore("designer", {
     variables: {},
     fontOptions: [] as DesignerFontOption[],
     availableVariables: [] as import("../types").VariableTreeItem[],
-    showVariablesPanel: false,
-    autoOpenVariablesPanelOnTemplateSelect:
-      loadAutoOpenVariablesPanelOnTemplateSelect(),
     editingCustomElementId: null,
     customElementEditSnapshot: null,
     selectedElementId: null,
@@ -427,6 +422,7 @@ export const useDesignerStore = defineStore("designer", {
     showFooterLine: false,
     showMinimap: false,
     showHistoryPanel: false,
+    showTextQuickToolbar: loadTextQuickToolbarEnabled(),
     showDeveloperMode: loadDeveloperMode(),
     showHelp: false,
     showSettings: false,
@@ -462,16 +458,6 @@ export const useDesignerStore = defineStore("designer", {
     },
     setAvailableVariables(variables: import("../types").VariableTreeItem[]) {
       this.availableVariables = variables;
-    },
-    setShowVariablesPanel(show: boolean) {
-      this.showVariablesPanel = show;
-    },
-    setAutoOpenVariablesPanelOnTemplateSelect(show: boolean) {
-      this.autoOpenVariablesPanelOnTemplateSelect = show;
-      localStorage.setItem(
-        "print-designer-auto-open-variables-panel-on-template-select",
-        show ? "true" : "false",
-      );
     },
     emitContextMenuEvent(eventName: string, detail: Record<string, any>) {
       if (!eventName || typeof eventName !== "string") return;
@@ -781,6 +767,29 @@ export const useDesignerStore = defineStore("designer", {
       this.snapshot(HISTORY_ACTION.PAGE_PASTE);
 
       const newPage = cloneDeep(this.copiedPage);
+      const isCopiedFromFirstPage =
+        this.pages.length > 0 && this.copiedPage.id === this.pages[0].id;
+
+      // Elements from page 1 that are rendered globally on other pages
+      // should not be duplicated into newly pasted non-first pages.
+      if (isCopiedFromFirstPage && targetIndex + 1 > 0) {
+        const marginTop = this.pageSpacingY || 0;
+        const marginBottom = this.pageSpacingY || 0;
+        const headerBoundary = this.headerHeight + marginTop;
+        const footerBoundary =
+          this.canvasSize.height - (this.footerHeight + marginBottom);
+
+        newPage.elements = newPage.elements.filter((el) => {
+          if (el.type === ElementType.TABLE) return true;
+
+          const bounds = this.getElementBoundsAtPosition(el, el.x, el.y);
+          const isRepeatPerPage = el.repeatPerPage === true;
+          const isHeader = this.showHeaderLine && bounds.maxY <= headerBoundary;
+          const isFooter = this.showFooterLine && bounds.minY >= footerBoundary;
+
+          return !(isRepeatPerPage || isHeader || isFooter);
+        });
+      }
       newPage.id = uuidv4();
 
       // Regenerate IDs for all elements
@@ -1130,6 +1139,13 @@ export const useDesignerStore = defineStore("designer", {
     },
     setShowHistoryPanel(show: boolean) {
       this.showHistoryPanel = show;
+    },
+    setShowTextQuickToolbar(show: boolean) {
+      this.showTextQuickToolbar = show;
+      localStorage.setItem(
+        "print-designer-show-text-quick-toolbar",
+        show ? "true" : "false",
+      );
     },
     setShowDeveloperMode(show: boolean) {
       this.showDeveloperMode = show;
@@ -2293,6 +2309,41 @@ export const useDesignerStore = defineStore("designer", {
       this.selectedElementIds = [];
       this.tableSelection = null;
     },
+    selectAllElements() {
+      this.tableSelection = null;
+      this.selectedGuideId = null;
+
+      const allIds: string[] = [];
+      for (const page of this.pages) {
+        for (const element of page.elements) {
+          allIds.push(element.id);
+        }
+      }
+
+      this.selectedElementIds = allIds;
+      if (allIds.length === 0) {
+        this.selectedElementId = null;
+        return;
+      }
+
+      const currentPage = this.pages[this.currentPageIndex];
+      const fallbackId = allIds[allIds.length - 1];
+      const currentPageLastId =
+        currentPage && currentPage.elements.length > 0
+          ? currentPage.elements[currentPage.elements.length - 1].id
+          : null;
+
+      this.selectedElementId = currentPageLastId || fallbackId;
+
+      const hasUnlockedSelected = this.selectedElementIds.some((selectedId) =>
+        this.pages.some((page) =>
+          page.elements.some((el) => el.id === selectedId && !el.locked),
+        ),
+      );
+      if (hasUnlockedSelected) {
+        this.bringElementsToFront(allIds);
+      }
+    },
     setSelection(ids: string[]) {
       this.tableSelection = null;
       if (ids.length > 0) {
@@ -2369,19 +2420,46 @@ export const useDesignerStore = defineStore("designer", {
 
       this.snapshot(HISTORY_ACTION.ELEMENT_ALIGN);
 
+      const canvasW = this.canvasSize.width;
+      const canvasH = this.canvasSize.height;
+      const marginX = this.pageSpacingX || 0;
+      const marginY = this.pageSpacingY || 0;
+      const contentX = marginX;
+      const contentY = marginY;
+      const contentW = Math.max(0, canvasW - marginX * 2);
+      const contentH = Math.max(0, canvasH - marginY * 2);
+      const isVerticalAlignment =
+        type === "top" || type === "middle" || type === "bottom";
+      const headerBoundary = marginY + this.headerHeight;
+      const footerBoundary = canvasH - (this.footerHeight + marginY);
+      const getVerticalAlignmentArea = (el: PrintElement) => {
+        if (!isVerticalAlignment) return null;
+
+        const bounds = this.getElementBoundsAtPosition(el, el.x, el.y);
+        if (this.showHeaderLine && bounds.maxY <= headerBoundary) {
+          return {
+            y: marginY,
+            height: Math.max(0, this.headerHeight),
+          };
+        }
+
+        if (this.showFooterLine && bounds.minY >= footerBoundary) {
+          return {
+            y: footerBoundary,
+            height: Math.max(0, this.footerHeight),
+          };
+        }
+
+        return null;
+      };
+
       if (elements.length === 1) {
         // Align to canvas (respecting margins)
         const el = elements[0];
-        const canvasW = this.canvasSize.width;
-        const canvasH = this.canvasSize.height;
-        const marginX = this.pageSpacingX || 0;
-        const marginY = this.pageSpacingY || 0;
-
-        // Effective content area
-        const contentX = marginX;
-        const contentY = marginY;
-        const contentW = Math.max(0, canvasW - marginX * 2);
-        const contentH = Math.max(0, canvasH - marginY * 2);
+        const verticalArea = getVerticalAlignmentArea(el) || {
+          y: contentY,
+          height: contentH,
+        };
 
         switch (type) {
           case "left":
@@ -2394,13 +2472,13 @@ export const useDesignerStore = defineStore("designer", {
             el.x = contentX + contentW - el.width;
             break;
           case "top":
-            el.y = contentY;
+            el.y = verticalArea.y;
             break;
           case "middle":
-            el.y = contentY + (contentH - el.height) / 2;
+            el.y = verticalArea.y + (verticalArea.height - el.height) / 2;
             break;
           case "bottom":
-            el.y = contentY + contentH - el.height;
+            el.y = verticalArea.y + verticalArea.height - el.height;
             break;
         }
       } else {
@@ -2413,6 +2491,8 @@ export const useDesignerStore = defineStore("designer", {
         const centerY = (minY + maxY) / 2;
 
         elements.forEach((el) => {
+          const verticalArea = getVerticalAlignmentArea(el);
+
           switch (type) {
             case "left":
               el.x = minX;
@@ -2424,17 +2504,97 @@ export const useDesignerStore = defineStore("designer", {
               el.x = maxX - el.width;
               break;
             case "top":
-              el.y = minY;
+              el.y = verticalArea ? verticalArea.y : minY;
               break;
             case "middle":
-              el.y = centerY - el.height / 2;
+              el.y = verticalArea
+                ? verticalArea.y + (verticalArea.height - el.height) / 2
+                : centerY - el.height / 2;
               break;
             case "bottom":
-              el.y = maxY - el.height;
+              el.y = verticalArea
+                ? verticalArea.y + verticalArea.height - el.height
+                : maxY - el.height;
               break;
           }
         });
       }
+    },
+    matchSelectedElementsSize(mode: "width" | "height" | "both") {
+      if (!this.isTemplateEditable) return;
+      if (this.selectedElementIds.length < 2) return;
+
+      const primaryElement = this.selectedElement;
+      if (!primaryElement || primaryElement.locked) return;
+
+      const selectedSet = new Set(this.selectedElementIds);
+      const targetElements: PrintElement[] = [];
+      for (const page of this.pages) {
+        for (const el of page.elements) {
+          if (selectedSet.has(el.id) && !el.locked) {
+            targetElements.push(el);
+          }
+        }
+      }
+
+      if (targetElements.length < 2) return;
+
+      this.snapshot(HISTORY_ACTION.ELEMENT_RESIZE);
+      targetElements.forEach((el) => {
+        if (mode === "width" || mode === "both") {
+          el.width = primaryElement.width;
+        }
+        if (mode === "height" || mode === "both") {
+          el.height = primaryElement.height;
+        }
+      });
+    },
+    distributeSelectedElements(axis: "horizontal" | "vertical") {
+      if (!this.isTemplateEditable) return;
+      if (this.selectedElementIds.length < 3) return;
+
+      const selectedSet = new Set(this.selectedElementIds);
+      const groups = this.pages
+        .map((page) =>
+          page.elements.filter((el) => selectedSet.has(el.id) && !el.locked),
+        )
+        .filter((elements) => elements.length >= 3);
+
+      if (groups.length === 0) return;
+
+      this.snapshot(HISTORY_ACTION.ELEMENT_ALIGN);
+      groups.forEach((elements) => {
+        const sorted = [...elements].sort((a, b) => {
+          const centerA =
+            axis === "horizontal" ? a.x + a.width / 2 : a.y + a.height / 2;
+          const centerB =
+            axis === "horizontal" ? b.x + b.width / 2 : b.y + b.height / 2;
+          return centerA - centerB;
+        });
+
+        const first = sorted[0];
+        const last = sorted[sorted.length - 1];
+        const start =
+          axis === "horizontal"
+            ? first.x + first.width / 2
+            : first.y + first.height / 2;
+        const end =
+          axis === "horizontal"
+            ? last.x + last.width / 2
+            : last.y + last.height / 2;
+        const gap = (end - start) / (sorted.length - 1);
+
+        sorted.forEach((el, index) => {
+          if (index === 0 || index === sorted.length - 1) return;
+
+          const center = start + gap * index;
+          if (axis === "horizontal") {
+            el.x = center - el.width / 2;
+          } else {
+            el.y = center - el.height / 2;
+          }
+        });
+      });
     },
     resizeSelectedElements(dw: number, dh: number) {
       if (!this.isTemplateEditable) return;
@@ -2720,13 +2880,6 @@ export const useDesignerStore = defineStore("designer", {
       // We need to wait for state update or just call it directly?
       // Calling directly is fine as we are modifying state synchronously.
       this.paginateTable(newElement.id);
-    },
-    groupSelectedElements() {
-      if (!this.isTemplateEditable) return;
-      if (this.selectedElementIds.length < 2) return;
-      console.log("Group selected elements:", this.selectedElementIds);
-      // TODO: Implement grouping logic
-      toast.warning("Grouping feature is under development");
     },
     async loadCustomElements() {
       const { mode, endpoints, headers, fetcher } = getCrudConfig(

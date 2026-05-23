@@ -27,6 +27,7 @@ import Edit from "~icons/material-symbols/edit";
 import Palette from "~icons/material-symbols/palette";
 import Copy from "~icons/material-symbols/content-copy";
 import DataObject from "~icons/material-symbols/data-object";
+import Close from "~icons/material-symbols/close";
 import {
   ElementType,
   type CustomElementTemplate,
@@ -47,8 +48,21 @@ import {
 const { t } = useI18n();
 const store = useDesignerStore();
 const modalContainer = inject("modal-container", ref<HTMLElement | null>(null));
+const designerInstanceId = inject<string | null>("designer-instance-id", null);
 const activeTab = ref<"standard" | "custom">("standard");
 const customElements = computed(() => store.customElements);
+
+const dispatchDesignerEvent = (name: string) => {
+  const detail: Record<string, unknown> = {};
+  if (designerInstanceId) {
+    detail.__designerInstanceId = designerInstanceId;
+  }
+  window.dispatchEvent(new CustomEvent(name, { detail }));
+};
+
+const closeElementsPanel = () => {
+  dispatchDesignerEvent("designer:close-elements-panel");
+};
 
 // Menu state
 const activeMenuId = ref<string | null>(null);
@@ -595,12 +609,22 @@ onUnmounted(() => {
       class="p-4 min-h-[72px] border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 cursor-move select-none"
       data-floating-panel-drag-handle="true"
     >
-      <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-        {{ t("sidebar.elements") }}
-      </h2>
-      <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-        {{ t("sidebar.dragToCanvas") }}
-      </p>
+      <div class="flex items-start justify-between gap-2">
+        <div>
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            {{ t("sidebar.elements") }}
+          </h2>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            {{ t("sidebar.dragToCanvas") }}
+          </p>
+        </div>
+        <button
+          class="panel-close-btn p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-500 dark:text-gray-400"
+          @click.stop="closeElementsPanel"
+        >
+          <Close class="w-4 h-4" />
+        </button>
+      </div>
     </div>
 
     <!-- Tabs -->

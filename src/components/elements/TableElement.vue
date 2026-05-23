@@ -469,6 +469,28 @@ const cellStyle = computed(() => ({
   borderStyle: props.element.style.borderStyle || "solid",
 }));
 
+const shouldShowBodyFooterConnectorBorder = computed(() => {
+  return (
+    props.element.showFooter === true &&
+    shouldOmitBodyRowsInDesign.value &&
+    processedData.value.footerData.length > 0
+  );
+});
+
+const shouldOmitBodyRowsInDesign = computed(() => {
+  return (
+    !store.isExporting &&
+    props.element.designOmitRows !== false &&
+    processedData.value.data.length > 5
+  );
+});
+
+const displayBodyRows = computed(() => {
+  return shouldOmitBodyRowsInDesign.value
+    ? processedData.value.data.slice(0, 5)
+    : processedData.value.data;
+});
+
 const hasCustomRowHeight = computed(() => {
   const rowHeight = props.element.style.rowHeight;
   return (
@@ -565,6 +587,32 @@ const tempColumnWidths = ref<Record<string, number>>({});
 const resizingColIndex = ref<number | null>(null);
 const startResizeX = ref(0);
 const startResizeWidth = ref(0);
+const TABLE_BODY_DRAG_HANDLE_EDGE_SIZE = 10;
+const canDragTableElement = computed(
+  () => store.isTemplateEditable && !props.element.locked,
+);
+const shouldUseBodyCellDragCursor = computed(
+  () => canDragTableElement.value && store.selectedElementId !== props.element.id,
+);
+
+const isBodyDragHandleHit = (event: MouseEvent) => {
+  const target = event.currentTarget as HTMLElement;
+  const rect = target.getBoundingClientRect();
+  const edgeSize = Math.min(
+    TABLE_BODY_DRAG_HANDLE_EDGE_SIZE,
+    rect.width / 3,
+    rect.height / 3,
+  );
+  const offsetX = event.clientX - rect.left;
+  const offsetY = event.clientY - rect.top;
+
+  return (
+    offsetX <= edgeSize ||
+    offsetX >= rect.width - edgeSize ||
+    offsetY <= edgeSize ||
+    offsetY >= rect.height - edgeSize
+  );
+};
 
 const handleResizeStart = (e: MouseEvent, index: number) => {
   if (props.element.locked) return;
@@ -609,13 +657,18 @@ const handleResizeEnd = () => {
 };
 
 const handleMouseDown = (
-  e: MouseEvent,
+  event: MouseEvent,
   rowIndex: number,
   colField: string,
   section: "body" | "footer" = "body",
 ) => {
   if (store.selectedElementId !== props.element.id) return;
-  e.stopPropagation();
+  if (section === "body" && isBodyDragHandleHit(event)) {
+    store.clearTableSelection();
+    return;
+  }
+
+  event.stopPropagation();
   isSelecting.value = true;
   startCell.value = { rowIndex, colField, section };
   store.setTableSelection(
@@ -700,10 +753,24 @@ export const elementPropertiesSchema: ElementPropertiesSchema = {
           key: "tfootRepeat",
         },
         {
+          label: "properties.label.showHeader",
+          type: "switch",
+          target: "element",
+          key: "showHeader",
+          defaultValue: true,
+        },
+        {
           label: "properties.label.showFooter",
           type: "switch",
           target: "element",
           key: "showFooter",
+        },
+        {
+          label: "properties.label.designOmitRows",
+          type: "switch",
+          target: "element",
+          key: "designOmitRows",
+          defaultValue: true,
         },
         {
           label: "properties.label.columnsVariable",
@@ -739,6 +806,7 @@ export const elementPropertiesSchema: ElementPropertiesSchema = {
           language: "json",
           target: "element",
           key: "columns",
+          height: 100,
           placeholder: "properties.label.columnsPlaceholder",
         },
         {
@@ -747,6 +815,7 @@ export const elementPropertiesSchema: ElementPropertiesSchema = {
           language: "json",
           target: "element",
           key: "data",
+          height: 100,
           placeholder: "properties.label.dataPlaceholder",
         },
         {
@@ -755,6 +824,7 @@ export const elementPropertiesSchema: ElementPropertiesSchema = {
           language: "json",
           target: "element",
           key: "footerData",
+          height: 100,
           placeholder: "properties.label.footerDataPlaceholder",
         },
         {
@@ -763,6 +833,7 @@ export const elementPropertiesSchema: ElementPropertiesSchema = {
           language: "javascript",
           target: "element",
           key: "customScript",
+          height: 100,
           placeholder: "properties.label.customScriptPlaceholder",
         },
       ],
@@ -963,7 +1034,7 @@ export const elementPropertiesSchema: ElementPropertiesSchema = {
       :data-auto-paginate="element.autoPaginate"
       :data-custom-script="processedData.scriptContent || element.customScript"
     >
-      <thead>
+      <thead v-if="element.showHeader !== false">
         <tr>
           <th
             v-for="(col, index) in processedData.columns"
@@ -1011,15 +1082,13 @@ export const elementPropertiesSchema: ElementPropertiesSchema = {
       </thead>
       <tbody>
         <tr
-          v-for="(row, i) in store.isExporting
-            ? processedData.data
-            : processedData.data.slice(0, 5)"
+          v-for="(row, i) in displayBodyRows"
           :key="i"
         >
           <template v-for="col in processedData.columns" :key="col.field">
             <td
               v-if="shouldRenderCell(row, col.field)"
-              class="p-1 select-none"
+              class="relative p-1 select-none cursor-default"
               :class="{
                 'bg-blue-100 ring-1 ring-blue-400': isCellSelected(
                   i,
@@ -1041,6 +1110,7 @@ export const elementPropertiesSchema: ElementPropertiesSchema = {
                 fontSize: element.style.fontSize
                   ? `${element.style.fontSize}px`
                   : undefined,
+                cursor: shouldUseBodyCellDragCursor ? 'move' : 'default',
                 ...getCellStyle(row, col.field),
               }"
               :rowspan="getRowSpan(row, col.field)"
@@ -1049,11 +1119,29 @@ export const elementPropertiesSchema: ElementPropertiesSchema = {
               @mousedown="(e) => handleMouseDown(e, i, col.field)"
               @mouseover="handleMouseOver(i, col.field)"
             >
+              <template v-if="canDragTableElement">
+                <div
+                  class="absolute inset-x-0 top-0 z-10 cursor-move"
+                  :style="{ height: `${TABLE_BODY_DRAG_HANDLE_EDGE_SIZE}px` }"
+                ></div>
+                <div
+                  class="absolute inset-x-0 bottom-0 z-10 cursor-move"
+                  :style="{ height: `${TABLE_BODY_DRAG_HANDLE_EDGE_SIZE}px` }"
+                ></div>
+                <div
+                  class="absolute inset-y-0 left-0 z-10 cursor-move"
+                  :style="{ width: `${TABLE_BODY_DRAG_HANDLE_EDGE_SIZE}px` }"
+                ></div>
+                <div
+                  class="absolute inset-y-0 right-0 z-10 cursor-move"
+                  :style="{ width: `${TABLE_BODY_DRAG_HANDLE_EDGE_SIZE}px` }"
+                ></div>
+              </template>
               {{ getCellValue(row, col.field) }}
             </td>
           </template>
         </tr>
-        <tr v-if="!store.isExporting && processedData.data.length > 5">
+        <tr v-if="shouldOmitBodyRowsInDesign">
           <td
             :colspan="processedData.columns.length"
             class="p-1 text-center text-gray-500 select-none"
@@ -1074,10 +1162,12 @@ export const elementPropertiesSchema: ElementPropertiesSchema = {
           </td>
         </tr>
         <!-- Spacer Row to push footer to bottom in design mode -->
-        <tr v-if="!store.isExporting" class="h-full border-none bg-transparent">
+        <tr v-if="!store.isExporting" class="h-full bg-transparent">
           <td
             :colspan="processedData.columns.length || 1"
-            class="border-none p-0"
+            class="p-0"
+            :class="{ 'border-none': !shouldShowBodyFooterConnectorBorder }"
+            :style="shouldShowBodyFooterConnectorBorder ? cellStyle : undefined"
           ></td>
         </tr>
       </tbody>

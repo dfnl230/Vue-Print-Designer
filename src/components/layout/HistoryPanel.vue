@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from "vue";
+import {
+  ref,
+  computed,
+  onMounted,
+  onUnmounted,
+  watch,
+  nextTick,
+  inject,
+} from "vue";
 import { useI18n } from "vue-i18n";
 import { useDesignerStore } from "@/stores/designer";
 import type { Page } from "@/types";
@@ -23,12 +31,41 @@ const preferredPanelSize = ref({ width: 300, height: 320 });
 const PANEL_MIN_WIDTH = 240;
 const PANEL_MAX_WIDTH = 520;
 const PANEL_MIN_HEIGHT = 220;
-const PANEL_Z_BASE = 2000;
-const PANEL_Z_ACTIVE = 5200;
+const PANEL_Z_ACTIVE_OFFSET = 1;
+
+const props = withDefaults(
+  defineProps<{
+    baseZIndex?: number;
+  }>(),
+  {
+    baseZIndex: 60,
+  },
+);
+
+const designerInstanceId = inject<string | undefined>(
+  "designer-instance-id",
+  undefined,
+);
 
 const panelZIndex = computed(() =>
-  isDragging.value || isResizing.value ? PANEL_Z_ACTIVE : PANEL_Z_BASE,
+  isDragging.value || isResizing.value
+    ? props.baseZIndex + PANEL_Z_ACTIVE_OFFSET
+    : props.baseZIndex,
 );
+
+const emitBringToFront = () => {
+  const detail: Record<string, unknown> = {
+    panel: "history",
+  };
+  if (designerInstanceId) {
+    detail.__designerInstanceId = designerInstanceId;
+  }
+  window.dispatchEvent(new CustomEvent("designer:panel-bring-to-front", { detail }));
+};
+
+const handlePanelMouseDown = () => {
+  emitBringToFront();
+};
 
 const getCanvasBounds = () => {
   const root =
@@ -60,6 +97,7 @@ const handleDragStart = (e: MouseEvent) => {
   if (target.closest(".panel-close-btn")) return;
   if (target.closest('[data-panel-resize-handle="true"]')) return;
 
+  emitBringToFront();
   isDragging.value = true;
   startPos.value = {
     x: e.clientX - panelPos.value.x,
@@ -100,6 +138,7 @@ const handleDragEnd = () => {
 const handleResizeStart = (e: MouseEvent) => {
   e.preventDefault();
   e.stopPropagation();
+  emitBringToFront();
   isResizing.value = true;
   resizeStart.value = {
     x: e.clientX,
@@ -289,6 +328,7 @@ watch(
   (show) => {
     if (show) {
       updatePosition();
+      emitBringToFront();
 
       nextTick(() => {
         if (!resizeObserver) {
@@ -322,6 +362,7 @@ onMounted(() => {
   if (!store.showHistoryPanel) return;
 
   updatePosition();
+  emitBringToFront();
   nextTick(() => {
     const root =
       (panelRef.value?.getRootNode() as Document | ShadowRoot) || document;
@@ -353,6 +394,7 @@ onUnmounted(() => {
     v-if="store.showHistoryPanel"
     ref="panelRef"
     class="fixed bg-white dark:bg-gray-800 shadow-xl rounded-lg border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden"
+    @mousedown="handlePanelMouseDown"
     :style="{
       left: `${panelPos.x}px`,
       top: `${panelPos.y}px`,

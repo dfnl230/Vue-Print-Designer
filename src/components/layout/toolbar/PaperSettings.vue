@@ -198,34 +198,19 @@ onUnmounted(() => {
 
 <template>
   <div class="relative" ref="paperSettingsTriggerRef">
-    <div class="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-      <button
-        @click="togglePaperSettings"
-        :disabled="isPageSettingsReadOnly"
-        class="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors dark:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
-        :title="t('editor.paperSettings')"
-      >
-        <Settings class="w-4 h-4" />
-      </button>
-      <button
-        @click="togglePaperSettings"
-        :disabled="isPageSettingsReadOnly"
-        class="flex items-center justify-center text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 rounded px-1 py-0.5 transition-colors w-16 text-center disabled:opacity-50 disabled:cursor-not-allowed"
-        :title="t('editor.paperSettings')"
-      >
-        <span class="truncate">{{
-          selectedPaper === "CUSTOM" ? t("editor.custom") : selectedPaper
-        }}</span>
-      </button>
-      <button
-        @click="togglePaperSettings"
-        :disabled="isPageSettingsReadOnly"
-        class="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors dark:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
-        :title="t('editor.paperSettings')"
-      >
-        <ChevronDown class="w-4 h-4" />
-      </button>
-    </div>
+    <button
+      type="button"
+      @click="togglePaperSettings"
+      :disabled="isPageSettingsReadOnly"
+      class="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1 text-gray-700 dark:text-gray-200 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+      :title="t('editor.paperSettings')"
+    >
+      <Settings class="w-4 h-4" />
+      <span class="text-xs w-20 text-center px-2 py-0.5 truncate">
+        {{ selectedPaper === "CUSTOM" ? t("editor.custom") : selectedPaper }}
+      </span>
+      <ChevronDown class="w-4 h-4" />
+    </button>
 
     <Teleport :to="modalContainer || 'body'">
       <div
@@ -411,13 +396,35 @@ onUnmounted(() => {
               : 'bg-gray-200 dark:bg-gray-700'
           "
         >
-          <span class="sr-only">Toggle drag outside canvas</span>
+          <span class="sr-only">Toggle allowing elements to be dragged outside canvas</span>
           <span
             aria-hidden="true"
             class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-gray-100 shadow ring-0 transition duration-200 ease-in-out"
             :class="
               store.allowDragOutsideCanvas ? 'translate-x-5' : 'translate-x-0'
             "
+          />
+        </button>
+      </div>
+
+      <div class="mt-3 flex items-center justify-between">
+        <span class="text-sm text-gray-700 dark:text-gray-200 font-medium">{{
+          t("settings.textQuickToolbar")
+        }}</span>
+        <button
+          @click="store.setShowTextQuickToolbar(!store.showTextQuickToolbar)"
+          class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+          :class="
+            store.showTextQuickToolbar
+              ? 'bg-blue-600 dark:bg-blue-500'
+              : 'bg-gray-200 dark:bg-gray-700'
+          "
+        >
+          <span class="sr-only">{{ t("settings.textQuickToolbar") }}</span>
+          <span
+            aria-hidden="true"
+            class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-gray-100 shadow ring-0 transition duration-200 ease-in-out"
+            :class="store.showTextQuickToolbar ? 'translate-x-5' : 'translate-x-0'"
           />
         </button>
       </div>

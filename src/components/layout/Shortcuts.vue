@@ -228,12 +228,7 @@ const handleKeydown = (e: KeyboardEvent) => {
   // Select All (Ctrl/Cmd + A)
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a") {
     e.preventDefault();
-    if (store.pages[store.currentPageIndex]) {
-      const allIds = store.pages[store.currentPageIndex].elements.map(
-        (el) => el.id,
-      );
-      store.setSelection(allIds);
-    }
+    store.selectAllElements();
     return;
   }
 

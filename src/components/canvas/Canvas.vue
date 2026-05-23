@@ -33,6 +33,26 @@ const designerRoot = inject<Ref<HTMLElement | null>>(
   "designer-root",
   ref(null),
 );
+const isHandPanActive = inject<Ref<boolean>>(
+  "designer-hand-pan-active",
+  ref(false),
+);
+
+type PendingTableCreateDrop = {
+  x: number;
+  y: number;
+  pageIndex: number;
+};
+
+type TableCreateMode = "testData" | "custom";
+
+const CUSTOM_TABLE_MIN_COLUMNS = 1;
+const CUSTOM_TABLE_MAX_COLUMNS = 20;
+const CUSTOM_TABLE_MIN_ROWS = 1;
+const CUSTOM_TABLE_MAX_ROWS = 100;
+const CUSTOM_TABLE_DEFAULT_COLUMNS = 5;
+const CUSTOM_TABLE_DEFAULT_ROWS = 10;
+const CUSTOM_TABLE_DEFAULT_ROW_HEIGHT = 32;
 
 const getQueryRoot = () => {
   return (
@@ -57,6 +77,137 @@ const pageActionsStyle = computed(() => ({
   transformOrigin: "top right",
   right: `${-48 * inverseZoom.value}px`,
 }));
+const showTableCreateModal = ref(false);
+const pendingTableCreateDrop = ref<PendingTableCreateDrop | null>(null);
+const tableCreateInitialValues = computed(() => ({
+  mode: "testData" as TableCreateMode,
+  columns: CUSTOM_TABLE_DEFAULT_COLUMNS,
+  rows: CUSTOM_TABLE_DEFAULT_ROWS,
+}));
+const tableCreateFields = computed(() => [
+  {
+    key: "mode",
+    label: t("canvas.tableCreateMode"),
+    type: "radio" as const,
+    required: true,
+    options: [
+      {
+        label: t("canvas.tableCreateWithTestData"),
+        value: "testData",
+      },
+      {
+        label: t("canvas.tableCreateCustom"),
+        value: "custom",
+      },
+    ],
+  },
+  {
+    key: "columns",
+    label: t("canvas.tableCreateColumns"),
+    type: "number" as const,
+    required: true,
+    min: CUSTOM_TABLE_MIN_COLUMNS,
+    max: CUSTOM_TABLE_MAX_COLUMNS,
+    step: 1,
+    showWhen: { key: "mode", value: "custom" },
+  },
+  {
+    key: "rows",
+    label: t("canvas.tableCreateRows"),
+    type: "number" as const,
+    required: true,
+    min: CUSTOM_TABLE_MIN_ROWS,
+    max: CUSTOM_TABLE_MAX_ROWS,
+    step: 1,
+    showWhen: { key: "mode", value: "custom" },
+  },
+]);
+
+const clampTableCount = (value: unknown, min: number, max: number) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return min;
+  return Math.min(max, Math.max(min, Math.round(numericValue)));
+};
+
+const createCustomTableElement = (
+  x: number,
+  y: number,
+  columnCount: number,
+  rowCount: number,
+): Omit<PrintElement, "id"> => {
+  const baseElement = createNewElement(ElementType.TABLE, x, y, t);
+  const columns = Array.from({ length: columnCount }, (_, index) => ({
+    field: `col${index + 1}`,
+    header: `${t("canvas.customTableColumnPrefix")} ${index + 1}`,
+    width: 80,
+  }));
+  const data = Array.from({ length: rowCount }, () => {
+    return columns.reduce<Record<string, string>>((row, col) => {
+      row[col.field] = "";
+      return row;
+    }, {});
+  });
+
+  return {
+    ...baseElement,
+    width: Math.max(baseElement.width, columnCount * 80),
+    style: {
+      ...baseElement.style,
+      rowHeight: CUSTOM_TABLE_DEFAULT_ROW_HEIGHT,
+    },
+    columns,
+    data,
+    showHeader: false,
+    showFooter: false,
+    tfootRepeat: false,
+    autoPaginate: false,
+    designOmitRows: false,
+    footerData: [],
+    footerDataVariable: "",
+    customScript: "",
+    customScriptVariable: "",
+  };
+};
+
+const openTableCreateModal = (x: number, y: number, pageIndex: number) => {
+  pendingTableCreateDrop.value = { x, y, pageIndex };
+  showTableCreateModal.value = true;
+};
+
+const closeTableCreateModal = () => {
+  showTableCreateModal.value = false;
+  pendingTableCreateDrop.value = null;
+};
+
+const handleTableCreateSave = (payload: Record<string, any>) => {
+  const pending = pendingTableCreateDrop.value;
+  if (!pending) {
+    closeTableCreateModal();
+    return;
+  }
+
+  const mode = String(payload?.mode || "testData") as TableCreateMode;
+  const newElement =
+    mode === "custom"
+      ? createCustomTableElement(
+          pending.x,
+          pending.y,
+          clampTableCount(
+            payload?.columns,
+            CUSTOM_TABLE_MIN_COLUMNS,
+            CUSTOM_TABLE_MAX_COLUMNS,
+          ),
+          clampTableCount(
+            payload?.rows,
+            CUSTOM_TABLE_MIN_ROWS,
+            CUSTOM_TABLE_MAX_ROWS,
+          ),
+        )
+      : createNewElement(ElementType.TABLE, pending.x, pending.y, t);
+
+  store.addElement(newElement, pending.pageIndex);
+  closeTableCreateModal();
+};
 
 // Header/Footer Dragging
 const isDraggingLine = ref(false);
@@ -580,6 +731,11 @@ const handleDrop = (event: DragEvent, pageIndex: number) => {
 
   // Handle dropping a regular element from the left panel
   if (type) {
+    if (type === ElementType.TABLE) {
+      openTableCreateModal(x, y, pageIndex);
+      return;
+    }
+
     const newElement = createNewElement(type as ElementType, x, y, t);
     store.addElement(newElement as PrintElement, pageIndex);
   }
@@ -952,6 +1108,7 @@ const getGlobalElements = () => {
           <ElementWrapper
             v-for="element in getGlobalElements()"
             :key="`global-${element.id}`"
+            :class="{ 'pointer-events-none': isHandPanActive }"
             :element="element"
             :is-selected="isElementSelected(element.id)"
             :zoom="zoom"
@@ -972,13 +1129,14 @@ const getGlobalElements = () => {
         <ElementWrapper
           v-for="element in getRenderableElements(page.elements)"
           :key="element.id"
+          :class="{ 'pointer-events-none': isHandPanActive }"
           :element="element"
           :is-selected="isElementSelected(element.id)"
           :zoom="zoom"
           :page-index="index"
           :clip-to-page-bounds="shouldClipElementToPage(index, element.id)"
-          :read-only="!isTemplateEditable"
-          :force-hover="isVariableDropHovered(element.id, index)"
+          :read-only="!isTemplateEditable || isHandPanActive"
+          :force-hover="!isHandPanActive && isVariableDropHovered(element.id, index)"
         >
           <component
             :is="getComponent(element.type)"
@@ -1049,6 +1207,15 @@ const getGlobalElements = () => {
         </div>
       </div>
     </div>
+
+    <InputModal
+      :show="showTableCreateModal"
+      :title="t('canvas.tableCreateModalTitle')"
+      :fields="tableCreateFields"
+      :initial-values="tableCreateInitialValues"
+      @close="closeTableCreateModal"
+      @save="handleTableCreateSave"
+    />
 
     <InputModal
       :show="showTableVariableTargetModal"

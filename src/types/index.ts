@@ -104,7 +104,9 @@ export interface PrintElement {
   columns?: TableColumn[]; // For table
   autoPaginate?: boolean; // For table
   tfootRepeat?: boolean; // For table
+  showHeader?: boolean; // For table
   showFooter?: boolean; // For table
+  designOmitRows?: boolean; // For table design mode
   footerData?: any[]; // For table
   customScript?: string; // For table (data processing)
   customScriptVariable?: string; // For table (data processing script variable)
@@ -183,8 +185,7 @@ export type TemplateMenuActionKey =
   | "edit"
   | "copy"
   | "delete"
-  | "testData"
-  | "variablesPanel";
+  | "testData";
 
 export type TemplateModalMode = "create" | "edit" | "copy";
 export type TemplateModalFieldType =
@@ -312,6 +313,7 @@ export interface DesignerState {
   showFooterLine: boolean;
   showMinimap: boolean;
   showHistoryPanel: boolean;
+  showTextQuickToolbar: boolean;
   showDeveloperMode: boolean;
   showHelp: boolean;
   showSettings: boolean;
@@ -340,8 +342,6 @@ export interface DesignerState {
       section?: "body" | "footer";
     }[];
   } | null;
-  showVariablesPanel?: boolean;
-  autoOpenVariablesPanelOnTemplateSelect?: boolean;
   availableVariables?: VariableTreeItem[];
 }
 
@@ -375,6 +375,7 @@ export interface PropertyField {
   min?: number;
   max?: number;
   step?: number;
+  height?: number;
   actionName?: string;
   options?: PropertyFieldOption[];
   defaultValue?: any;

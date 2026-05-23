@@ -11,7 +11,7 @@ class ConfirmManager {
       overlay.style.position = "fixed";
       overlay.style.inset = "0";
       overlay.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-      overlay.style.zIndex = "2000"; // z-[2000]
+      overlay.style.zIndex = "10001"; // above header and floating panels/masks
       overlay.style.display = "flex";
       overlay.style.alignItems = "center";
       overlay.style.justifyContent = "center";

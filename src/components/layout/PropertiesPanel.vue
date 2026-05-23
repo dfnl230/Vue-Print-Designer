@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, inject, ref, type Ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useDesignerStore } from "@/stores/designer";
 import { toast } from "@/utils/toast";
@@ -31,15 +31,24 @@ import Delete from "~icons/material-symbols/delete";
 import FormatAlignLeft from "~icons/material-symbols/format-align-left";
 import FormatAlignCenter from "~icons/material-symbols/format-align-center";
 import FormatAlignRight from "~icons/material-symbols/format-align-right";
+import Close from "~icons/material-symbols/close";
 import InputModal from "@/components/common/InputModal.vue";
 
 const { t } = useI18n();
 const store = useDesignerStore();
+const designerInstanceId = inject<string | null>("designer-instance-id", null);
+const isHandPanActive = inject<Ref<boolean>>(
+  "designer-hand-pan-active",
+  ref(false),
+);
 const element = computed(() => store.selectedElement);
 const isMultiSelected = computed(() => store.selectedElementIds.length > 1);
 const isLocked = computed(() => element.value?.locked || false);
 const isEditingDisabled = computed(
   () => isLocked.value || !store.isTemplateEditable,
+);
+const isStyleEditingDisabled = computed(
+  () => isEditingDisabled.value || isHandPanActive.value,
 );
 const showCustomElementModal = ref(false);
 const customElementInitialName = ref("");
@@ -69,6 +78,7 @@ const hasTextBehaviorConflict = computed(
 
 const isFieldDisabled = (field: PropertyField) => {
   if (isEditingDisabled.value) return true;
+  if (isHandPanActive.value && field.target === "style") return true;
   if (!isTextElement.value || field.type !== "switch") return false;
   if (hasTextBehaviorConflict.value) return false;
 
@@ -524,6 +534,18 @@ const handleFocusOut = (e: FocusEvent) => {
   // Otherwise enable shortcuts
   store.setDisableGlobalShortcuts(false);
 };
+
+const dispatchDesignerEvent = (name: string) => {
+  const detail: Record<string, unknown> = {};
+  if (designerInstanceId) {
+    detail.__designerInstanceId = designerInstanceId;
+  }
+  window.dispatchEvent(new CustomEvent(name, { detail }));
+};
+
+const closePropertiesPanel = () => {
+  dispatchDesignerEvent("designer:close-properties-panel");
+};
 </script>
 
 <template>
@@ -553,6 +575,12 @@ const handleFocusOut = (e: FocusEvent) => {
           <Lock class="w-3 h-3" />
           <span>{{ t("properties.locked") }}</span>
         </div>
+        <button
+          class="panel-close-btn p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-500 dark:text-gray-400"
+          @click.stop="closePropertiesPanel"
+        >
+          <Close class="w-4 h-4" />
+        </button>
       </div>
     </div>
 
@@ -719,7 +747,11 @@ const handleFocusOut = (e: FocusEvent) => {
                 <div v-if="field.type === 'action'">
                   <button
                     @click="handleFieldAction(field)"
-                    :disabled="isEditingDisabled"
+                    :disabled="
+                      field.actionName === 'removeBorder'
+                        ? isStyleEditingDisabled
+                        : isEditingDisabled
+                    "
                     class="w-full py-2 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors text-sm font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400 dark:disabled:bg-gray-700"
                   >
                     {{ t(field.label) }}
@@ -757,7 +789,7 @@ const handleFocusOut = (e: FocusEvent) => {
                   v-else-if="field.type === 'select'"
                   :label="t(field.label)"
                   :options="getSelectOptions(field)"
-                  :disabled="isEditingDisabled"
+                  :disabled="isFieldDisabled(field)"
                   :value="getFieldValue(field)"
                   @update:value="(v) => handleFieldChange(field, v)"
                 />
@@ -766,7 +798,7 @@ const handleFocusOut = (e: FocusEvent) => {
                 <PropertyColor
                   v-else-if="field.type === 'color'"
                   :label="t(field.label)"
-                  :disabled="isEditingDisabled"
+                  :disabled="isFieldDisabled(field)"
                   :value="getFieldValue(field)"
                   @update:value="(v) => handleFieldChange(field, v)"
                 />
@@ -775,7 +807,7 @@ const handleFocusOut = (e: FocusEvent) => {
                 <PropertyImage
                   v-else-if="field.type === 'image'"
                   :label="t(field.label)"
-                  :disabled="isEditingDisabled"
+                  :disabled="isFieldDisabled(field)"
                   :placeholder="
                     field.placeholder
                       ? field.placeholder.startsWith('properties.')
@@ -792,7 +824,8 @@ const handleFocusOut = (e: FocusEvent) => {
                   v-else-if="field.type === 'code'"
                   :label="t(field.label)"
                   :language="field.language || 'javascript'"
-                  :disabled="isEditingDisabled"
+                  :disabled="isFieldDisabled(field)"
+                  :height="field.height"
                   :value="getCodeValue(field)"
                   @update:value="(v) => handleCodeChange(field, v)"
                 />
@@ -811,7 +844,7 @@ const handleFocusOut = (e: FocusEvent) => {
                           : field.placeholder
                         : ''
                     "
-                    :disabled="isEditingDisabled"
+                    :disabled="isFieldDisabled(field)"
                     :value="
                       ['data', 'columns', 'footerData'].includes(field.key!)
                         ? JSON.stringify((element as any)[field.key!], null, 2)
@@ -876,7 +909,7 @@ const handleFocusOut = (e: FocusEvent) => {
               <div class="flex gap-2">
                 <button
                   @click="store.setSelectedCellsTextAlign('left')"
-                  :disabled="isEditingDisabled"
+                  :disabled="isStyleEditingDisabled"
                   class="flex-1 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
                   :title="t('properties.align.left')"
                 >
@@ -885,7 +918,7 @@ const handleFocusOut = (e: FocusEvent) => {
                 </button>
                 <button
                   @click="store.setSelectedCellsTextAlign('center')"
-                  :disabled="isEditingDisabled"
+                  :disabled="isStyleEditingDisabled"
                   class="flex-1 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
                   :title="t('properties.align.center')"
                 >
@@ -894,7 +927,7 @@ const handleFocusOut = (e: FocusEvent) => {
                 </button>
                 <button
                   @click="store.setSelectedCellsTextAlign('right')"
-                  :disabled="isEditingDisabled"
+                  :disabled="isStyleEditingDisabled"
                   class="flex-1 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
                   :title="t('properties.align.right')"
                 >
@@ -918,7 +951,7 @@ const handleFocusOut = (e: FocusEvent) => {
           </h3>
           <PropertyColor
             :label="t('properties.label.backgroundColor')"
-            :disabled="isEditingDisabled"
+            :disabled="isStyleEditingDisabled"
             :value="element.style.backgroundColor || '#ffffff'"
             @update:value="(v) => handleStyleChange('backgroundColor', v)"
           />

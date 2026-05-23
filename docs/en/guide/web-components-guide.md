@@ -294,7 +294,7 @@ The component does not require a dedicated `init` method. Configure the followin
 | `setTheme`        | `theme`           | `'light' \| 'dark' \| 'system'`      | Yes      | Theme mode               |
 | `setDesignerFont` | `fontFamily`      | `string`                             | Yes      | Designer font family     |
 | `setDesignerFont` | `options.persist` | `boolean`                            | No       | Persist to local storage |
-| `setFontOptions`  | `options`         | `{ label: string; value: string }[]` | Yes      | Font option list         |
+| `setFontOptions`  | `options`         | `{ label: string; value: string }[]` | Yes      | Flat font option list, without group fields |
 | `setFontOptions`  | `options[].label` | `string`                             | Yes      | Dropdown display label   |
 | `setFontOptions`  | `options[].value` | `string`                             | Yes      | CSS font-family value    |
 
@@ -553,6 +553,8 @@ Parameters:
 
 Description: set available font options for the font dropdowns. It applies to the top toolbar, text quick toolbar, and properties panel.
 
+The top toolbar groups built-in default fonts as Common, Chinese Fonts, Western Fonts, and Monospace Fonts. The `setFontOptions` API still accepts a flat `{ label, value }` array; you do not need to pass grouped data. Custom fonts passed through this API are shown under the Custom Fonts group.
+
 If no item with `value: ''` is provided, a default option is automatically prepended.
 
 ```ts
@@ -573,7 +575,7 @@ Parameters:
 
 | Field             | Type                                 | Required | Description             |
 | ----------------- | ------------------------------------ | -------- | ----------------------- |
-| `options`         | `{ label: string; value: string }[]` | Yes      | Font option list        |
+| `options`         | `{ label: string; value: string }[]` | Yes      | Flat font option list, without group fields |
 | `options[].label` | `string`                             | Yes      | Label shown in dropdown |
 | `options[].value` | `string`                             | Yes      | CSS `font-family` value |
 

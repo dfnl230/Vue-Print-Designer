@@ -30,6 +30,10 @@ interface InputModalField {
   max?: number;
   step?: number;
   rows?: number;
+  showWhen?: {
+    key: string;
+    value: string | number | boolean;
+  };
 }
 
 const props = defineProps<{
@@ -65,6 +69,13 @@ const normalizedFields = computed<InputModalField[]>(() => {
     },
   ];
 });
+
+const visibleFields = computed(() =>
+  normalizedFields.value.filter((field) => {
+    if (!field.showWhen) return true;
+    return formValues.value[field.showWhen.key] === field.showWhen.value;
+  }),
+);
 
 const hasCustomFields = computed(() =>
   Boolean(props.fields && props.fields.length > 0),
@@ -123,7 +134,7 @@ const normalizedNumberValue = (raw: any) => {
 };
 
 const validateForm = () => {
-  for (const field of normalizedFields.value) {
+  for (const field of visibleFields.value) {
     const raw = formValues.value[field.key];
     const isEmpty = raw === "" || raw === null || raw === undefined;
     if (field.required && isEmpty) {
@@ -146,7 +157,7 @@ const validateForm = () => {
 };
 
 const isFormValid = computed(() => {
-  for (const field of normalizedFields.value) {
+  for (const field of visibleFields.value) {
     const raw = formValues.value[field.key];
     const isEmpty = raw === "" || raw === null || raw === undefined;
     if (field.required && isEmpty) return false;
@@ -168,7 +179,7 @@ const handleSave = () => {
   }
 
   const payload: Record<string, any> = {};
-  normalizedFields.value.forEach((field) => {
+  visibleFields.value.forEach((field) => {
     const raw = formValues.value[field.key];
     if (field.type === "number") {
       payload[field.key] =
@@ -217,7 +228,7 @@ onUnmounted(() => {
         <div class="p-4">
           <div class="mb-4 space-y-3">
             <div
-              v-for="field in normalizedFields"
+              v-for="field in visibleFields"
               :key="field.key"
               class="space-y-1"
             >

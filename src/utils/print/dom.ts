@@ -16,14 +16,23 @@ export const lockViewportScroll = (reserveScrollbarGutter = true) => {
   const previousBodyOverflowY = document.body.style.overflowY;
   const previousBodyScrollbarGutter = document.body.style.scrollbarGutter;
 
+  // Reserve scrollbar gutter only when a viewport scrollbar currently exists.
+  // Otherwise it introduces a visible blank strip on the right edge.
+  const hasViewportScrollbar =
+    window.innerWidth > document.documentElement.clientWidth;
+  const shouldReserveScrollbarGutter =
+    reserveScrollbarGutter && hasViewportScrollbar;
+
   document.documentElement.style.overflowX = "hidden";
   document.documentElement.style.overflowY = "hidden";
-  document.documentElement.style.scrollbarGutter = reserveScrollbarGutter
+  document.documentElement.style.scrollbarGutter = shouldReserveScrollbarGutter
     ? "stable"
     : "";
   document.body.style.overflowX = "hidden";
   document.body.style.overflowY = "hidden";
-  document.body.style.scrollbarGutter = reserveScrollbarGutter ? "stable" : "";
+  document.body.style.scrollbarGutter = shouldReserveScrollbarGutter
+    ? "stable"
+    : "";
 
   return () => {
     document.documentElement.style.overflowX = previousHtmlOverflowX;

@@ -16,9 +16,6 @@ import { useI18n } from "vue-i18n";
 import AlignLeft from "~icons/material-symbols/format-align-left";
 import AlignCenterHorizontal from "~icons/material-symbols/format-align-center";
 import AlignRight from "~icons/material-symbols/format-align-right";
-import AlignStartVertical from "~icons/material-symbols/vertical-align-top";
-import AlignCenterVertical from "~icons/material-symbols/vertical-align-center";
-import AlignEndVertical from "~icons/material-symbols/vertical-align-bottom";
 import Bold from "~icons/material-symbols/format-bold";
 import Italic from "~icons/material-symbols/format-italic";
 import FormatUnderlined from "~icons/material-symbols/format-underlined";
@@ -106,6 +103,7 @@ const isPrimarySelected = computed(() => {
 const showQuickToolbar = computed(() => {
   return (
     isPrimarySelected.value &&
+    store.showTextQuickToolbar &&
     !isInlineEditing.value &&
     !isReadOnlyWrapper.value
   );
@@ -562,7 +560,7 @@ export const elementPropertiesSchema: ElementPropertiesSchema = {
     >
       <div
         data-print-exclude="true"
-        class="z-[35] pointer-events-auto"
+        class="z-[1997] pointer-events-auto"
         :style="quickToolbarHostStyle"
         @mousedown.stop
         @click.stop
@@ -665,7 +663,7 @@ export const elementPropertiesSchema: ElementPropertiesSchema = {
             }"
             :title="t('editor.alignTop')"
           >
-            <AlignStartVertical class="w-4 h-4" />
+            <AlignLeft class="w-4 h-4 rotate-90" />
           </button>
           <button
             @click="setVerticalAlign('middle')"
@@ -677,7 +675,7 @@ export const elementPropertiesSchema: ElementPropertiesSchema = {
             }"
             :title="t('editor.alignMiddle')"
           >
-            <AlignCenterVertical class="w-4 h-4" />
+            <AlignCenterHorizontal class="w-4 h-4 rotate-90" />
           </button>
           <button
             @click="setVerticalAlign('bottom')"
@@ -689,7 +687,7 @@ export const elementPropertiesSchema: ElementPropertiesSchema = {
             }"
             :title="t('editor.alignBottom')"
           >
-            <AlignEndVertical class="w-4 h-4" />
+            <AlignRight class="w-4 h-4 rotate-90" />
           </button>
 
           <div class="w-px h-4 bg-gray-300 dark:bg-gray-700"></div>

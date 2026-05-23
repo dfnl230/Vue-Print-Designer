@@ -216,9 +216,11 @@ export const elementConfigRegistry: Partial<
       price: 100 + i * 10,
       total: ((i % 5) + 1) * (100 + i * 10),
     })),
+    showHeader: true,
     showFooter: true,
     tfootRepeat: true,
     autoPaginate: true,
+    designOmitRows: true,
     repeatPerPage: false,
     footerData: [
       {

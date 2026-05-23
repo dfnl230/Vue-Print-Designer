@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, nextTick } from "vue";
-import { ElementType } from "@/types";
+import { ElementType, type PrintElement } from "@/types";
+import TableElement from "@/components/elements/TableElement.vue";
 
 // 定义水印设置接口
 interface WatermarkSettings {
@@ -31,46 +32,124 @@ const props = defineProps<{
   showFooterLine: boolean;
   headerHeight: number;
   footerHeight: number;
+  pageSpacingY: number;
   watermark: WatermarkSettings | null;
+  previewWidth?: number;
+  previewMaxHeight?: number;
 }>();
 
 const emit = defineEmits<{
   (e: "update:scroll", pos: { left: number; top: number }): void;
 }>();
 
-const WIDTH = 180;
 const MIN_WIDTH = 120;
-const MAX_HEIGHT = 300;
-const GAP = 32; // match the gap in PrintDesigner (gap-8)
+const PAGE_GAP = 20; // match Canvas.vue rowGap and PrintDesigner canvasStyle
+const MINIMAP_PAGE_NUMBER_Z_INDEX = 900;
+const MINIMAP_VIEWPORT_Z_INDEX = 1000;
+const MINIMAP_MAX_ELEMENT_Z_INDEX = MINIMAP_PAGE_NUMBER_Z_INDEX - 1;
+const VIEWPORT_STROKE_WIDTH = 2;
+
+const previewWidth = computed(() =>
+  Math.max(MIN_WIDTH, props.previewWidth ?? 180),
+);
+const previewMaxHeight = computed(() =>
+  Math.max(80, props.previewMaxHeight ?? 300),
+);
 
 const ratio = computed(() => {
   if (props.scrollWidth <= 0 || props.scrollHeight <= 0) return 0.1;
 
-  let r = WIDTH / props.scrollWidth;
-
-  // First try to fit within max height
-  if (props.scrollHeight * r > MAX_HEIGHT) {
-    r = MAX_HEIGHT / props.scrollHeight;
-  }
-
-  // Then enforce min width (overrides max height constraint)
-  if (props.scrollWidth * r < MIN_WIDTH) {
-    r = MIN_WIDTH / props.scrollWidth;
-  }
-
-  return r;
+  return previewWidth.value / props.scrollWidth;
 });
 
 const height = computed(() => {
   return props.scrollHeight * ratio.value;
 });
 
-const viewportStyle = computed(() => ({
-  left: `${props.scrollLeft * ratio.value}px`,
-  top: `${props.scrollTop * ratio.value}px`,
-  width: `${props.viewportWidth * ratio.value}px`,
-  height: `${props.viewportHeight * ratio.value}px`,
-}));
+const previewScale = computed(() => props.zoom * ratio.value);
+
+const contentHeight = computed(() => Math.max(height.value, previewMaxHeight.value));
+
+const viewportRect = computed(() => {
+  const scaledWidth = props.scrollWidth * ratio.value;
+  const scaledHeight = props.scrollHeight * ratio.value;
+  const left = Math.max(
+    0,
+    Math.min(scaledWidth, props.scrollLeft * ratio.value),
+  );
+  const top = Math.max(
+    0,
+    Math.min(scaledHeight, props.scrollTop * ratio.value),
+  );
+  const width = Math.max(
+    0,
+    Math.min(props.viewportWidth * ratio.value, scaledWidth - left),
+  );
+  const height = Math.max(
+    0,
+    Math.min(props.viewportHeight * ratio.value, scaledHeight - top),
+  );
+
+  return { left, top, width, height };
+});
+
+const viewportStyle = computed(() => {
+  const rect = viewportRect.value;
+  return {
+    left: `${rect.left}px`,
+    top: `${rect.top}px`,
+    width: `${rect.width}px`,
+    height: `${rect.height}px`,
+    zIndex: MINIMAP_VIEWPORT_Z_INDEX,
+  };
+});
+
+const viewportFrameStyles = computed(() => {
+  const rect = viewportRect.value;
+  const stroke = VIEWPORT_STROKE_WIDTH;
+  const right = Math.min(
+    Math.max(rect.left, rect.left + rect.width - stroke),
+    Math.max(0, previewWidth.value - stroke),
+  );
+  const bottom = Math.min(
+    Math.max(rect.top, rect.top + rect.height - stroke),
+    Math.max(0, contentHeight.value - stroke),
+  );
+  const frameWidth = Math.max(stroke, right - rect.left + stroke);
+  const frameHeight = Math.max(stroke, bottom - rect.top + stroke);
+  const zIndex = MINIMAP_VIEWPORT_Z_INDEX + 1;
+
+  return {
+    top: {
+      left: `${rect.left}px`,
+      top: `${rect.top}px`,
+      width: `${frameWidth}px`,
+      height: `${stroke}px`,
+      zIndex,
+    },
+    right: {
+      left: `${right}px`,
+      top: `${rect.top}px`,
+      width: `${stroke}px`,
+      height: `${frameHeight}px`,
+      zIndex,
+    },
+    bottom: {
+      left: `${rect.left}px`,
+      top: `${bottom}px`,
+      width: `${frameWidth}px`,
+      height: `${stroke}px`,
+      zIndex,
+    },
+    left: {
+      left: `${rect.left}px`,
+      top: `${rect.top}px`,
+      width: `${stroke}px`,
+      height: `${frameHeight}px`,
+      zIndex,
+    },
+  };
+});
 
 const escapeXml = (value: string) =>
   value
@@ -110,7 +189,7 @@ const watermarkStyle = computed(() => {
 const getPageStyle = (index: number) => {
   const base = {
     left: `${props.contentOffsetX * ratio.value}px`,
-    top: `${(props.contentOffsetY + index * (props.pageHeight + GAP) * props.zoom) * ratio.value}px`,
+    top: `${(props.contentOffsetY + index * (props.pageHeight + PAGE_GAP) * props.zoom) * ratio.value}px`,
     width: `${props.pageWidth * props.zoom * ratio.value}px`,
     height: `${props.pageHeight * props.zoom * ratio.value}px`,
     backgroundColor: props.canvasBackground || "#ffffff",
@@ -157,13 +236,29 @@ const getGlobalElements = () => {
     if (el.type === ElementType.TABLE) return false;
     const bounds = getRotatedBounds(el);
     const isRepeatPerPage = el.repeatPerPage === true;
-    const isHeader = props.showHeaderLine && bounds.maxY <= props.headerHeight;
+    const marginTop = props.pageSpacingY || 0;
+    const marginBottom = props.pageSpacingY || 0;
+    const headerBoundary = props.headerHeight + marginTop;
+    const footerBoundary = props.pageHeight - (props.footerHeight + marginBottom);
+    const isHeader = props.showHeaderLine && bounds.maxY <= headerBoundary;
     const isFooter =
-      props.showFooterLine &&
-      bounds.minY >= props.pageHeight - props.footerHeight;
+      props.showFooterLine && bounds.minY >= footerBoundary;
     return isRepeatPerPage || isHeader || isFooter;
   });
 };
+
+const getElementZIndex = (element: any) => {
+  const styleZIndex = Number(element.style?.zIndex ?? 1);
+  return Number.isFinite(styleZIndex)
+    ? Math.min(styleZIndex, MINIMAP_MAX_ELEMENT_Z_INDEX)
+    : 1;
+};
+
+const getTablePreviewElement = (element: any): PrintElement => ({
+  ...element,
+  id: `minimap-${element.id}`,
+  style: element.style || {},
+});
 
 const getElementBounds = (element: any) => {
   const width = Math.max(1, element.width * props.zoom * ratio.value);
@@ -179,7 +274,7 @@ const getElementStyle = (element: any) => {
     width: `${width}px`,
     height: `${height}px`,
     fontSize: `${(element.style?.fontSize || 12) * props.zoom * ratio.value}px`,
-    zIndex: element.style?.zIndex || 1,
+    zIndex: getElementZIndex(element),
     transform: `rotate(${element.style?.rotate || 0}deg)`,
   } as Record<string, string | number>;
 
@@ -530,17 +625,17 @@ const handleMouseDown = (e: MouseEvent) => {
 <template>
   <div
     ref="scrollContainer"
-    class="bg-white dark:bg-gray-800 max-h-[300px] overflow-y-auto overflow-x-hidden box-content no-scrollbar"
+    class="bg-gray-100 dark:bg-gray-800 overflow-y-auto overflow-x-hidden box-content no-scrollbar"
     :style="{
-      width: `${props.scrollWidth * ratio}px`,
-      maxWidth: `${WIDTH}px`,
+      width: `${previewWidth}px`,
+      height: `${previewMaxHeight}px`,
     }"
   >
     <div
       class="relative select-none box-content overflow-hidden"
       :style="{
-        width: `${props.scrollWidth * ratio}px`,
-        height: `${height}px`,
+        width: `${previewWidth}px`,
+        height: `${Math.max(height, previewMaxHeight)}px`,
       }"
       @mousedown="handleMouseDown"
     >
@@ -555,7 +650,8 @@ const handleMouseDown = (e: MouseEvent) => {
         :style="getPageStyle(index)"
       >
         <div
-          class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-sm leading-none text-gray-300 z-10"
+          class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-sm leading-none text-gray-300 pointer-events-none"
+          :style="{ zIndex: MINIMAP_PAGE_NUMBER_Z_INDEX }"
         >
           {{ index + 1 }}
         </div>
@@ -634,16 +730,19 @@ const handleMouseDown = (e: MouseEvent) => {
           <!-- Table Placeholder -->
           <div
             v-else-if="element.type === ElementType.TABLE"
-            class="w-full h-full border border-gray-300 bg-white grid"
-            :style="{
-              gridTemplateColumns: `repeat(${element.columns?.length || 2}, 1fr)`,
-            }"
+            class="relative w-full h-full overflow-hidden bg-white pointer-events-none"
           >
             <div
-              v-for="i in Math.min(6, (element.columns?.length || 2) * 2)"
-              :key="i"
-              class="border-[0.5px] border-gray-100"
-            ></div>
+              class="absolute left-0 top-0"
+              :style="{
+                width: `${element.width}px`,
+                height: `${element.height}px`,
+                transform: `scale(${previewScale})`,
+                transformOrigin: 'top left',
+              }"
+            >
+              <TableElement :element="getTablePreviewElement(element)" />
+            </div>
           </div>
         </div>
 
@@ -718,16 +817,19 @@ const handleMouseDown = (e: MouseEvent) => {
             </div>
             <div
               v-else-if="element.type === ElementType.TABLE"
-              class="w-full h-full border border-gray-300 bg-white grid"
-              :style="{
-                gridTemplateColumns: `repeat(${element.columns?.length || 2}, 1fr)`,
-              }"
+              class="relative w-full h-full overflow-hidden bg-white pointer-events-none"
             >
               <div
-                v-for="i in Math.min(6, (element.columns?.length || 2) * 2)"
-                :key="i"
-                class="border-[0.5px] border-gray-100"
-              ></div>
+                class="absolute left-0 top-0"
+                :style="{
+                  width: `${element.width}px`,
+                  height: `${element.height}px`,
+                  transform: `scale(${previewScale})`,
+                  transformOrigin: 'top left',
+                }"
+              >
+                <TableElement :element="getTablePreviewElement(element)" />
+              </div>
             </div>
           </div>
         </template>
@@ -735,8 +837,24 @@ const handleMouseDown = (e: MouseEvent) => {
 
       <!-- Viewport -->
       <div
-        class="absolute border-2 border-blue-500 bg-blue-500/10 cursor-move z-[1000]"
+        class="absolute bg-blue-500/10 cursor-move"
         :style="viewportStyle"
+      ></div>
+      <div
+        class="absolute pointer-events-none bg-blue-500"
+        :style="viewportFrameStyles.top"
+      ></div>
+      <div
+        class="absolute pointer-events-none bg-blue-500"
+        :style="viewportFrameStyles.right"
+      ></div>
+      <div
+        class="absolute pointer-events-none bg-blue-500"
+        :style="viewportFrameStyles.bottom"
+      ></div>
+      <div
+        class="absolute pointer-events-none bg-blue-500"
+        :style="viewportFrameStyles.left"
       ></div>
     </div>
   </div>

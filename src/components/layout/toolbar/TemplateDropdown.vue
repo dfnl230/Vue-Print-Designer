@@ -32,7 +32,6 @@ import MoreVert from "~icons/material-symbols/more-vert";
 import Edit from "~icons/material-symbols/edit";
 import Copy from "~icons/material-symbols/content-copy";
 import Trash2 from "~icons/material-symbols/delete";
-import ViewList from "~icons/material-symbols/view-list";
 import Add from "~icons/material-symbols/add";
 import Check from "~icons/material-symbols/check"; // For selection indicator maybe?
 import Description from "~icons/material-symbols/description";
@@ -70,7 +69,6 @@ const testDataAllowedKeys = ref<string[]>([]);
 
 type TemplateMenuActionKey =
   | "testData"
-  | "variablesPanel"
   | "edit"
   | "copy"
   | "delete";
@@ -416,10 +414,6 @@ const selectTemplate = async (template: Template) => {
 
   isOpen.value = false;
   await store.loadTemplate(template.id);
-
-  if (designerStore.autoOpenVariablesPanelOnTemplateSelect) {
-    designerStore.setShowVariablesPanel(true);
-  }
 };
 
 const positionMenuAt = (x: number, y: number, id: string) => {
@@ -589,12 +583,6 @@ const defaultTemplateMenuItems = computed<TemplateMenuItemView[]>(() => [
     iconComponent: DataObject,
   },
   {
-    key: "variablesPanel",
-    actionKey: "variablesPanel",
-    label: t("common.variables"),
-    iconComponent: ViewList,
-  },
-  {
     key: "edit",
     actionKey: "edit",
     label: t("common.edit"),
@@ -670,10 +658,6 @@ const runBuiltInMenuAction = (
   const key = (actionKey || "") as TemplateMenuActionKey;
   if (key === "testData") {
     handleTestData(template);
-    return;
-  }
-  if (key === "variablesPanel") {
-    designerStore.setShowVariablesPanel(true);
     return;
   }
   if (key === "edit") {

@@ -34,36 +34,42 @@ const draw = () => {
   const width = canvas.width;
   const height = canvas.height;
   const { zoom, scroll, offset, type, indicators, range } = props;
+  const axisLength = type === "horizontal" ? width : height;
   const _isDark = isDark.value;
 
   // Clear
   ctx.clearRect(0, 0, width, height);
+  ctx.imageSmoothingEnabled = false;
   ctx.fillStyle = _isDark ? "#1f2937" : "#F9FAFB"; // dark: gray-800, light: gray-50
   ctx.fillRect(0, 0, width, height);
 
   if (range) {
     const startPos = offset + range.start * zoom - scroll;
     const endPos = offset + range.end * zoom - scroll;
-    const minPos = Math.min(startPos, endPos);
-    const maxPos = Math.max(startPos, endPos);
-    const rangeSize = Math.max(0, maxPos - minPos);
+    // Inward alignment prevents range endpoints from spilling by sub-pixel rounding.
+    const minPos = Math.ceil(Math.min(startPos, endPos));
+    const maxPos = Math.floor(Math.max(startPos, endPos));
+    const clampedMinPos = Math.max(0, Math.min(minPos, axisLength));
+    const clampedMaxPos = Math.max(0, Math.min(maxPos, axisLength));
+    const rangeSize = Math.max(0, clampedMaxPos - clampedMinPos);
     ctx.fillStyle = range.color;
     if (type === "horizontal") {
-      ctx.fillRect(minPos, 0, rangeSize, THICKNESS);
+      ctx.fillRect(clampedMinPos, 0, rangeSize, THICKNESS);
     } else {
-      ctx.fillRect(0, minPos, THICKNESS, rangeSize);
+      ctx.fillRect(0, clampedMinPos, THICKNESS, rangeSize);
     }
   }
 
   // Draw Indicators
   if (indicators && indicators.length > 0) {
     for (const indicator of indicators) {
-      const pos = offset + indicator.position * zoom - scroll;
+      const rawPos = Math.round(offset + indicator.position * zoom - scroll);
+      const pos = Math.max(0, Math.min(rawPos, axisLength - 1));
       ctx.fillStyle = indicator.color;
       if (type === "horizontal") {
-        ctx.fillRect(pos - 2, 0, 4, THICKNESS);
+        ctx.fillRect(pos, 0, 1, THICKNESS);
       } else {
-        ctx.fillRect(0, pos - 2, THICKNESS, 4);
+        ctx.fillRect(0, pos, THICKNESS, 1);
       }
     }
   }
@@ -100,7 +106,7 @@ const draw = () => {
   }
 
   // Calculate start and end in logical coordinates (mm)
-  const length = type === "horizontal" ? width : height;
+  const length = axisLength;
 
   // Logical Start (mm) = (-offset + scroll) / zoom
   // Logical Start (mm) = Logical Start (mm) / MM_TO_PX

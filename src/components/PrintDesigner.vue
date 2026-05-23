@@ -16,9 +16,9 @@ import PropertiesPanel from "./layout/PropertiesPanel.vue";
 import Canvas from "./canvas/Canvas.vue";
 import Ruler from "./layout/Ruler.vue";
 import Shortcuts from "./layout/Shortcuts.vue";
-import Minimap from "./layout/Minimap.vue";
+import MinimapPanel from "./layout/MinimapPanel.vue";
 import HistoryPanel from "./layout/HistoryPanel.vue";
-import VariablesPanel from "./layout/VariablesPanel.vue";
+import TemplateListPanel from "./layout/TemplateListPanel.vue";
 import InputModal from "@/components/common/InputModal.vue";
 import { toast } from "@/utils/toast";
 import Save from "~icons/material-symbols/save";
@@ -35,10 +35,16 @@ const { t } = useI18n();
 const props = defineProps<{ headless?: boolean }>();
 
 const scrollContainer = ref<HTMLElement | null>(null);
+const projectionViewportRef = ref<HTMLElement | null>(null);
 const panelsHostRef = ref<HTMLElement | null>(null);
 const rootContainer = ref<HTMLElement | null>(null);
 const modalContainer = ref<HTMLElement | null>(null);
+const isHandPanActive = ref(false);
+const isHandPanning = ref(false);
 const designerInstanceId = `designer-${Math.random().toString(36).slice(2, 10)}-${Date.now().toString(36)}`;
+const HAND_PAN_MIN_EDGE_SPACE = 320;
+const HAND_PAN_IGNORED_TARGET_SELECTOR =
+  "button, a, input, textarea, select, label, [role='button'], [role='menuitem'], [contenteditable='true'], [data-hand-pan-ignore='true'], .resize-handle, .rotate-handle";
 let resizeObserver: ResizeObserver | null = null;
 const canvasContainer = ref<HTMLElement | null>(null);
 
@@ -47,17 +53,60 @@ import { provide } from "vue";
 provide("designer-root", rootContainer);
 provide("modal-container", modalContainer);
 provide("designer-instance-id", designerInstanceId);
+provide("designer-hand-pan-active", isHandPanActive);
 const canvasWrapper = ref<HTMLElement | null>(null);
 const showSaveAsModal = ref(false);
 const brandTick = ref(0);
 
-type FloatingPanelKey = "sidebar" | "properties" | "minimap";
+type FloatingPanelKey = "sidebar" | "templates" | "properties" | "minimap";
+type FloatingPanelLayerKey = FloatingPanelKey | "history";
+type ResizablePanelKey = Exclude<FloatingPanelKey, "minimap">;
+type FloatingPanelHorizontalAnchor = "left" | "right" | "free";
+type FloatingPanelVerticalAnchor = "top" | "bottom" | "free";
+type FloatingPanelHeightMode = "fit" | "fixed";
 const FLOAT_PANEL_MIN_WIDTH = 256;
 const FLOAT_PANEL_MAX_WIDTH = 520;
 const FLOAT_PANEL_MARGIN = 12;
 const FLOAT_PANEL_MIN_HEIGHT = 280;
+const FLOAT_PANEL_EDGE_SNAP_TOLERANCE = 16;
+const TEMPLATE_PANEL_DEFAULT_WIDTH = 320;
+const PROPERTIES_PANEL_DEFAULT_WIDTH = 296;
+const TEMPLATE_PANEL_LAYOUT_STORAGE_KEY =
+  "print-designer-template-panel-layout";
+const ELEMENTS_PANEL_VISIBILITY_STORAGE_KEY =
+  "print-designer-elements-panel-visibility";
 const MINIMAP_PANEL_FALLBACK_WIDTH = 212;
 const MINIMAP_PANEL_FALLBACK_HEIGHT = 252;
+const MINIMAP_PANEL_MIN_WIDTH = 160;
+const MINIMAP_PANEL_MAX_WIDTH = 420;
+const MINIMAP_PANEL_MIN_HEIGHT = 140;
+const MINIMAP_PANEL_MAX_HEIGHT = 420;
+const MINIMAP_PANEL_BORDER_SIZE = 2;
+const MINIMAP_PANEL_HEADER_HEIGHT = 40;
+const FLOAT_PANEL_Z_BASE = 40;
+const FLOAT_PANEL_Z_STEP = 20;
+const FLOAT_PANEL_Z_ACTIVE_OFFSET = 10;
+
+const loadElementsPanelVisibility = () => {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(ELEMENTS_PANEL_VISIBILITY_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+};
+
+const persistElementsPanelVisibility = (visible: boolean) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      ELEMENTS_PANEL_VISIBILITY_STORAGE_KEY,
+      String(visible),
+    );
+  } catch {
+    // ignore storage failures
+  }
+};
 
 type FloatingPanelBounds = {
   minX: number;
@@ -69,8 +118,13 @@ type FloatingPanelBounds = {
 
 const panelsHostSize = ref({ width: 0, height: 0 });
 const sidebarPanelPos = ref({ x: FLOAT_PANEL_MARGIN, y: FLOAT_PANEL_MARGIN });
+const templatePanelPos = ref({ x: FLOAT_PANEL_MARGIN, y: FLOAT_PANEL_MARGIN });
 const propertiesPanelPos = ref({ x: FLOAT_PANEL_MARGIN, y: FLOAT_PANEL_MARGIN });
 const sidebarPanelPreferredPos = ref({
+  x: FLOAT_PANEL_MARGIN,
+  y: FLOAT_PANEL_MARGIN,
+});
+const templatePanelPreferredPos = ref({
   x: FLOAT_PANEL_MARGIN,
   y: FLOAT_PANEL_MARGIN,
 });
@@ -79,21 +133,47 @@ const propertiesPanelPreferredPos = ref({
   y: FLOAT_PANEL_MARGIN,
 });
 const sidebarPanelWidth = ref(FLOAT_PANEL_MIN_WIDTH);
-const propertiesPanelWidth = ref(FLOAT_PANEL_MIN_WIDTH);
+const templatePanelWidth = ref(TEMPLATE_PANEL_DEFAULT_WIDTH);
+const propertiesPanelWidth = ref(PROPERTIES_PANEL_DEFAULT_WIDTH);
 const sidebarPanelPreferredWidth = ref(FLOAT_PANEL_MIN_WIDTH);
-const propertiesPanelPreferredWidth = ref(FLOAT_PANEL_MIN_WIDTH);
+const templatePanelPreferredWidth = ref(TEMPLATE_PANEL_DEFAULT_WIDTH);
+const propertiesPanelPreferredWidth = ref(PROPERTIES_PANEL_DEFAULT_WIDTH);
 const sidebarPanelHeight = ref(FLOAT_PANEL_MIN_HEIGHT);
+const templatePanelHeight = ref(FLOAT_PANEL_MIN_HEIGHT);
 const propertiesPanelHeight = ref(FLOAT_PANEL_MIN_HEIGHT);
 const sidebarPanelPreferredHeight = ref(FLOAT_PANEL_MIN_HEIGHT);
+const templatePanelPreferredHeight = ref(FLOAT_PANEL_MIN_HEIGHT);
 const propertiesPanelPreferredHeight = ref(FLOAT_PANEL_MIN_HEIGHT);
 const minimapPanelRef = ref<HTMLElement | null>(null);
+const showElementsPanel = ref(loadElementsPanelVisibility());
+const showTemplatePanel = ref(true);
+const showPropertiesPanel = ref(true);
 const minimapPanelPos = ref({ x: FLOAT_PANEL_MARGIN, y: FLOAT_PANEL_MARGIN });
 const minimapPanelPreferredPos = ref({
   x: FLOAT_PANEL_MARGIN,
   y: FLOAT_PANEL_MARGIN,
 });
+const minimapPanelWidth = ref(MINIMAP_PANEL_FALLBACK_WIDTH);
+const minimapPanelHeight = ref(MINIMAP_PANEL_FALLBACK_HEIGHT);
+const minimapPanelPreferredWidth = ref(MINIMAP_PANEL_FALLBACK_WIDTH);
+const minimapPanelPreferredHeight = ref(MINIMAP_PANEL_FALLBACK_HEIGHT);
 const hasInitializedFloatingPanels = ref(false);
 const hasInitializedMinimapPanel = ref(false);
+const sidebarPanelAnchorX = ref<FloatingPanelHorizontalAnchor>("left");
+const sidebarPanelAnchorY = ref<FloatingPanelVerticalAnchor>("top");
+const templatePanelAnchorX = ref<FloatingPanelHorizontalAnchor>("left");
+const templatePanelAnchorY = ref<FloatingPanelVerticalAnchor>("top");
+const propertiesPanelAnchorX = ref<FloatingPanelHorizontalAnchor>("right");
+const propertiesPanelAnchorY = ref<FloatingPanelVerticalAnchor>("top");
+const sidebarPanelHeightMode = ref<FloatingPanelHeightMode>("fit");
+const templatePanelHeightMode = ref<FloatingPanelHeightMode>("fit");
+const propertiesPanelHeightMode = ref<FloatingPanelHeightMode>("fit");
+const restoredTemplatePanelLayout = ref({
+  x: false,
+  y: false,
+  width: false,
+  height: false,
+});
 
 let draggingPanel: FloatingPanelKey | null = null;
 let dragStartPointer = { x: 0, y: 0 };
@@ -102,9 +182,233 @@ let resizingPanel: FloatingPanelKey | null = null;
 let resizeStartPointer = { x: 0, y: 0 };
 let resizeStartWidth = FLOAT_PANEL_MIN_WIDTH;
 let resizeStartHeight = FLOAT_PANEL_MIN_HEIGHT;
+let resizeStartPanelPos = { x: 0, y: 0 };
+let resizeStartPanelAnchors: {
+  x: FloatingPanelHorizontalAnchor;
+  y: FloatingPanelVerticalAnchor;
+} = {
+  x: "free",
+  y: "free",
+};
+
+const floatingPanelLayerOrder = ref<FloatingPanelLayerKey[]>([
+  "sidebar",
+  "templates",
+  "properties",
+  "minimap",
+  "history",
+]);
 
 const handleBrandThemeUpdated = () => {
   brandTick.value += 1;
+};
+
+const isEventForCurrentDesigner = (e: Event) => {
+  const eventId = (e as CustomEvent)?.detail?.__designerInstanceId;
+  if (!eventId) return true;
+  return eventId === designerInstanceId;
+};
+
+const emitPanelVisibility = (eventName: string, visible: boolean) => {
+  const detail: Record<string, unknown> = {
+    visible,
+  };
+  if (designerInstanceId) {
+    detail.__designerInstanceId = designerInstanceId;
+  }
+  window.dispatchEvent(new CustomEvent(eventName, { detail }));
+};
+
+const emitElementsPanelVisibility = () => {
+  emitPanelVisibility("designer:elements-panel-visibility", showElementsPanel.value);
+};
+
+const emitTemplatePanelVisibility = () => {
+  emitPanelVisibility("designer:template-panel-visibility", showTemplatePanel.value);
+};
+
+const emitPropertiesPanelVisibility = () => {
+  emitPanelVisibility(
+    "designer:properties-panel-visibility",
+    showPropertiesPanel.value,
+  );
+};
+
+type PanelRect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+const isPanelRectOverlapping = (a: PanelRect, b: PanelRect) => {
+  return (
+    a.x < b.x + b.width &&
+    a.x + a.width > b.x &&
+    a.y < b.y + b.height &&
+    a.y + a.height > b.y
+  );
+};
+
+const resolveSidebarNonOverlappingPos = () => {
+  const bounds = getFloatingPanelBounds();
+  const templateWidth = templatePanelWidth.value;
+  const templateHeight = templatePanelHeight.value;
+
+  if (templateWidth <= 0 || templateHeight <= 0) return null;
+
+  const sidebarWidth = clampPanelWidth(
+    clampPreferredPanelWidth(sidebarPanelPreferredWidth.value),
+    sidebarPanelPreferredPos.value.x,
+  );
+  const desiredSidebarHeight =
+    sidebarPanelHeightMode.value === "fit"
+      ? bounds.maxHeight
+      : clampPreferredPanelHeight(sidebarPanelPreferredHeight.value);
+  const sidebarHeight = clampPanelHeight(
+    desiredSidebarHeight,
+    sidebarPanelPreferredPos.value.y,
+  );
+
+  const templateRect: PanelRect = {
+    x: templatePanelPos.value.x,
+    y: templatePanelPos.value.y,
+    width: templateWidth,
+    height: templateHeight,
+  };
+
+  const candidates = [
+    {
+      x: templateRect.x + templateRect.width + FLOAT_PANEL_MARGIN,
+      y: templateRect.y,
+    },
+    {
+      x: templateRect.x - sidebarWidth - FLOAT_PANEL_MARGIN,
+      y: templateRect.y,
+    },
+    {
+      x: templateRect.x,
+      y: templateRect.y + templateRect.height + FLOAT_PANEL_MARGIN,
+    },
+    {
+      x: templateRect.x,
+      y: templateRect.y - sidebarHeight - FLOAT_PANEL_MARGIN,
+    },
+  ];
+
+  for (const candidate of candidates) {
+    const pos = clampPanelPos(
+      candidate.x,
+      candidate.y,
+      sidebarWidth,
+      sidebarHeight,
+    );
+    const sidebarRect: PanelRect = {
+      x: pos.x,
+      y: pos.y,
+      width: sidebarWidth,
+      height: sidebarHeight,
+    };
+
+    if (!isPanelRectOverlapping(sidebarRect, templateRect)) {
+      return pos;
+    }
+  }
+
+  return null;
+};
+
+const ensureSidebarNotOverlappingTemplatePanel = () => {
+  if (!showElementsPanel.value || !showTemplatePanel.value) return;
+  if (templatePanelWidth.value <= 0 || templatePanelHeight.value <= 0) return;
+
+  const currentSidebarRect: PanelRect = {
+    x: sidebarPanelPos.value.x,
+    y: sidebarPanelPos.value.y,
+    width: sidebarPanelWidth.value,
+    height: sidebarPanelHeight.value,
+  };
+  const currentTemplateRect: PanelRect = {
+    x: templatePanelPos.value.x,
+    y: templatePanelPos.value.y,
+    width: templatePanelWidth.value,
+    height: templatePanelHeight.value,
+  };
+
+  if (!isPanelRectOverlapping(currentSidebarRect, currentTemplateRect)) return;
+
+  const nonOverlappingPos = resolveSidebarNonOverlappingPos();
+  if (!nonOverlappingPos) return;
+
+  sidebarPanelAnchorX.value = "free";
+  sidebarPanelAnchorY.value = "free";
+  sidebarPanelPreferredPos.value = { ...nonOverlappingPos };
+  sidebarPanelPos.value = { ...nonOverlappingPos };
+};
+
+const handleToggleElementsPanelEvent = (e: Event) => {
+  if (!isEventForCurrentDesigner(e)) return;
+  const wasVisible = showElementsPanel.value;
+  showElementsPanel.value = !showElementsPanel.value;
+  persistElementsPanelVisibility(showElementsPanel.value);
+  emitElementsPanelVisibility();
+  nextTick(() => {
+    initOrClampFloatingPanels();
+    if (!wasVisible && showElementsPanel.value) {
+      ensureSidebarNotOverlappingTemplatePanel();
+      initOrClampFloatingPanels();
+    }
+  });
+};
+
+const handleToggleTemplatePanelEvent = (e: Event) => {
+  if (!isEventForCurrentDesigner(e)) return;
+  const wasVisible = showTemplatePanel.value;
+  showTemplatePanel.value = !showTemplatePanel.value;
+  emitTemplatePanelVisibility();
+  nextTick(() => {
+    initOrClampFloatingPanels();
+    if (!wasVisible && showTemplatePanel.value) {
+      ensureSidebarNotOverlappingTemplatePanel();
+      initOrClampFloatingPanels();
+    }
+  });
+};
+
+const handleTogglePropertiesPanelEvent = (e: Event) => {
+  if (!isEventForCurrentDesigner(e)) return;
+  showPropertiesPanel.value = !showPropertiesPanel.value;
+  emitPropertiesPanelVisibility();
+  nextTick(() => {
+    initOrClampFloatingPanels();
+  });
+};
+
+const handleCloseElementsPanelEvent = (e: Event) => {
+  if (!isEventForCurrentDesigner(e)) return;
+  if (!showElementsPanel.value) return;
+  showElementsPanel.value = false;
+  persistElementsPanelVisibility(false);
+  emitElementsPanelVisibility();
+  nextTick(() => {
+    initOrClampFloatingPanels();
+  });
+};
+
+const closeTemplatePanel = () => {
+  if (!showTemplatePanel.value) return;
+  showTemplatePanel.value = false;
+  emitTemplatePanelVisibility();
+};
+
+const handleClosePropertiesPanelEvent = (e: Event) => {
+  if (!isEventForCurrentDesigner(e)) return;
+  if (!showPropertiesPanel.value) return;
+  showPropertiesPanel.value = false;
+  emitPropertiesPanelVisibility();
+  nextTick(() => {
+    initOrClampFloatingPanels();
+  });
 };
 
 const updatePanelsHostSize = () => {
@@ -202,6 +506,97 @@ const clampPreferredPanelHeight = (panelHeight: number) => {
   return Math.max(panelHeight, FLOAT_PANEL_MIN_HEIGHT);
 };
 
+const clampPreferredMinimapPanelWidth = (panelWidth: number) => {
+  return Math.min(
+    Math.max(panelWidth, MINIMAP_PANEL_MIN_WIDTH),
+    MINIMAP_PANEL_MAX_WIDTH,
+  );
+};
+
+const clampPreferredMinimapPanelHeight = (panelHeight: number) => {
+  return Math.min(
+    Math.max(panelHeight, MINIMAP_PANEL_MIN_HEIGHT),
+    MINIMAP_PANEL_MAX_HEIGHT,
+  );
+};
+
+const clampMinimapPanelWidth = (panelWidth: number, panelX: number) => {
+  const { minX, maxRight } = getFloatingPanelBounds();
+  const maxWidthByBounds = Math.max(
+    MINIMAP_PANEL_MIN_WIDTH,
+    maxRight - Math.max(panelX, minX),
+  );
+  const maxWidth = Math.min(MINIMAP_PANEL_MAX_WIDTH, maxWidthByBounds);
+  return Math.min(Math.max(panelWidth, MINIMAP_PANEL_MIN_WIDTH), maxWidth);
+};
+
+const clampMinimapPanelHeight = (panelHeight: number, panelY: number) => {
+  const { minY, maxBottom } = getFloatingPanelBounds();
+  const maxHeightByBounds = Math.max(
+    MINIMAP_PANEL_MIN_HEIGHT,
+    maxBottom - Math.max(panelY, minY),
+  );
+  const maxHeight = Math.min(MINIMAP_PANEL_MAX_HEIGHT, maxHeightByBounds);
+  return Math.min(Math.max(panelHeight, MINIMAP_PANEL_MIN_HEIGHT), maxHeight);
+};
+
+const restoreTemplatePanelLayout = () => {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = window.localStorage.getItem(TEMPLATE_PANEL_LAYOUT_STORAGE_KEY);
+    if (!raw) return;
+
+    const parsed = JSON.parse(raw) as Partial<{
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }>;
+    const isFiniteNumber = (value: unknown): value is number =>
+      typeof value === "number" && Number.isFinite(value);
+
+    if (isFiniteNumber(parsed.x)) {
+      templatePanelPreferredPos.value.x = parsed.x;
+      restoredTemplatePanelLayout.value.x = true;
+    }
+    if (isFiniteNumber(parsed.y)) {
+      templatePanelPreferredPos.value.y = parsed.y;
+      restoredTemplatePanelLayout.value.y = true;
+    }
+    if (isFiniteNumber(parsed.width)) {
+      const width = clampPreferredPanelWidth(parsed.width);
+      templatePanelPreferredWidth.value = width;
+      templatePanelWidth.value = width;
+      restoredTemplatePanelLayout.value.width = true;
+    }
+    if (isFiniteNumber(parsed.height)) {
+      const height = clampPreferredPanelHeight(parsed.height);
+      templatePanelPreferredHeight.value = height;
+      templatePanelHeight.value = height;
+      restoredTemplatePanelLayout.value.height = true;
+    }
+  } catch (error) {
+    console.warn("Failed to restore template panel layout", error);
+  }
+};
+
+const persistTemplatePanelLayout = () => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      TEMPLATE_PANEL_LAYOUT_STORAGE_KEY,
+      JSON.stringify({
+        x: templatePanelPreferredPos.value.x,
+        y: templatePanelPreferredPos.value.y,
+        width: templatePanelPreferredWidth.value,
+        height: templatePanelPreferredHeight.value,
+      }),
+    );
+  } catch (error) {
+    console.warn("Failed to persist template panel layout", error);
+  }
+};
+
 type FloatingPanelLayout = {
   pos: {
     x: number;
@@ -211,21 +606,212 @@ type FloatingPanelLayout = {
   height: number;
 };
 
+type FloatingPanelLayoutOptions = {
+  horizontalAnchor: FloatingPanelHorizontalAnchor;
+  verticalAnchor: FloatingPanelVerticalAnchor;
+  heightMode: FloatingPanelHeightMode;
+};
+
+const getPanelAnchors = (panel: ResizablePanelKey) => {
+  if (panel === "sidebar") {
+    return {
+      x: sidebarPanelAnchorX.value,
+      y: sidebarPanelAnchorY.value,
+    };
+  }
+
+  if (panel === "templates") {
+    return {
+      x: templatePanelAnchorX.value,
+      y: templatePanelAnchorY.value,
+    };
+  }
+
+  return {
+    x: propertiesPanelAnchorX.value,
+    y: propertiesPanelAnchorY.value,
+  };
+};
+
+const setPanelAnchors = (
+  panel: ResizablePanelKey,
+  anchors: {
+    x: FloatingPanelHorizontalAnchor;
+    y: FloatingPanelVerticalAnchor;
+  },
+) => {
+  if (panel === "sidebar") {
+    sidebarPanelAnchorX.value = anchors.x;
+    sidebarPanelAnchorY.value = anchors.y;
+    return;
+  }
+
+  if (panel === "templates") {
+    templatePanelAnchorX.value = anchors.x;
+    templatePanelAnchorY.value = anchors.y;
+    return;
+  }
+
+  propertiesPanelAnchorX.value = anchors.x;
+  propertiesPanelAnchorY.value = anchors.y;
+};
+
+const setPanelHeightMode = (
+  panel: ResizablePanelKey,
+  heightMode: FloatingPanelHeightMode,
+) => {
+  if (panel === "sidebar") {
+    sidebarPanelHeightMode.value = heightMode;
+    return;
+  }
+
+  if (panel === "templates") {
+    templatePanelHeightMode.value = heightMode;
+    return;
+  }
+
+  propertiesPanelHeightMode.value = heightMode;
+};
+
+const detectHorizontalAnchor = (
+  panelX: number,
+  panelWidth: number,
+  bounds: FloatingPanelBounds,
+  previousAnchor: FloatingPanelHorizontalAnchor,
+): FloatingPanelHorizontalAnchor => {
+  const leftDistance = Math.abs(panelX - bounds.minX);
+  const rightDistance = Math.abs(panelX + panelWidth - bounds.maxRight);
+  const nearLeft = leftDistance <= FLOAT_PANEL_EDGE_SNAP_TOLERANCE;
+  const nearRight = rightDistance <= FLOAT_PANEL_EDGE_SNAP_TOLERANCE;
+
+  if (nearLeft && nearRight) {
+    if (previousAnchor === "left" || previousAnchor === "right") {
+      return previousAnchor;
+    }
+    return leftDistance <= rightDistance ? "left" : "right";
+  }
+
+  if (nearLeft) return "left";
+  if (nearRight) return "right";
+  return "free";
+};
+
+const detectVerticalAnchor = (
+  panelY: number,
+  panelHeight: number,
+  bounds: FloatingPanelBounds,
+  previousAnchor: FloatingPanelVerticalAnchor,
+): FloatingPanelVerticalAnchor => {
+  const topDistance = Math.abs(panelY - bounds.minY);
+  const bottomDistance = Math.abs(panelY + panelHeight - bounds.maxBottom);
+  const nearTop = topDistance <= FLOAT_PANEL_EDGE_SNAP_TOLERANCE;
+  const nearBottom = bottomDistance <= FLOAT_PANEL_EDGE_SNAP_TOLERANCE;
+
+  if (nearTop && nearBottom) {
+    if (previousAnchor === "top" || previousAnchor === "bottom") {
+      return previousAnchor;
+    }
+    return topDistance <= bottomDistance ? "top" : "bottom";
+  }
+
+  if (nearTop) return "top";
+  if (nearBottom) return "bottom";
+  return "free";
+};
+
+const detectPanelAnchors = (
+  panel: ResizablePanelKey,
+  panelPos: { x: number; y: number },
+  panelWidth: number,
+  panelHeight: number,
+): {
+  x: FloatingPanelHorizontalAnchor;
+  y: FloatingPanelVerticalAnchor;
+} => {
+  const bounds = getFloatingPanelBounds();
+  const previousAnchors = getPanelAnchors(panel);
+
+  return {
+    x: detectHorizontalAnchor(
+      panelPos.x,
+      panelWidth,
+      bounds,
+      previousAnchors.x,
+    ),
+    y: detectVerticalAnchor(
+      panelPos.y,
+      panelHeight,
+      bounds,
+      previousAnchors.y,
+    ),
+  };
+};
+
 const resolvePanelLayout = (
   preferredPos: { x: number; y: number },
   preferredWidth: number,
   preferredHeight: number,
+  options: FloatingPanelLayoutOptions,
 ): FloatingPanelLayout => {
+  const bounds = getFloatingPanelBounds();
   const desiredWidth = clampPreferredPanelWidth(preferredWidth);
-  const desiredHeight = clampPreferredPanelHeight(preferredHeight);
+  const desiredHeight =
+    options.heightMode === "fit"
+      ? bounds.maxHeight
+      : clampPreferredPanelHeight(preferredHeight);
 
-  let width = clampPanelWidth(desiredWidth, preferredPos.x);
-  let height = clampPanelHeight(desiredHeight, preferredPos.y);
-  let pos = clampPanelPos(preferredPos.x, preferredPos.y, width, height);
+  let nextX = preferredPos.x;
+  let nextY = preferredPos.y;
+
+  if (options.horizontalAnchor === "left") {
+    nextX = bounds.minX;
+  } else if (options.horizontalAnchor === "right") {
+    nextX = bounds.maxRight - desiredWidth;
+  }
+
+  if (options.verticalAnchor === "top") {
+    nextY = bounds.minY;
+  } else if (options.verticalAnchor === "bottom") {
+    nextY = bounds.maxBottom - desiredHeight;
+  }
+
+  let width = clampPanelWidth(desiredWidth, nextX);
+  let height = clampPanelHeight(desiredHeight, nextY);
+
+  if (options.horizontalAnchor === "left") {
+    nextX = bounds.minX;
+  } else if (options.horizontalAnchor === "right") {
+    nextX = bounds.maxRight - width;
+  }
+
+  if (options.verticalAnchor === "top") {
+    nextY = bounds.minY;
+  } else if (options.verticalAnchor === "bottom") {
+    nextY = bounds.maxBottom - height;
+  }
+
+  let pos = clampPanelPos(nextX, nextY, width, height);
 
   width = clampPanelWidth(desiredWidth, pos.x);
   height = clampPanelHeight(desiredHeight, pos.y);
-  pos = clampPanelPos(pos.x, pos.y, width, height);
+
+  if (options.horizontalAnchor === "left") {
+    nextX = bounds.minX;
+  } else if (options.horizontalAnchor === "right") {
+    nextX = bounds.maxRight - width;
+  } else {
+    nextX = pos.x;
+  }
+
+  if (options.verticalAnchor === "top") {
+    nextY = bounds.minY;
+  } else if (options.verticalAnchor === "bottom") {
+    nextY = bounds.maxBottom - height;
+  } else {
+    nextY = pos.y;
+  }
+
+  pos = clampPanelPos(nextX, nextY, width, height);
 
   return {
     pos,
@@ -234,18 +820,84 @@ const resolvePanelLayout = (
   };
 };
 
-const getMinimapPanelSize = () => {
-  if (!minimapPanelRef.value) {
-    return {
-      width: MINIMAP_PANEL_FALLBACK_WIDTH,
-      height: MINIMAP_PANEL_FALLBACK_HEIGHT,
-    };
+const resolvePanelResizeLayout = (
+  startPos: { x: number; y: number },
+  startWidth: number,
+  startHeight: number,
+  deltaX: number,
+  deltaY: number,
+  anchors: {
+    x: FloatingPanelHorizontalAnchor;
+    y: FloatingPanelVerticalAnchor;
+  },
+) => {
+  const desiredWidth = clampPreferredPanelWidth(startWidth + deltaX);
+  const desiredHeight = clampPreferredPanelHeight(startHeight + deltaY);
+
+  const startRight = startPos.x + startWidth;
+  const startBottom = startPos.y + startHeight;
+
+  let nextX = startPos.x;
+  let nextY = startPos.y;
+
+  if (anchors.x === "right") {
+    nextX = startRight - desiredWidth;
+  }
+  if (anchors.y === "bottom") {
+    nextY = startBottom - desiredHeight;
   }
 
-  const rect = minimapPanelRef.value.getBoundingClientRect();
+  let width = clampPanelWidth(desiredWidth, nextX);
+  let height = clampPanelHeight(desiredHeight, nextY);
+
+  if (anchors.x === "right") {
+    nextX = startRight - width;
+  }
+  if (anchors.y === "bottom") {
+    nextY = startBottom - height;
+  }
+
+  const pos = clampPanelPos(nextX, nextY, width, height);
+
   return {
-    width: rect.width > 0 ? rect.width : MINIMAP_PANEL_FALLBACK_WIDTH,
-    height: rect.height > 0 ? rect.height : MINIMAP_PANEL_FALLBACK_HEIGHT,
+    pos,
+    width,
+    height,
+  };
+};
+
+const resolveMinimapPanelLayout = (
+  preferredPos: { x: number; y: number },
+  preferredWidth: number,
+  preferredHeight: number,
+): FloatingPanelLayout => {
+  const desiredWidth = clampPreferredMinimapPanelWidth(preferredWidth);
+  const desiredHeight = clampPreferredMinimapPanelHeight(preferredHeight);
+  let width = clampMinimapPanelWidth(desiredWidth, preferredPos.x);
+  let height = clampMinimapPanelHeight(desiredHeight, preferredPos.y);
+  let pos = clampPanelPos(preferredPos.x, preferredPos.y, width, height);
+
+  width = clampMinimapPanelWidth(desiredWidth, pos.x);
+  height = clampMinimapPanelHeight(desiredHeight, pos.y);
+  pos = clampPanelPos(pos.x, pos.y, width, height);
+
+  return { pos, width, height };
+};
+
+const resolveMinimapPanelResizeLayout = (
+  startPos: { x: number; y: number },
+  startWidth: number,
+  startHeight: number,
+  deltaX: number,
+  deltaY: number,
+): FloatingPanelLayout => {
+  return resolveMinimapPanelLayout(startPos, startWidth + deltaX, startHeight + deltaY);
+};
+
+const getMinimapPanelSize = () => {
+  return {
+    width: minimapPanelWidth.value,
+    height: minimapPanelHeight.value,
   };
 };
 
@@ -260,12 +912,15 @@ const placeMinimapNearPropertiesPanel = () => {
     y: targetY,
   };
 
-  minimapPanelPos.value = clampPanelPos(
-    minimapPanelPreferredPos.value.x,
-    minimapPanelPreferredPos.value.y,
-    minimapSize.width,
-    minimapSize.height,
+  const minimapLayout = resolveMinimapPanelLayout(
+    minimapPanelPreferredPos.value,
+    minimapPanelPreferredWidth.value,
+    minimapPanelPreferredHeight.value,
   );
+  minimapPanelPos.value = minimapLayout.pos;
+  minimapPanelWidth.value = minimapLayout.width;
+  minimapPanelHeight.value = minimapLayout.height;
+  minimapPanelPreferredPos.value = { ...minimapLayout.pos };
   hasInitializedMinimapPanel.value = true;
 };
 
@@ -277,9 +932,56 @@ const initOrClampFloatingPanels = () => {
   const bounds = getFloatingPanelBounds();
 
   if (!hasInitializedFloatingPanels.value) {
+    sidebarPanelAnchorX.value = "left";
+    sidebarPanelAnchorY.value = "top";
+    templatePanelAnchorX.value = restoredTemplatePanelLayout.value.x
+      ? "free"
+      : "left";
+    templatePanelAnchorY.value = restoredTemplatePanelLayout.value.y
+      ? "free"
+      : "top";
+    propertiesPanelAnchorX.value = "right";
+    propertiesPanelAnchorY.value = "top";
+
+    sidebarPanelHeightMode.value = "fit";
+    propertiesPanelHeightMode.value = "fit";
+
     sidebarPanelPreferredHeight.value = bounds.maxHeight;
     propertiesPanelPreferredHeight.value = bounds.maxHeight;
-    sidebarPanelPreferredPos.value = { x: bounds.minX, y: bounds.minY };
+    sidebarPanelPreferredPos.value = {
+      x: Math.max(
+        bounds.minX,
+        bounds.minX + templatePanelPreferredWidth.value + FLOAT_PANEL_MARGIN,
+      ),
+      y: bounds.minY,
+    };
+
+    const defaultTemplatePos = {
+      x: bounds.minX,
+      y: bounds.minY,
+    };
+    templatePanelPreferredPos.value = {
+      x: restoredTemplatePanelLayout.value.x
+        ? templatePanelPreferredPos.value.x
+        : defaultTemplatePos.x,
+      y: restoredTemplatePanelLayout.value.y
+        ? templatePanelPreferredPos.value.y
+        : defaultTemplatePos.y,
+    };
+
+    const restoredTemplateHeightDelta = Math.abs(
+      templatePanelPreferredHeight.value - bounds.maxHeight,
+    );
+    templatePanelHeightMode.value =
+      restoredTemplatePanelLayout.value.height &&
+      restoredTemplateHeightDelta > FLOAT_PANEL_EDGE_SNAP_TOLERANCE
+        ? "fixed"
+        : "fit";
+
+    if (templatePanelHeightMode.value === "fit") {
+      templatePanelPreferredHeight.value = bounds.maxHeight;
+    }
+
     propertiesPanelPreferredPos.value = {
       x: Math.max(
         bounds.minX,
@@ -293,11 +995,17 @@ const initOrClampFloatingPanels = () => {
   sidebarPanelPreferredWidth.value = clampPreferredPanelWidth(
     sidebarPanelPreferredWidth.value,
   );
+  templatePanelPreferredWidth.value = clampPreferredPanelWidth(
+    templatePanelPreferredWidth.value,
+  );
   propertiesPanelPreferredWidth.value = clampPreferredPanelWidth(
     propertiesPanelPreferredWidth.value,
   );
   sidebarPanelPreferredHeight.value = clampPreferredPanelHeight(
     sidebarPanelPreferredHeight.value,
+  );
+  templatePanelPreferredHeight.value = clampPreferredPanelHeight(
+    templatePanelPreferredHeight.value,
   );
   propertiesPanelPreferredHeight.value = clampPreferredPanelHeight(
     propertiesPanelPreferredHeight.value,
@@ -307,15 +1015,39 @@ const initOrClampFloatingPanels = () => {
     sidebarPanelPreferredPos.value,
     sidebarPanelPreferredWidth.value,
     sidebarPanelPreferredHeight.value,
+    {
+      horizontalAnchor: sidebarPanelAnchorX.value,
+      verticalAnchor: sidebarPanelAnchorY.value,
+      heightMode: sidebarPanelHeightMode.value,
+    },
   );
   sidebarPanelPos.value = sidebarLayout.pos;
   sidebarPanelWidth.value = sidebarLayout.width;
   sidebarPanelHeight.value = sidebarLayout.height;
 
+  const templateLayout = resolvePanelLayout(
+    templatePanelPreferredPos.value,
+    templatePanelPreferredWidth.value,
+    templatePanelPreferredHeight.value,
+    {
+      horizontalAnchor: templatePanelAnchorX.value,
+      verticalAnchor: templatePanelAnchorY.value,
+      heightMode: templatePanelHeightMode.value,
+    },
+  );
+  templatePanelPos.value = templateLayout.pos;
+  templatePanelWidth.value = templateLayout.width;
+  templatePanelHeight.value = templateLayout.height;
+
   const propertiesLayout = resolvePanelLayout(
     propertiesPanelPreferredPos.value,
     propertiesPanelPreferredWidth.value,
     propertiesPanelPreferredHeight.value,
+    {
+      horizontalAnchor: propertiesPanelAnchorX.value,
+      verticalAnchor: propertiesPanelAnchorY.value,
+      heightMode: propertiesPanelHeightMode.value,
+    },
   );
   propertiesPanelPos.value = propertiesLayout.pos;
   propertiesPanelWidth.value = propertiesLayout.width;
@@ -328,13 +1060,15 @@ const initOrClampFloatingPanels = () => {
     return;
   }
 
-  const minimapSize = getMinimapPanelSize();
-  minimapPanelPos.value = clampPanelPos(
-    minimapPanelPreferredPos.value.x,
-    minimapPanelPreferredPos.value.y,
-    minimapSize.width,
-    minimapSize.height,
+  const minimapLayout = resolveMinimapPanelLayout(
+    minimapPanelPreferredPos.value,
+    minimapPanelPreferredWidth.value,
+    minimapPanelPreferredHeight.value,
   );
+  minimapPanelPos.value = minimapLayout.pos;
+  minimapPanelWidth.value = minimapLayout.width;
+  minimapPanelHeight.value = minimapLayout.height;
+  minimapPanelPreferredPos.value = { ...minimapLayout.pos };
 };
 
 const sidebarPanelStyle = computed(() => {
@@ -343,6 +1077,15 @@ const sidebarPanelStyle = computed(() => {
     top: `${sidebarPanelPos.value.y}px`,
     width: `${sidebarPanelWidth.value}px`,
     height: `${sidebarPanelHeight.value}px`,
+  };
+});
+
+const templatePanelStyle = computed(() => {
+  return {
+    left: `${templatePanelPos.value.x}px`,
+    top: `${templatePanelPos.value.y}px`,
+    width: `${templatePanelWidth.value}px`,
+    height: `${templatePanelHeight.value}px`,
   };
 });
 
@@ -359,14 +1102,217 @@ const minimapPanelStyle = computed(() => {
   return {
     left: `${minimapPanelPos.value.x}px`,
     top: `${minimapPanelPos.value.y}px`,
+    width: `${minimapPanelWidth.value}px`,
+    height: `${minimapPanelHeight.value}px`,
   };
 });
 
+const minimapPreviewWidth = computed(() =>
+  Math.max(120, minimapPanelWidth.value - MINIMAP_PANEL_BORDER_SIZE),
+);
+const minimapPreviewMaxHeight = computed(() =>
+  Math.max(
+    80,
+    minimapPanelHeight.value - MINIMAP_PANEL_HEADER_HEIGHT - MINIMAP_PANEL_BORDER_SIZE,
+  ),
+);
+
+const isFloatingPanelLayerKey = (
+  value: unknown,
+): value is FloatingPanelLayerKey => {
+  return (
+    value === "sidebar" ||
+    value === "templates" ||
+    value === "properties" ||
+    value === "minimap" ||
+    value === "history"
+  );
+};
+
+const bringPanelToFront = (panel: FloatingPanelLayerKey) => {
+  const currentOrder = floatingPanelLayerOrder.value.filter(
+    (item) => item !== panel,
+  );
+  currentOrder.push(panel);
+  floatingPanelLayerOrder.value = currentOrder;
+};
+
+const getPanelLayerBaseZIndex = (panel: FloatingPanelLayerKey) => {
+  const panelIndex = floatingPanelLayerOrder.value.indexOf(panel);
+  const normalizedIndex = panelIndex < 0 ? 0 : panelIndex;
+  return FLOAT_PANEL_Z_BASE + normalizedIndex * FLOAT_PANEL_Z_STEP;
+};
+
 const getPanelZIndex = (panel: FloatingPanelKey) => {
+  const panelBaseZIndex = getPanelLayerBaseZIndex(panel);
   if (draggingPanel === panel || resizingPanel === panel) {
-    return 5100;
+    return panelBaseZIndex + FLOAT_PANEL_Z_ACTIVE_OFFSET;
   }
-  return panel === "minimap" ? 50 : 40;
+  return panelBaseZIndex;
+};
+
+const historyPanelBaseZIndex = computed(() => getPanelLayerBaseZIndex("history"));
+
+const handleBringPanelToFrontEvent = (e: Event) => {
+  if (!isEventForCurrentDesigner(e)) return;
+  const panel = (e as CustomEvent)?.detail?.panel;
+  if (!isFloatingPanelLayerKey(panel)) return;
+  bringPanelToFront(panel);
+};
+
+let handPanStartPointer = { x: 0, y: 0 };
+let handPanStartScroll = { left: 0, top: 0 };
+let suppressNextHandPanClick = false;
+
+const isElementInsideScrollContainer = (
+  element: Element | null | undefined,
+  container: HTMLElement,
+) => {
+  return !!element && (element === container || container.contains(element));
+};
+
+const isHandPanIgnoredTarget = (e: MouseEvent) => {
+  const path =
+    typeof e.composedPath === "function" ? e.composedPath() : [e.target];
+
+  return path.some((item) => {
+    if (!(item instanceof Element)) return false;
+    return !!item.closest(HAND_PAN_IGNORED_TARGET_SELECTOR);
+  });
+};
+
+const isEventInsideScrollContainer = (e: MouseEvent) => {
+  if (!scrollContainer.value) return false;
+
+  const container = scrollContainer.value;
+
+  const path =
+    typeof e.composedPath === "function" ? e.composedPath() : undefined;
+  if (path && path.length > 0) {
+    if (path.includes(container)) {
+      return true;
+    }
+  }
+
+  const target = e.target as Node | null;
+  if (target && container.contains(target)) {
+    return true;
+  }
+
+  const root = container.getRootNode() as Document | ShadowRoot;
+  const elementsFromPoint =
+    typeof root.elementsFromPoint === "function"
+      ? root.elementsFromPoint(e.clientX, e.clientY)
+      : [];
+  const topElement = elementsFromPoint[0];
+
+  return isElementInsideScrollContainer(topElement, container);
+};
+
+const handleHandPanMove = (e: MouseEvent) => {
+  if (!isHandPanning.value || !scrollContainer.value) return;
+
+  e.preventDefault();
+  const deltaX = e.clientX - handPanStartPointer.x;
+  const deltaY = e.clientY - handPanStartPointer.y;
+
+  scrollContainer.value.scrollLeft = handPanStartScroll.left - deltaX;
+  scrollContainer.value.scrollTop = handPanStartScroll.top - deltaY;
+};
+
+const stopHandPan = () => {
+  if (!isHandPanning.value) return;
+
+  isHandPanning.value = false;
+  window.removeEventListener("mousemove", handleHandPanMove);
+  window.removeEventListener("mouseup", stopHandPan);
+};
+
+const getCanvasViewportPosition = () => {
+  if (!scrollContainer.value || !canvasWrapper.value) return null;
+
+  const containerRect = scrollContainer.value.getBoundingClientRect();
+  const wrapperRect = canvasWrapper.value.getBoundingClientRect();
+
+  return {
+    left:
+      wrapperRect.left -
+      containerRect.left -
+      (scrollContainer.value.clientLeft || 0),
+    top:
+      wrapperRect.top -
+      containerRect.top -
+      (scrollContainer.value.clientTop || 0),
+  };
+};
+
+const restoreCanvasViewportPosition = (
+  previousPosition: { left: number; top: number } | null,
+) => {
+  if (!previousPosition) return;
+
+  nextTick(() => {
+    const currentPosition = getCanvasViewportPosition();
+    if (!currentPosition || !scrollContainer.value) return;
+
+    scrollContainer.value.scrollLeft +=
+      currentPosition.left - previousPosition.left;
+    scrollContainer.value.scrollTop +=
+      currentPosition.top - previousPosition.top;
+    updateOffset();
+  });
+};
+
+const handleGlobalHandPanMouseDown = (e: MouseEvent) => {
+  if (!isHandPanActive.value) return;
+  if (e.button !== 0) return;
+  if (!scrollContainer.value) return;
+  if (isHandPanIgnoredTarget(e)) return;
+  if (!isEventInsideScrollContainer(e)) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  suppressNextHandPanClick = true;
+  isHandPanning.value = true;
+  handPanStartPointer = {
+    x: e.clientX,
+    y: e.clientY,
+  };
+  handPanStartScroll = {
+    left: scrollContainer.value.scrollLeft,
+    top: scrollContainer.value.scrollTop,
+  };
+
+  window.addEventListener("mousemove", handleHandPanMove);
+  window.addEventListener("mouseup", stopHandPan);
+};
+
+const handleGlobalHandPanClickCapture = (e: MouseEvent) => {
+  if (!isHandPanActive.value) return;
+  if (!suppressNextHandPanClick) return;
+
+  suppressNextHandPanClick = false;
+
+  e.preventDefault();
+  e.stopPropagation();
+};
+
+const handleSetHandPanModeEvent = (e: Event) => {
+  if (!isEventForCurrentDesigner(e)) return;
+  const active = (e as CustomEvent)?.detail?.active;
+  if (typeof active !== "boolean") return;
+
+  const previousPosition = getCanvasViewportPosition();
+  if (active) {
+    store.clearSelection();
+  }
+  isHandPanActive.value = active;
+  if (!active) {
+    suppressNextHandPanClick = false;
+    stopHandPan();
+  }
+  restoreCanvasViewportPosition(previousPosition);
 };
 
 const handlePanelDragMove = (e: MouseEvent) => {
@@ -378,12 +1324,16 @@ const handlePanelDragMove = (e: MouseEvent) => {
   const panelWidth =
     draggingPanel === "sidebar"
       ? sidebarPanelWidth.value
+      : draggingPanel === "templates"
+        ? templatePanelWidth.value
       : draggingPanel === "properties"
         ? propertiesPanelWidth.value
         : getMinimapPanelSize().width;
   const panelHeight =
     draggingPanel === "sidebar"
       ? sidebarPanelHeight.value
+      : draggingPanel === "templates"
+        ? templatePanelHeight.value
       : draggingPanel === "properties"
         ? propertiesPanelHeight.value
         : getMinimapPanelSize().height;
@@ -397,12 +1347,45 @@ const handlePanelDragMove = (e: MouseEvent) => {
   if (draggingPanel === "sidebar") {
     sidebarPanelPos.value = nextPos;
     sidebarPanelPreferredPos.value = { ...nextPos };
+    setPanelAnchors(
+      "sidebar",
+      detectPanelAnchors(
+        "sidebar",
+        nextPos,
+        sidebarPanelWidth.value,
+        sidebarPanelHeight.value,
+      ),
+    );
+    return;
+  }
+
+  if (draggingPanel === "templates") {
+    templatePanelPos.value = nextPos;
+    templatePanelPreferredPos.value = { ...nextPos };
+    setPanelAnchors(
+      "templates",
+      detectPanelAnchors(
+        "templates",
+        nextPos,
+        templatePanelWidth.value,
+        templatePanelHeight.value,
+      ),
+    );
     return;
   }
 
   if (draggingPanel === "properties") {
     propertiesPanelPos.value = nextPos;
     propertiesPanelPreferredPos.value = { ...nextPos };
+    setPanelAnchors(
+      "properties",
+      detectPanelAnchors(
+        "properties",
+        nextPos,
+        propertiesPanelWidth.value,
+        propertiesPanelHeight.value,
+      ),
+    );
     return;
   }
 
@@ -423,52 +1406,107 @@ const handlePanelResizeMove = (e: MouseEvent) => {
   const deltaX = e.clientX - resizeStartPointer.x;
   const deltaY = e.clientY - resizeStartPointer.y;
 
-  if (resizingPanel === "sidebar") {
-    const nextWidth = clampPanelWidth(
-      resizeStartWidth + deltaX,
-      sidebarPanelPos.value.x,
-    );
-    const nextHeight = clampPanelHeight(
-      resizeStartHeight + deltaY,
-      sidebarPanelPos.value.y,
-    );
-    const nextPos = clampPanelPos(
-      sidebarPanelPos.value.x,
-      sidebarPanelPos.value.y,
-      nextWidth,
-      nextHeight,
+  if (resizingPanel === "minimap") {
+    const resizedLayout = resolveMinimapPanelResizeLayout(
+      resizeStartPanelPos,
+      resizeStartWidth,
+      resizeStartHeight,
+      deltaX,
+      deltaY,
     );
 
-    sidebarPanelWidth.value = nextWidth;
-    sidebarPanelHeight.value = nextHeight;
-    sidebarPanelPos.value = nextPos;
-    sidebarPanelPreferredWidth.value = nextWidth;
-    sidebarPanelPreferredHeight.value = nextHeight;
-    sidebarPanelPreferredPos.value = { ...nextPos };
+    minimapPanelWidth.value = resizedLayout.width;
+    minimapPanelHeight.value = resizedLayout.height;
+    minimapPanelPos.value = resizedLayout.pos;
+    minimapPanelPreferredWidth.value = resizedLayout.width;
+    minimapPanelPreferredHeight.value = resizedLayout.height;
+    minimapPanelPreferredPos.value = { ...resizedLayout.pos };
     return;
   }
 
-  const nextWidth = clampPanelWidth(
-    resizeStartWidth + deltaX,
-    propertiesPanelPos.value.x,
-  );
-  const nextHeight = clampPanelHeight(
-    resizeStartHeight + deltaY,
-    propertiesPanelPos.value.y,
-  );
-  const nextPos = clampPanelPos(
-    propertiesPanelPos.value.x,
-    propertiesPanelPos.value.y,
-    nextWidth,
-    nextHeight,
+  if (resizingPanel === "sidebar") {
+    const resizedLayout = resolvePanelResizeLayout(
+      resizeStartPanelPos,
+      resizeStartWidth,
+      resizeStartHeight,
+      deltaX,
+      deltaY,
+      resizeStartPanelAnchors,
+    );
+
+    sidebarPanelWidth.value = resizedLayout.width;
+    sidebarPanelHeight.value = resizedLayout.height;
+    sidebarPanelPos.value = resizedLayout.pos;
+    sidebarPanelPreferredWidth.value = resizedLayout.width;
+    sidebarPanelPreferredHeight.value = resizedLayout.height;
+    sidebarPanelPreferredPos.value = { ...resizedLayout.pos };
+    setPanelHeightMode("sidebar", "fixed");
+    setPanelAnchors(
+      "sidebar",
+      detectPanelAnchors(
+        "sidebar",
+        resizedLayout.pos,
+        resizedLayout.width,
+        resizedLayout.height,
+      ),
+    );
+    return;
+  }
+
+  if (resizingPanel === "templates") {
+    const resizedLayout = resolvePanelResizeLayout(
+      resizeStartPanelPos,
+      resizeStartWidth,
+      resizeStartHeight,
+      deltaX,
+      deltaY,
+      resizeStartPanelAnchors,
+    );
+
+    templatePanelWidth.value = resizedLayout.width;
+    templatePanelHeight.value = resizedLayout.height;
+    templatePanelPos.value = resizedLayout.pos;
+    templatePanelPreferredWidth.value = resizedLayout.width;
+    templatePanelPreferredHeight.value = resizedLayout.height;
+    templatePanelPreferredPos.value = { ...resizedLayout.pos };
+    setPanelHeightMode("templates", "fixed");
+    setPanelAnchors(
+      "templates",
+      detectPanelAnchors(
+        "templates",
+        resizedLayout.pos,
+        resizedLayout.width,
+        resizedLayout.height,
+      ),
+    );
+    return;
+  }
+
+  const resizedLayout = resolvePanelResizeLayout(
+    resizeStartPanelPos,
+    resizeStartWidth,
+    resizeStartHeight,
+    deltaX,
+    deltaY,
+    resizeStartPanelAnchors,
   );
 
-  propertiesPanelWidth.value = nextWidth;
-  propertiesPanelHeight.value = nextHeight;
-  propertiesPanelPos.value = nextPos;
-  propertiesPanelPreferredWidth.value = nextWidth;
-  propertiesPanelPreferredHeight.value = nextHeight;
-  propertiesPanelPreferredPos.value = { ...nextPos };
+  propertiesPanelWidth.value = resizedLayout.width;
+  propertiesPanelHeight.value = resizedLayout.height;
+  propertiesPanelPos.value = resizedLayout.pos;
+  propertiesPanelPreferredWidth.value = resizedLayout.width;
+  propertiesPanelPreferredHeight.value = resizedLayout.height;
+  propertiesPanelPreferredPos.value = { ...resizedLayout.pos };
+  setPanelHeightMode("properties", "fixed");
+  setPanelAnchors(
+    "properties",
+    detectPanelAnchors(
+      "properties",
+      resizedLayout.pos,
+      resizedLayout.width,
+      resizedLayout.height,
+    ),
+  );
 };
 
 const stopPanelResize = () => {
@@ -482,14 +1520,37 @@ const startPanelResize = (panel: FloatingPanelKey, e: MouseEvent) => {
   e.stopPropagation();
 
   stopPanelDrag();
+  bringPanelToFront(panel);
   resizingPanel = panel;
   resizeStartPointer = { x: e.clientX, y: e.clientY };
   resizeStartWidth =
-    panel === "sidebar" ? sidebarPanelWidth.value : propertiesPanelWidth.value;
+    panel === "sidebar"
+      ? sidebarPanelWidth.value
+      : panel === "templates"
+        ? templatePanelWidth.value
+      : panel === "properties"
+        ? propertiesPanelWidth.value
+        : minimapPanelWidth.value;
   resizeStartHeight =
     panel === "sidebar"
       ? sidebarPanelHeight.value
-      : propertiesPanelHeight.value;
+      : panel === "templates"
+        ? templatePanelHeight.value
+      : panel === "properties"
+        ? propertiesPanelHeight.value
+        : minimapPanelHeight.value;
+  resizeStartPanelPos =
+    panel === "sidebar"
+      ? { ...sidebarPanelPos.value }
+      : panel === "templates"
+        ? { ...templatePanelPos.value }
+      : panel === "properties"
+        ? { ...propertiesPanelPos.value }
+        : { ...minimapPanelPos.value };
+  resizeStartPanelAnchors =
+    panel === "minimap"
+      ? { x: "free", y: "free" }
+      : getPanelAnchors(panel as ResizablePanelKey);
 
   window.addEventListener("mousemove", handlePanelResizeMove);
   window.addEventListener("mouseup", stopPanelResize);
@@ -499,11 +1560,14 @@ const startPanelDrag = (panel: FloatingPanelKey, e: MouseEvent) => {
   e.preventDefault();
   e.stopPropagation();
 
+  bringPanelToFront(panel);
   draggingPanel = panel;
   dragStartPointer = { x: e.clientX, y: e.clientY };
   dragStartPanelPos =
     panel === "sidebar"
       ? { ...sidebarPanelPos.value }
+      : panel === "templates"
+        ? { ...templatePanelPos.value }
       : panel === "properties"
         ? { ...propertiesPanelPos.value }
         : { ...minimapPanelPos.value };
@@ -538,9 +1602,33 @@ watch(
   },
 );
 
+watch(
+  () => store.showHistoryPanel,
+  (show) => {
+    if (!show) return;
+    bringPanelToFront("history");
+  },
+);
+
+watch(
+  [
+    () => templatePanelPreferredPos.value.x,
+    () => templatePanelPreferredPos.value.y,
+    () => templatePanelPreferredWidth.value,
+    () => templatePanelPreferredHeight.value,
+  ],
+  () => {
+    persistTemplatePanelLayout();
+  },
+);
+
 const handleLayoutResize = () => {
   updateOffset();
   initOrClampFloatingPanels();
+  requestAnimationFrame(() => {
+    updateOffset();
+    initOrClampFloatingPanels();
+  });
 };
 
 const getThemeRgba = (cssVar: string, alpha: number) => {
@@ -561,10 +1649,25 @@ const saveAsInitialName = computed(() => {
 onMounted(() => {
   // Reset isExporting flag on mount to ensure table truncation logic works in designer
   store.setIsExporting(false);
+  restoreTemplatePanelLayout();
+
+  if (!showElementsPanel.value) {
+    restoredTemplatePanelLayout.value.x = false;
+    restoredTemplatePanelLayout.value.y = false;
+    templatePanelPreferredPos.value = { ...sidebarPanelPreferredPos.value };
+  }
+
+  emitElementsPanelVisibility();
+  emitTemplatePanelVisibility();
+  emitPropertiesPanelVisibility();
 
   nextTick(() => {
     updateOffset();
     initOrClampFloatingPanels();
+    if (showElementsPanel.value && showTemplatePanel.value) {
+      ensureSidebarNotOverlappingTemplatePanel();
+      initOrClampFloatingPanels();
+    }
   });
 
   resizeObserver = new ResizeObserver(() => {
@@ -585,6 +1688,36 @@ onMounted(() => {
   window.addEventListener("keyup", handleCtrlKey);
   window.addEventListener("blur", handleBlur);
   window.addEventListener("brand-theme-updated", handleBrandThemeUpdated);
+  window.addEventListener(
+    "designer:toggle-elements-panel",
+    handleToggleElementsPanelEvent as EventListener,
+  );
+  window.addEventListener(
+    "designer:close-elements-panel",
+    handleCloseElementsPanelEvent as EventListener,
+  );
+  window.addEventListener(
+    "designer:toggle-template-panel",
+    handleToggleTemplatePanelEvent as EventListener,
+  );
+  window.addEventListener(
+    "designer:toggle-properties-panel",
+    handleTogglePropertiesPanelEvent as EventListener,
+  );
+  window.addEventListener(
+    "designer:close-properties-panel",
+    handleClosePropertiesPanelEvent as EventListener,
+  );
+  window.addEventListener(
+    "designer:panel-bring-to-front",
+    handleBringPanelToFrontEvent as EventListener,
+  );
+  window.addEventListener(
+    "designer:set-hand-pan-mode",
+    handleSetHandPanModeEvent as EventListener,
+  );
+  window.addEventListener("mousedown", handleGlobalHandPanMouseDown, true);
+  window.addEventListener("click", handleGlobalHandPanClickCapture, true);
 
   // Watch for layout changes
   watch(
@@ -731,12 +1864,35 @@ const offsetY = ref(0);
 const contentOffsetX = ref(0);
 const contentOffsetY = ref(0);
 const RULER_SIZE = 20;
-const PROJECTION_LINE_OVERDRAW = 32;
+const PROJECTION_LINE_OVERDRAW = 0;
+const projectionViewportOffsetX = ref(0);
+const projectionViewportOffsetY = ref(0);
+
+const updateProjectionViewportOffset = () => {
+  if (!projectionViewportRef.value || !canvasWrapper.value) {
+    projectionViewportOffsetX.value = contentOffsetX.value - scrollX.value;
+    projectionViewportOffsetY.value = offsetY.value - scrollY.value;
+    return;
+  }
+
+  const viewportRect = projectionViewportRef.value.getBoundingClientRect();
+  const wrapperRect = canvasWrapper.value.getBoundingClientRect();
+
+  projectionViewportOffsetX.value = wrapperRect.left - viewportRect.left;
+  projectionViewportOffsetY.value = wrapperRect.top - viewportRect.top;
+};
 
 const handleScroll = (e: Event) => {
   const target = e.target as HTMLElement;
   scrollX.value = target.scrollLeft;
   scrollY.value = target.scrollTop;
+  updateProjectionViewportOffset();
+};
+
+const getProjectionHorizontalLineStyle = (y: number) => {
+  return {
+    top: `${projectionViewportOffsetY.value + y * store.zoom}px`,
+  };
 };
 
 const scrollWidth = ref(0);
@@ -767,6 +1923,60 @@ const canvasStyle = computed(() => {
   };
 });
 
+const getHandPanEdgeSpace = (viewportLength: number) => {
+  if (!isHandPanActive.value) return 0;
+  return Math.max(viewportLength || 0, HAND_PAN_MIN_EDGE_SPACE);
+};
+
+const canvasWrapperStyle = computed(() => {
+  const style: Record<string, string> = { ...canvasStyle.value };
+  if (!isHandPanActive.value) return style;
+
+  const horizontalSpace = getHandPanEdgeSpace(viewportWidth.value);
+  const verticalSpace = getHandPanEdgeSpace(viewportHeight.value);
+
+  return {
+    ...style,
+    marginLeft: `${horizontalSpace}px`,
+    marginRight: `${horizontalSpace}px`,
+    marginTop: `${verticalSpace}px`,
+    marginBottom: `${verticalSpace}px`,
+  };
+});
+
+const minimapHandPanEdgeX = computed(() =>
+  getHandPanEdgeSpace(viewportWidth.value),
+);
+const minimapHandPanEdgeY = computed(() =>
+  getHandPanEdgeSpace(viewportHeight.value),
+);
+const minimapScrollWidth = computed(() =>
+  Math.max(viewportWidth.value, scrollWidth.value - minimapHandPanEdgeX.value * 2),
+);
+const minimapScrollHeight = computed(() =>
+  Math.max(
+    viewportHeight.value,
+    scrollHeight.value - minimapHandPanEdgeY.value * 2,
+  ),
+);
+const minimapScrollX = computed(() => {
+  const maxLeft = Math.max(0, minimapScrollWidth.value - viewportWidth.value);
+  return Math.max(0, Math.min(maxLeft, scrollX.value - minimapHandPanEdgeX.value));
+});
+const minimapScrollY = computed(() => {
+  const maxTop = Math.max(0, minimapScrollHeight.value - viewportHeight.value);
+  return Math.max(0, Math.min(maxTop, scrollY.value - minimapHandPanEdgeY.value));
+});
+const minimapContentOffsetX = computed(() => {
+  if (!isHandPanActive.value) return contentOffsetX.value;
+
+  const wrapperWidth = parseFloat(canvasStyle.value.width) || 0;
+  return Math.max(0, (minimapScrollWidth.value - wrapperWidth) / 2);
+});
+const minimapContentOffsetY = computed(
+  () => contentOffsetY.value - minimapHandPanEdgeY.value,
+);
+
 const updateOffset = () => {
   if (scrollContainer.value && canvasWrapper.value) {
     // Calculate expected scroll dimensions based on canvas size to avoid loop with overlay size
@@ -782,9 +1992,17 @@ const updateOffset = () => {
     // p-8 = 32px padding on each side
     const paddingX = 64;
     const paddingY = 64;
+    const handPanEdgeSpaceX = getHandPanEdgeSpace(containerClientWidth);
+    const handPanEdgeSpaceY = getHandPanEdgeSpace(containerClientHeight);
 
-    scrollWidth.value = Math.max(containerClientWidth, wrapperW + paddingX);
-    scrollHeight.value = Math.max(containerClientHeight, wrapperH + paddingY);
+    scrollWidth.value = Math.max(
+      containerClientWidth,
+      wrapperW + paddingX + handPanEdgeSpaceX * 2,
+    );
+    scrollHeight.value = Math.max(
+      containerClientHeight,
+      wrapperH + paddingY + handPanEdgeSpaceY * 2,
+    );
 
     // Fix: If the wrapper fits within the container, force scroll dimensions to client dimensions
     // This prevents scrollbars from appearing when they shouldn't due to slight pixel differences
@@ -819,6 +2037,8 @@ const updateOffset = () => {
       containerRect.top +
       scrollContainer.value.scrollTop -
       clientTop;
+
+    updateProjectionViewportOffset();
   }
 };
 
@@ -826,6 +2046,7 @@ onUnmounted(() => {
   debouncedAutoSave.cancel();
   stopPanelDrag();
   stopPanelResize();
+  stopHandPan();
   if (resizeObserver) {
     resizeObserver.disconnect();
     resizeObserver = null;
@@ -838,6 +2059,36 @@ onUnmounted(() => {
   window.removeEventListener("keyup", handleCtrlKey);
   window.removeEventListener("blur", handleBlur);
   window.removeEventListener("brand-theme-updated", handleBrandThemeUpdated);
+  window.removeEventListener(
+    "designer:toggle-elements-panel",
+    handleToggleElementsPanelEvent as EventListener,
+  );
+  window.removeEventListener(
+    "designer:close-elements-panel",
+    handleCloseElementsPanelEvent as EventListener,
+  );
+  window.removeEventListener(
+    "designer:toggle-template-panel",
+    handleToggleTemplatePanelEvent as EventListener,
+  );
+  window.removeEventListener(
+    "designer:toggle-properties-panel",
+    handleTogglePropertiesPanelEvent as EventListener,
+  );
+  window.removeEventListener(
+    "designer:close-properties-panel",
+    handleClosePropertiesPanelEvent as EventListener,
+  );
+  window.removeEventListener(
+    "designer:panel-bring-to-front",
+    handleBringPanelToFrontEvent as EventListener,
+  );
+  window.removeEventListener(
+    "designer:set-hand-pan-mode",
+    handleSetHandPanModeEvent as EventListener,
+  );
+  window.removeEventListener("mousedown", handleGlobalHandPanMouseDown, true);
+  window.removeEventListener("click", handleGlobalHandPanClickCapture, true);
   scrollContainer.value?.removeEventListener("wheel", handleZoomWheel);
 });
 
@@ -952,13 +2203,16 @@ const handleCtrlKey = (e: KeyboardEvent) => {
 
 const handleBlur = () => {
   scrollContainer.value?.removeEventListener("wheel", handleZoomWheel);
+  stopHandPan();
 };
 
 const handleMinimapScroll = (pos: { left: number; top: number }) => {
   if (scrollContainer.value) {
     scrollContainer.value.scrollTo({
-      left: pos.left,
-      top: pos.top,
+      left: isHandPanActive.value
+        ? scrollContainer.value.scrollLeft
+        : pos.left + minimapHandPanEdgeX.value,
+      top: pos.top + minimapHandPanEdgeY.value,
       behavior: "auto",
     });
   }
@@ -1099,10 +2353,15 @@ const rulerRanges = computed(() => {
   <div
     v-else
     ref="rootContainer"
+    data-designer-root="true"
     class="h-full w-full flex flex-col bg-gray-100 overflow-hidden"
   >
     <Header />
-    <div ref="panelsHostRef" class="flex-1 flex overflow-hidden relative">
+    <div
+      ref="panelsHostRef"
+      data-floating-panels-host="true"
+      class="flex-1 flex overflow-hidden relative"
+    >
       <main class="flex-1 overflow-hidden relative flex flex-col">
         <div
           v-if="store.editingCustomElementId"
@@ -1144,10 +2403,10 @@ const rulerRanges = computed(() => {
         <div class="relative w-full h-full flex flex-col overflow-hidden">
           <!-- Top Ruler -->
           <div
-            class="flex-none h-5 bg-gray-50 border-b border-gray-300 flex z-20"
+            class="flex-none h-[21px] bg-gray-50 border-b border-gray-300 flex z-20"
           >
             <div
-              class="w-5 flex-none bg-gray-100 border-r border-gray-300"
+              class="w-[21px] flex-none bg-gray-100 border-r border-gray-300"
             ></div>
             <!-- Corner -->
             <div class="flex-1 relative overflow-hidden">
@@ -1168,7 +2427,7 @@ const rulerRanges = computed(() => {
           <div class="flex-1 flex overflow-hidden relative">
             <!-- Left Ruler -->
             <div
-              class="w-5 flex-none bg-gray-50 border-r border-gray-300 h-full relative z-20 overflow-hidden"
+              class="w-[21px] flex-none bg-gray-50 border-r border-gray-300 h-full relative z-20 overflow-hidden"
             >
               <Ruler
                 type="vertical"
@@ -1184,118 +2443,50 @@ const rulerRanges = computed(() => {
             </div>
 
             <!-- Canvas Area -->
-            <div
-              ref="scrollContainer"
-              tabindex="-1"
-              class="flex-1 overflow-auto p-8 flex relative canvas-scroll bg-gray-100 focus:outline-none"
-              style="scrollbar-gutter: stable both-edges"
-              @scroll="handleScroll"
-              @click="
-                (e) => {
-                  if (
-                    e.target === scrollContainer ||
-                    e.target === e.currentTarget
-                  ) {
-                    store.selectGuide(null);
-                  }
-                }
-              "
-            >
+            <div ref="projectionViewportRef" class="flex-1 relative overflow-hidden">
               <div
-                ref="canvasWrapper"
-                :style="canvasStyle"
-                class="mx-auto relative"
+                ref="scrollContainer"
+                tabindex="-1"
+                :class="[
+                  'h-full overflow-auto p-8 flex relative canvas-scroll bg-gray-100 focus:outline-none',
+                  isHandPanActive
+                    ? isHandPanning
+                      ? 'cursor-grabbing select-none'
+                      : 'cursor-grab'
+                    : '',
+                ]"
+                style="scrollbar-gutter: stable both-edges"
+                @scroll="handleScroll"
+                @click="
+                  (e) => {
+                    if (
+                      e.target === scrollContainer ||
+                      e.target === e.currentTarget
+                    ) {
+                      store.selectGuide(null);
+                    }
+                  }
+                "
               >
-                <Canvas ref="canvasContainer" class="absolute top-0 left-0" />
+                <div
+                  ref="canvasWrapper"
+                  :style="canvasWrapperStyle"
+                  :class="['relative', isHandPanActive ? '' : 'mx-auto']"
+                >
+                  <Canvas ref="canvasContainer" class="absolute top-0 left-0" />
+                </div>
               </div>
 
-              <!-- Guides Overlay -->
-              <div
-                class="absolute top-0 left-0 pointer-events-none z-30"
-                :style="{
-                  width: `${scrollWidth}px`,
-                  height: `${scrollHeight}px`,
-                }"
-              >
-                <!-- Dragging Distance Guides -->
-                <template v-if="dragProjection">
-                  <!-- Top Line -->
-                  <div
-                    class="absolute w-full border-t border-blue-500 border-dashed"
-                    :style="{
-                      top: `${contentOffsetY + dragProjection.minY * store.zoom}px`,
-                      left: `${scrollX - PROJECTION_LINE_OVERDRAW}px`,
-                      width: `${viewportWidth + PROJECTION_LINE_OVERDRAW * 2}px`,
-                    }"
-                  >
-                    <div class="absolute top-0 left-0 w-4 border-t border-blue-500"></div>
-                    <div class="absolute top-0 right-0 w-4 border-t border-blue-500"></div>
-                    <div
-                      class="absolute -top-6 bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded shadow-sm"
-                      :style="{ left: `${PROJECTION_LINE_OVERDRAW + 10}px` }"
-                    >
-                      {{ formatUnitValue(dragProjection.minY) }} {{ unitLabel }}
-                    </div>
-                  </div>
-                  <!-- Bottom Line -->
-                  <div
-                    class="absolute w-full border-t border-dashed theme-border"
-                    :style="{
-                      top: `${contentOffsetY + dragProjection.maxY * store.zoom}px`,
-                      left: `${scrollX - PROJECTION_LINE_OVERDRAW}px`,
-                      width: `${viewportWidth + PROJECTION_LINE_OVERDRAW * 2}px`,
-                    }"
-                  >
-                    <div class="absolute top-0 left-0 w-4 border-t theme-border"></div>
-                    <div class="absolute top-0 right-0 w-4 border-t theme-border"></div>
-                    <div
-                      class="absolute -top-6 theme-bg text-white text-xs px-1.5 py-0.5 rounded shadow-sm"
-                      :style="{ left: `${PROJECTION_LINE_OVERDRAW + 10}px` }"
-                    >
-                      {{ formatUnitValue(dragProjection.maxY) }} {{ unitLabel }}
-                    </div>
-                  </div>
-                  <!-- Left Line -->
-                  <div
-                    class="absolute border-l border-dashed theme-border"
-                    :style="{
-                      left: `${contentOffsetX + dragProjection.minX * store.zoom}px`,
-                      top: '-1px',
-                      height: `${scrollHeight + 2}px`,
-                    }"
-                  >
-                    <div
-                      class="absolute -left-2 transform -translate-x-full theme-bg text-white text-xs px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap"
-                      :style="{ top: `${scrollY + 10}px` }"
-                    >
-                      {{ formatUnitValue(dragProjection.minX) }} {{ unitLabel }}
-                    </div>
-                  </div>
-                  <!-- Right Line -->
-                  <div
-                    class="absolute border-l border-dashed theme-border"
-                    :style="{
-                      left: `${contentOffsetX + dragProjection.maxX * store.zoom}px`,
-                      top: '-1px',
-                      height: `${scrollHeight + 2}px`,
-                    }"
-                  >
-                    <div
-                      class="absolute -left-2 transform -translate-x-full theme-bg text-white text-xs px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap"
-                      :style="{ top: `${scrollY + 10}px` }"
-                    >
-                      {{ formatUnitValue(dragProjection.maxX) }} {{ unitLabel }}
-                    </div>
-                  </div>
-                </template>
-
+              <!-- Guides Overlay (Viewport Layer) -->
+              <div class="absolute inset-0 pointer-events-none z-30 overflow-hidden">
                 <!-- Existing Guides -->
                 <template v-for="guide in store.guides" :key="guide.id">
                   <div
                     v-if="guide.type === 'horizontal'"
-                    class="absolute left-0 w-full h-3 -mt-1.5 cursor-row-resize pointer-events-auto group flex flex-col justify-center"
+                    data-hand-pan-ignore="true"
+                    class="absolute left-0 right-0 h-3 -mt-1.5 cursor-row-resize pointer-events-auto group flex flex-col justify-center"
                     :style="{
-                      top: `${contentOffsetY + guide.position * store.zoom}px`,
+                      top: `${projectionViewportOffsetY + guide.position * store.zoom}px`,
                     }"
                     @mousedown.stop="
                       (e) => {
@@ -1321,9 +2512,10 @@ const rulerRanges = computed(() => {
                   </div>
                   <div
                     v-else
-                    class="absolute top-0 h-full w-3 -ml-1.5 cursor-col-resize pointer-events-auto group flex flex-row justify-center"
+                    data-hand-pan-ignore="true"
+                    class="absolute top-0 bottom-0 w-3 -ml-1.5 cursor-col-resize pointer-events-auto group flex flex-row justify-center"
                     :style="{
-                      left: `${contentOffsetX + guide.position * store.zoom}px`,
+                      left: `${projectionViewportOffsetX + guide.position * store.zoom}px`,
                     }"
                     @mousedown.stop="
                       (e) => {
@@ -1355,17 +2547,17 @@ const rulerRanges = computed(() => {
                   :class="[
                     'absolute border-dashed pointer-events-none theme-border',
                     draggingGuideType === 'horizontal'
-                      ? 'left-0 w-full border-t'
-                      : 'top-0 h-full border-l',
+                      ? 'left-0 right-0 border-t'
+                      : 'top-0 bottom-0 border-l',
                   ]"
                   :style="{
                     top:
                       draggingGuideType === 'horizontal'
-                        ? `${contentOffsetY + draggingGuidePos * store.zoom}px`
+                        ? `${projectionViewportOffsetY + draggingGuidePos * store.zoom}px`
                         : undefined,
                     left:
                       draggingGuideType === 'vertical'
-                        ? `${contentOffsetX + draggingGuidePos * store.zoom}px`
+                        ? `${projectionViewportOffsetX + draggingGuidePos * store.zoom}px`
                         : undefined,
                   }"
                 >
@@ -1382,36 +2574,94 @@ const rulerRanges = computed(() => {
                 </div>
 
                 <!-- Edge Highlight -->
-                <div
-                  v-if="store.highlightedEdge"
-                  class="absolute pointer-events-none"
-                >
+                <div v-if="store.highlightedEdge" class="absolute inset-0 pointer-events-none">
                   <div
                     v-if="store.highlightedEdge === 'top'"
-                    class="absolute left-0 w-full border-t theme-border"
-                    :style="{ top: `${contentOffsetY}px` }"
+                    class="absolute left-0 right-0 border-t theme-border"
+                    :style="{ top: `${projectionViewportOffsetY}px` }"
                   ></div>
                   <div
                     v-else-if="store.highlightedEdge === 'bottom'"
-                    class="absolute left-0 w-full border-t theme-border"
+                    class="absolute left-0 right-0 border-t theme-border"
                     :style="{
-                      top: `${contentOffsetY + store.canvasSize.height * store.zoom}px`,
+                      top: `${projectionViewportOffsetY + store.canvasSize.height * store.zoom}px`,
                     }"
                   ></div>
                   <div
                     v-else-if="store.highlightedEdge === 'left'"
-                    class="absolute top-0 h-full border-l theme-border"
-                    :style="{ left: `${contentOffsetX}px` }"
+                    class="absolute top-0 bottom-0 border-l theme-border"
+                    :style="{ left: `${projectionViewportOffsetX}px` }"
                   ></div>
                   <div
                     v-else-if="store.highlightedEdge === 'right'"
-                    class="absolute top-0 h-full border-l theme-border"
+                    class="absolute top-0 bottom-0 border-l theme-border"
                     :style="{
-                      left: `${contentOffsetX + store.canvasSize.width * store.zoom}px`,
+                      left: `${projectionViewportOffsetX + store.canvasSize.width * store.zoom}px`,
                     }"
                   ></div>
                 </div>
               </div>
+
+              <!-- Dragging Distance Guides (Viewport Layer) -->
+              <template v-if="dragProjection">
+                <div class="absolute inset-0 pointer-events-none z-30 overflow-hidden">
+                  <!-- Top Line -->
+                  <div
+                    class="absolute left-0 right-0 border-t border-blue-500 border-dashed"
+                    :style="getProjectionHorizontalLineStyle(dragProjection.minY)"
+                  >
+                    <div
+                      class="absolute -top-6 bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded shadow-sm"
+                      :style="{ left: `${PROJECTION_LINE_OVERDRAW + 10}px` }"
+                    >
+                      {{ formatUnitValue(dragProjection.minY) }} {{ unitLabel }}
+                    </div>
+                  </div>
+
+                  <!-- Bottom Line -->
+                  <div
+                    class="absolute left-0 right-0 border-t border-dashed theme-border"
+                    :style="getProjectionHorizontalLineStyle(dragProjection.maxY)"
+                  >
+                    <div
+                      class="absolute -top-6 theme-bg text-white text-xs px-1.5 py-0.5 rounded shadow-sm"
+                      :style="{ left: `${PROJECTION_LINE_OVERDRAW + 10}px` }"
+                    >
+                      {{ formatUnitValue(dragProjection.maxY) }} {{ unitLabel }}
+                    </div>
+                  </div>
+
+                  <!-- Left Line -->
+                  <div
+                    class="absolute top-0 bottom-0 border-l border-dashed theme-border"
+                    :style="{
+                      left: `${projectionViewportOffsetX + dragProjection.minX * store.zoom}px`,
+                    }"
+                  >
+                    <div
+                      class="absolute -left-2 transform -translate-x-full theme-bg text-white text-xs px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap"
+                      :style="{ top: '10px' }"
+                    >
+                      {{ formatUnitValue(dragProjection.minX) }} {{ unitLabel }}
+                    </div>
+                  </div>
+
+                  <!-- Right Line -->
+                  <div
+                    class="absolute top-0 bottom-0 border-l border-dashed theme-border"
+                    :style="{
+                      left: `${projectionViewportOffsetX + dragProjection.maxX * store.zoom}px`,
+                    }"
+                  >
+                    <div
+                      class="absolute -left-2 transform -translate-x-full theme-bg text-white text-xs px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap"
+                      :style="{ top: '10px' }"
+                    >
+                      {{ formatUnitValue(dragProjection.maxX) }} {{ unitLabel }}
+                    </div>
+                  </div>
+                </div>
+              </template>
             </div>
           </div>
         </div>
@@ -1424,15 +2674,16 @@ const rulerRanges = computed(() => {
         <div
           v-if="store.showMinimap"
           ref="minimapPanelRef"
+          data-floating-panel-surface="true"
           class="absolute pointer-events-none"
           :style="[minimapPanelStyle, { zIndex: getPanelZIndex('minimap') }]"
         >
           <div
-              class="pointer-events-auto rounded-t-lg overflow-hidden shadow-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+            class="relative h-full w-full pointer-events-auto rounded-lg overflow-hidden shadow-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col"
             @mousedown="(e) => handleFloatingPanelMouseDown('minimap', e)"
           >
             <div
-              class="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 cursor-move select-none"
+              class="flex shrink-0 items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 cursor-move select-none"
               data-floating-panel-drag-handle="true"
             >
               <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 m-0">
@@ -1446,32 +2697,71 @@ const rulerRanges = computed(() => {
               </button>
             </div>
 
-            <Minimap
-              :scroll-width="scrollWidth"
-              :scroll-height="scrollHeight"
-              :viewport-width="viewportWidth"
-              :viewport-height="viewportHeight"
-              :scroll-left="scrollX"
-              :scroll-top="scrollY"
-              :pages="store.pages"
-              :page-width="store.canvasSize.width"
-              :page-height="store.canvasSize.height"
-              :zoom="store.zoom"
-              :content-offset-x="contentOffsetX"
-              :content-offset-y="contentOffsetY"
-              :canvas-background="store.canvasBackground"
-              :show-header-line="store.showHeaderLine"
-              :show-footer-line="store.showFooterLine"
-              :header-height="store.headerHeight"
-              :footer-height="store.footerHeight"
-              :watermark="store.watermark || null"
-              @update:scroll="handleMinimapScroll"
-            />
+            <div class="min-h-0 flex-1 bg-gray-100 dark:bg-gray-800">
+              <MinimapPanel
+                :scroll-width="minimapScrollWidth"
+                :scroll-height="minimapScrollHeight"
+                :viewport-width="viewportWidth"
+                :viewport-height="viewportHeight"
+                :scroll-left="minimapScrollX"
+                :scroll-top="minimapScrollY"
+                :pages="store.pages"
+                :page-width="store.canvasSize.width"
+                :page-height="store.canvasSize.height"
+                :zoom="store.zoom"
+                :content-offset-x="minimapContentOffsetX"
+                :content-offset-y="minimapContentOffsetY"
+                :canvas-background="store.canvasBackground"
+                :show-header-line="store.showHeaderLine"
+                :show-footer-line="store.showFooterLine"
+                :header-height="store.headerHeight"
+                :footer-height="store.footerHeight"
+                :page-spacing-y="store.pageSpacingY || 0"
+                :watermark="store.watermark || null"
+                :preview-width="minimapPreviewWidth"
+                :preview-max-height="minimapPreviewMaxHeight"
+                @update:scroll="handleMinimapScroll"
+              />
+            </div>
           </div>
+          <button
+            type="button"
+            title="Resize panel"
+            class="absolute bottom-0.5 right-0.5 z-[1100] h-4 w-4 cursor-se-resize bg-transparent p-0 text-gray-400 pointer-events-auto hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400"
+            @mousedown.stop.prevent="(e) => startPanelResize('minimap', e)"
+          >
+            <svg
+              class="h-4 w-4"
+              viewBox="0 0 16 16"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M6.5 14L14 6.5"
+                stroke="currentColor"
+                stroke-width="1.4"
+                stroke-linecap="round"
+              />
+              <path
+                d="M3 14L14 3"
+                stroke="currentColor"
+                stroke-width="1.4"
+                stroke-linecap="round"
+              />
+              <path
+                d="M9.8 14L14 9.8"
+                stroke="currentColor"
+                stroke-width="1.4"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
         </div>
       </main>
 
       <div
+        v-show="showElementsPanel"
+        data-floating-panel-surface="true"
         class="absolute pointer-events-none"
         :style="[sidebarPanelStyle, { zIndex: getPanelZIndex('sidebar') }]"
       >
@@ -1516,6 +2806,77 @@ const rulerRanges = computed(() => {
       </div>
 
       <div
+        v-show="showTemplatePanel"
+        data-floating-panel-surface="true"
+        class="absolute pointer-events-none"
+        :style="[templatePanelStyle, { zIndex: getPanelZIndex('templates') }]"
+      >
+        <div
+          class="relative h-full w-full pointer-events-auto rounded-lg overflow-hidden shadow-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col"
+          @mousedown="(e) => handleFloatingPanelMouseDown('templates', e)"
+        >
+          <div
+            class="p-4 min-h-[72px] border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 cursor-move select-none"
+            data-floating-panel-drag-handle="true"
+          >
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  {{ t("editor.templates") }}
+                </h2>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {{ t("template.select") }}
+                </p>
+              </div>
+              <button
+                class="panel-close-btn p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-500 dark:text-gray-400"
+                @click="closeTemplatePanel"
+              >
+                <Close class="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+          <div class="min-h-0 flex-1">
+            <TemplateListPanel />
+          </div>
+        </div>
+        <button
+          type="button"
+          title="Resize panel"
+          class="absolute bottom-0.5 right-0.5 z-20 h-4 w-4 cursor-se-resize bg-transparent p-0 text-gray-400 pointer-events-auto hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400"
+          @mousedown.stop.prevent="(e) => startPanelResize('templates', e)"
+        >
+          <svg
+            class="h-4 w-4"
+            viewBox="0 0 16 16"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M6.5 14L14 6.5"
+              stroke="currentColor"
+              stroke-width="1.4"
+              stroke-linecap="round"
+            />
+            <path
+              d="M3 14L14 3"
+              stroke="currentColor"
+              stroke-width="1.4"
+              stroke-linecap="round"
+            />
+            <path
+              d="M9.8 14L14 9.8"
+              stroke="currentColor"
+              stroke-width="1.4"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <div
+        v-show="showPropertiesPanel"
+        data-floating-panel-surface="true"
         class="absolute pointer-events-none"
         :style="[propertiesPanelStyle, { zIndex: getPanelZIndex('properties') }]"
       >
@@ -1603,7 +2964,6 @@ const rulerRanges = computed(() => {
       ref="modalContainer"
       class="print-designer-modals fixed inset-0 pointer-events-none z-[9999]"
     ></div>
-    <HistoryPanel />
-    <VariablesPanel />
+    <HistoryPanel :base-z-index="historyPanelBaseZIndex" />
   </div>
 </template>
