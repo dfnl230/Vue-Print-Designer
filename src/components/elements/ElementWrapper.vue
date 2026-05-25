@@ -1157,7 +1157,6 @@ const handleResizeStart = (e: MouseEvent) => {
     }
 
     const scaleX = width / tableResizeBase.width;
-    const scaleY = height / tableResizeBase.height;
     const updates: Partial<PrintElement> = {
       width,
       height,
@@ -1189,131 +1188,8 @@ const handleResizeStart = (e: MouseEvent) => {
       }));
     }
 
-    const nextStyle = { ...tableResizeBase.style } as Record<string, any>;
-    let styleChanged = false;
-
-    const getBaseRowHeight = (
-      rawHeight: unknown,
-      metrics: SectionRowMetrics,
-    ) => {
-      return (
-        toFinitePositive(rawHeight) ||
-        (metrics.rowCount > 0 && metrics.totalHeight > 0
-          ? metrics.totalHeight / metrics.rowCount
-          : metrics.firstHeight)
-      );
-    };
-
-    const baseHeaderRowHeight = getBaseRowHeight(
-      nextStyle.headerHeight,
-      tableResizeBase.headerMetrics,
-    );
-    const baseBodyRowHeight = getBaseRowHeight(
-      nextStyle.rowHeight,
-      tableResizeBase.bodyMetrics,
-    );
-    const baseFooterRowHeight = getBaseRowHeight(
-      nextStyle.footerHeight,
-      tableResizeBase.footerMetrics,
-    );
-
-    const buildSectionRowHeights = (
-      rows: any[] | null,
-      metrics: SectionRowMetrics,
-      fallbackHeight: number | null,
-    ) => {
-      const heights: number[] = [];
-      for (let index = 0; index < metrics.rowCount; index += 1) {
-        const rowStyleHeight = Array.isArray(rows)
-          ? getRowStyleHeight(rows[index])
-          : null;
-        const height =
-          rowStyleHeight ||
-          fallbackHeight ||
-          metrics.heights[index] ||
-          metrics.firstHeight ||
-          0;
-        if (height > 0) heights.push(height);
-      }
-
-      return heights;
-    };
-
-    const headerRowHeights = buildSectionRowHeights(
-      null,
-      tableResizeBase.headerMetrics,
-      baseHeaderRowHeight,
-    );
-    const bodyRowHeights = buildSectionRowHeights(
-      tableResizeBase.data,
-      tableResizeBase.bodyMetrics,
-      baseBodyRowHeight,
-    );
-    const footerRowHeights = buildSectionRowHeights(
-      tableResizeBase.footerData,
-      tableResizeBase.footerMetrics,
-      baseFooterRowHeight,
-    );
-
-    const baseRowsTotalHeight =
-      headerRowHeights.reduce((total, rowHeight) => total + rowHeight, 0) +
-      bodyRowHeights.reduce((total, rowHeight) => total + rowHeight, 0) +
-      footerRowHeights.reduce((total, rowHeight) => total + rowHeight, 0);
-    const rowNormalizeScale =
-      baseRowsTotalHeight > 0 ? height / baseRowsTotalHeight : scaleY;
-
-    if (baseHeaderRowHeight && tableResizeBase.headerMetrics.rowCount > 0) {
-      nextStyle.headerHeight = Number(
-        Math.max(
-          MIN_TABLE_CELL_SIZE,
-          baseHeaderRowHeight * rowNormalizeScale,
-        ).toFixed(2),
-      );
-      styleChanged = true;
-    }
-
-    if (baseBodyRowHeight && tableResizeBase.bodyMetrics.rowCount > 0) {
-      nextStyle.rowHeight = Number(
-        Math.max(
-          MIN_TABLE_CELL_SIZE,
-          baseBodyRowHeight * rowNormalizeScale,
-        ).toFixed(2),
-      );
-      styleChanged = true;
-    }
-
-    if (baseFooterRowHeight && tableResizeBase.footerMetrics.rowCount > 0) {
-      nextStyle.footerHeight = Number(
-        Math.max(
-          MIN_TABLE_CELL_SIZE,
-          baseFooterRowHeight * rowNormalizeScale,
-        ).toFixed(2),
-      );
-      styleChanged = true;
-    }
-
-    if (styleChanged) {
-      updates.style = {
-        ...props.element.style,
-        ...nextStyle,
-      };
-    }
-
-    const scaledData = scaleRowsCellStyleHeight(
-      tableResizeBase.data,
-      rowNormalizeScale,
-    );
-    if (scaledData.changed && scaledData.rows) {
-      updates.data = scaledData.rows;
-    }
-
-    const scaledFooterData = scaleRowsCellStyleHeight(
-      tableResizeBase.footerData,
-      rowNormalizeScale,
-    );
-    if (scaledFooterData.changed && scaledFooterData.rows) {
-      updates.footerData = scaledFooterData.rows;
-    }
+    // Keep row heights stable when resizing the table by wrapper handle.
+    // Only table frame size and column widths are scaled here.
 
     return updates;
   };

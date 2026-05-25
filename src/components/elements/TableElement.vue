@@ -748,14 +748,32 @@ const tableOuterEdgeStyle = computed(() => {
   };
 });
 
+const exportTableRightEdgeStyle = computed(() => {
+  const borderStyle = props.element.style.borderStyle || "solid";
+  const borderWidth = props.element.style.borderWidth || 1;
+  if (borderStyle === "none" || borderWidth <= 0) return {};
+
+  return {
+    borderLeft: `${borderWidth}px ${borderStyle} ${props.element.style.borderColor || "#000"}`,
+  };
+});
+
+const shouldRenderExportTableRightEdge = computed(() => {
+  if (!store.isExporting) return false;
+
+  const borderStyle = props.element.style.borderStyle || "solid";
+  const borderWidth = props.element.style.borderWidth || 1;
+  return borderStyle !== "none" && borderWidth > 0;
+});
+
 const shouldRenderTableOuterEdge = computed(() => {
   return !store.isExporting;
 });
 
 const shouldShowBodyFooterConnectorBorder = computed(() => {
   return (
-    props.element.showFooter === true &&
-    shouldOmitBodyRowsInDesign.value &&
+    Boolean(props.element.showFooter) &&
+    shouldRenderDesignSpacerRow.value &&
     processedData.value.footerData.length > 0
   );
 });
@@ -987,7 +1005,7 @@ const shouldUseBodyCellDragCursor = computed(
 const columnResizeHandleClass =
   "absolute -right-1 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-400 opacity-0 hover:opacity-100 z-10 transition-opacity";
 const rowResizeHandleClass =
-  "absolute -bottom-1 left-0 right-0 h-2 cursor-row-resize hover:bg-blue-400 opacity-0 hover:opacity-100 z-20 transition-opacity";
+  "absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-2 rounded cursor-row-resize hover:bg-blue-400 opacity-0 hover:opacity-100 z-20 transition-opacity";
 
 const getRowResizeKey = (section: RowResizeSection, rowIndex: number) => {
   return `${section}:${rowIndex}`;
@@ -1765,14 +1783,15 @@ export const elementPropertiesSchema: ElementPropertiesSchema = {
     class="relative w-full h-full overflow-hidden"
     :style="{ backgroundColor: element.style.backgroundColor || 'transparent' }"
   >
-    <table
-      class="w-full border-collapse"
-      :class="{ 'h-full': !store.isExporting }"
-      :style="{ tableLayout: 'fixed' }"
-      :data-tfoot-repeat="element.tfootRepeat"
-      :data-auto-paginate="element.autoPaginate"
-      :data-custom-script="processedData.scriptContent || element.customScript"
-    >
+    <div class="relative w-full" :class="{ 'h-full': !store.isExporting }">
+      <table
+        class="w-full border-collapse"
+        :class="{ 'h-full': !store.isExporting }"
+        :style="{ tableLayout: 'fixed' }"
+        :data-tfoot-repeat="element.tfootRepeat"
+        :data-auto-paginate="element.autoPaginate"
+        :data-custom-script="processedData.scriptContent || element.customScript"
+      >
       <colgroup>
         <col
           v-for="col in processedData.columns"
@@ -2092,7 +2111,13 @@ export const elementPropertiesSchema: ElementPropertiesSchema = {
           </template>
         </tr>
       </tfoot>
-    </table>
+      </table>
+      <div
+        v-if="shouldRenderExportTableRightEdge"
+        class="absolute top-0 right-0 bottom-0 w-0 pointer-events-none"
+        :style="exportTableRightEdgeStyle"
+      ></div>
+    </div>
     <div
       v-if="shouldRenderTableOuterEdge"
       class="absolute inset-0 box-border pointer-events-none"
