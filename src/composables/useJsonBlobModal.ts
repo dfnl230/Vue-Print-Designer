@@ -35,22 +35,26 @@ export const useJsonBlobModal = (options: UseJsonBlobModalOptions) => {
   const modalTitle = ref("");
   const modalLanguage = ref("json");
 
-  const currentTemplate = computed(() => {
-    return templateStore.templates.find(
-      (item) => item.id === templateStore.currentTemplateId,
+  const isTemplateReadOnlyBySaveLogic = computed(() => {
+    const targetId = templateStore.currentTemplateId;
+    const existingTemplate = targetId
+      ? templateStore.templates.find((item) => item.id === targetId)
+      : undefined;
+    return Boolean(
+      targetId && existingTemplate && !canEditEntity(existingTemplate),
     );
   });
 
-  const canEditCurrentTemplate = computed(() => {
-    if (!currentTemplate.value) return true;
-    return canEditEntity(currentTemplate.value);
+  const isJsonReadOnly = computed(() => {
+    if (modalLanguage.value !== "json") return true;
+    return isTemplateReadOnlyBySaveLogic.value;
   });
 
   const canSaveJson = computed(
     () =>
       store.showDeveloperMode &&
       modalLanguage.value === "json" &&
-      canEditCurrentTemplate.value,
+      !isTemplateReadOnlyBySaveLogic.value,
   );
 
   const openModal = (content: string, title: string, language: string) => {
@@ -124,11 +128,6 @@ export const useJsonBlobModal = (options: UseJsonBlobModalOptions) => {
   const handleSaveJson = async () => {
     if (!canSaveJson.value) return;
 
-    if (!canEditCurrentTemplate.value) {
-      toast.warning(t("toast.templateReadOnly"));
-      return;
-    }
-
     let parsed: Record<string, any> | null = null;
     try {
       const value = jsonContent.value?.trim() || "{}";
@@ -165,6 +164,7 @@ export const useJsonBlobModal = (options: UseJsonBlobModalOptions) => {
     modalTitle,
     modalLanguage,
     canSaveJson,
+    isJsonReadOnly,
     handleViewJson,
     handleViewImageBlob,
     handleViewPdfBlob,

@@ -46,6 +46,7 @@ const {
   modalTitle,
   modalLanguage,
   canSaveJson,
+  isJsonReadOnly,
   handleViewJson,
   handleViewImageBlob,
   handleViewPdfBlob,
@@ -331,7 +332,7 @@ onUnmounted(() => {
     :title="modalTitle"
     :value="jsonContent"
     :language="modalLanguage"
-    :read-only="!canSaveJson"
+    :read-only="isJsonReadOnly"
     :show-save-button="canSaveJson"
     :show-copy-button="true"
     @update:value="jsonContent = $event"
