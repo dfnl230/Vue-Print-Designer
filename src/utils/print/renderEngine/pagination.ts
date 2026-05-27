@@ -1033,6 +1033,9 @@ export const createPagination = ({ store }: { store: DesignerStore }) => {
             return;
           }
 
+          // 提前填充数据：确保 tfoot 在测量前就拿到实际展现内容，以便精确获取其渲染高度
+          updatePageSums(table);
+
           // 需要对表格进行拆分。
           let splitIndex = -1;
 
@@ -1045,36 +1048,43 @@ export const createPagination = ({ store }: { store: DesignerStore }) => {
           const isFooterRepeated =
             table.getAttribute("data-tfoot-repeat") === "true";
           let repeatedFooterHeight = 0;
-          let totalFooterHeight = 0;
           if (tfoot) {
-            totalFooterHeight = tfoot.getBoundingClientRect().height;
             if (isFooterRepeated) {
-              repeatedFooterHeight = totalFooterHeight;
+              repeatedFooterHeight = tfoot.getBoundingClientRect().height;
             }
           }
+
+          const tableRect = table.getBoundingClientRect();
 
           for (let r = 0; r < rows.length; r++) {
             const row = rows[r];
             const rowRect = row.getBoundingClientRect();
-            
-            let currentFooterHeight = repeatedFooterHeight;
-            if (!isFooterRepeated && r === rows.length - 1) {
-              currentFooterHeight = totalFooterHeight;
-            }
 
             // 预留 1px 缓冲，避免浮点误差。
-            if (rowRect.bottom + currentFooterHeight > limitBottom + 1) {
-              splitIndex = r;
-              break;
+            if (!isFooterRepeated && r === rows.length - 1) {
+              // 对于最后一行（且非重复页脚），用表格的实际最底端探测更精准（覆盖所有margin/border及因为折行增加的差距）
+              if (tableRect.bottom > limitBottom + 1) {
+                splitIndex = r;
+                break;
+              }
+            } else {
+              if (rowRect.bottom + repeatedFooterHeight > limitBottom + 1) {
+                splitIndex = r;
+                break;
+              }
             }
           }
 
           const resolvedStartY = resolveFlowChunkStartY(wrapper);
+          const minTop =
+            copyHeader && headerHeight > 0
+              ? headerHeight + (store.pageSpacingY || 0)
+              : (store.pageSpacingY || 0);
 
           if (splitIndex === 0) {
-            // 防止死循环：若首行已超限且表格已贴近页首，
-            // 必须至少保留一行在当前页。
-            if (wrapperTopInPage <= resolvedStartY + 5) {
+            // 防止死循环：若首行已超限且表格已贴近当前可用页首，
+            // 必须至少保留一行在当前页，否则会无限向后页推。
+            if (wrapperTopInPage <= minTop + 5) {
               splitIndex = 1; // 强制保留一行
             }
           }
@@ -1082,16 +1092,15 @@ export const createPagination = ({ store }: { store: DesignerStore }) => {
           // 如果根据行累加计算没超限，但表格整体(包含border等)超限，
           // 也应当触发分页。整体移入下一页或者将最后一行移入。
           if (splitIndex === -1 && rows.length > 0) {
-            const tableRect = table.getBoundingClientRect();
             if (tableRect.bottom > limitBottom + 2) {
-              if (wrapperTopInPage > resolvedStartY + 5) {
-                // 距离页首有空间，整体移入下一页
+              if (wrapperTopInPage > minTop + 5) {
+                // 距离页首有空间，说明推入新页能获得更大完整空间，整体移入下一页
                 splitIndex = 0;
               } else if (rows.length > 1) {
                 // 贴近页首且有多行，把最后一行移走
                 splitIndex = rows.length - 1;
               } else {
-                splitIndex = 1; // 仅1行且贴近页首，强制保留
+                splitIndex = 1; // 仅1行且贴近页首，实在拆不了，强制保留防死循环
               }
             }
           }
