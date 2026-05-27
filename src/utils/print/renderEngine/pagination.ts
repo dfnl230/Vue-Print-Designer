@@ -1077,6 +1077,32 @@ export const createPagination = ({ store }: { store: DesignerStore }) => {
           }
 
           const tableRect = table.getBoundingClientRect();
+          const effectiveHeaderHeight = headerHeight > 0 ? headerHeight : 0;
+          const minTop = (store.pageSpacingY || 0) + effectiveHeaderHeight;
+          const availableContentHeight =
+            pageHeight -
+            minTop -
+            (footerHeight > 0 ? footerHeight : 0) -
+            marginBottom;
+          const tableFitsFreshPage =
+            tableRect.height <= availableContentHeight * getPageScaleY(pageRect) + 1;
+
+          if (
+            rows.length > 0 &&
+            tableRect.bottom > limitBottom + 1 &&
+            wrapperTopInPage > minTop + 5 &&
+            tableFitsFreshPage
+          ) {
+            const newPage = createFlowOverflowPage(page, i);
+            const startY = resolveFlowChunkStartY(wrapper);
+            wrapper.style.removeProperty("top");
+            wrapper.style.setProperty("top", `${startY}px`, "important");
+            wrapper.removeAttribute("data-is-split-chunk");
+            wrapper.removeAttribute("data-flow-paginated");
+            newPage.appendChild(wrapper);
+            syncTableRightEdgeLines(wrapper, table);
+            return;
+          }
 
           for (let r = 0; r < rows.length; r++) {
             const row = rows[r];
@@ -1096,10 +1122,6 @@ export const createPagination = ({ store }: { store: DesignerStore }) => {
               }
             }
           }
-
-          const resolvedStartY = resolveFlowChunkStartY(wrapper);
-          const effectiveHeaderHeight = headerHeight > 0 ? headerHeight : 0;
-          const minTop = (store.pageSpacingY || 0) + effectiveHeaderHeight;
 
           if (splitIndex === 0) {
             // 防止死循环：若首行已超限且表格已贴近当前可用页首，
