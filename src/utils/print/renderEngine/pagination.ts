@@ -399,7 +399,8 @@ export const createPagination = ({ store }: { store: DesignerStore }) => {
           // 否则下游自动高度元素可能被“冻结”在旧位置。
           if (
             wrapper.hasAttribute("data-flow-id") &&
-            wrapper.hasAttribute("data-is-split-chunk")
+            (wrapper.hasAttribute("data-is-split-chunk") ||
+              wrapper.hasAttribute("data-flow-forced-page-break"))
           ) {
             return;
           }
@@ -1097,6 +1098,7 @@ export const createPagination = ({ store }: { store: DesignerStore }) => {
             const startY = resolveFlowChunkStartY(wrapper);
             wrapper.style.removeProperty("top");
             wrapper.style.setProperty("top", `${startY}px`, "important");
+            wrapper.setAttribute("data-flow-forced-page-break", "true");
             wrapper.removeAttribute("data-is-split-chunk");
             wrapper.removeAttribute("data-flow-paginated");
             newPage.appendChild(wrapper);
@@ -1206,8 +1208,10 @@ export const createPagination = ({ store }: { store: DesignerStore }) => {
             // 否则会被 syncElementsBelowTables 当作中间拆分页块跳过，导致与前序流块重叠。
             if (splitIndex === 0) {
               newWrapper.removeAttribute("data-is-split-chunk");
+              newWrapper.setAttribute("data-flow-forced-page-break", "true");
             } else {
               newWrapper.setAttribute("data-is-split-chunk", "true");
+              newWrapper.removeAttribute("data-flow-forced-page-break");
             }
 
             syncElementsBelowTables(true);
