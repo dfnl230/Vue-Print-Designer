@@ -1,0 +1,1 @@
+export default function DOMPurify() { return { sanitize: (html: any) => html } }; DOMPurify.sanitize = (html: any) => html;

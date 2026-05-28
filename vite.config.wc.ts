@@ -19,6 +19,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
+      "html2canvas": fileURLToPath(new URL("./src/mock/html2canvas.ts", import.meta.url)),
+      "canvg": fileURLToPath(new URL("./src/mock/canvg.ts", import.meta.url)),
+      "dompurify": fileURLToPath(new URL("./src/mock/dompurify.ts", import.meta.url)),
     },
   },
   build: {
@@ -35,9 +38,10 @@ export default defineConfig({
       formats: ["es", "umd"],
       fileName: (format) => `print-designer.${format}.js`,
     },
+    outDir: "dist-wc",
     rollupOptions: {
       output: {
-        minifyInternalExports: false,
+        minifyInternalExports: true,
         manualChunks: undefined,
         assetFileNames: (assetInfo) => {
           const name = assetInfo.name || "";

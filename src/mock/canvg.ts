@@ -1,0 +1,1 @@
+export const Canvg = { fromString: () => ({ render: () => {} }) }; export default Canvg;

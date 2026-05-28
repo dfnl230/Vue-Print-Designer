@@ -18,7 +18,7 @@ import {
 } from "./composables/usePrintSettings";
 import { useDesignerStore } from "./stores/designer";
 import { useTemplateStore } from "./stores/templates";
-import { cloneDeep } from "lodash";
+import cloneDeep from "lodash/cloneDeep";
 import { v4 as uuidv4 } from "uuid";
 import {
   setCrudConfig,

@@ -32,7 +32,6 @@
   },
   "dependencies": {
     "@guolao/vue-monaco-editor": "^1.6.0",
-    "canvg": "^3.0.11",
     "jsbarcode": "^3.12.3",
     "jspdf": "4.2",
     "jszip": "^3.10.1",

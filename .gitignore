@@ -147,3 +147,15 @@ bin-release/
 .trae
 docs/zh/guide/*
 stats-wc.html
+dist-wc/browser-Cw4SfmGQ.js
+dist-wc/canvg-BzMQlId7.js
+dist-wc/dompurify-fy0HnYL4.js
+dist-wc/html2canvas-CZcUsoiB.js
+dist-wc/index-DZwlT9SB.js
+dist-wc/JsBarcode-CunDejnF.js
+dist-wc/jspdf.es.min-DcE5CuUf.js
+dist-wc/jszip.min-X1nJ7ItX.js
+dist-wc/print-designer.css
+dist-wc/print-designer.es.js
+dist-wc/print-designer.umd.js
+dist-wc/web-component-Bvdw6vp1.js

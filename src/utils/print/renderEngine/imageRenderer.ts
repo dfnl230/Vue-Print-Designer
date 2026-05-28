@@ -123,39 +123,59 @@ export const createImageRenderer = (deps: ImageRendererDeps) => {
 
   // 将 SVG 转为 Canvas，避免导出图片时丢失矢量内容。
   const svgToCanvas = async (root: HTMLElement) => {
-    const svgs = root.querySelectorAll("svg");
+    const svgs = Array.from(root.querySelectorAll("svg"));
     if (svgs.length === 0) return;
-    // @ts-ignore - 忽略 TS7016：canvg 的 package.json exports 导致类型解析异常
-    const { Canvg } = await import("canvg");
 
-    svgs.forEach((svg) => {
-      const parent = svg.parentElement as HTMLElement | null;
-      if (!parent) return;
-      const style = getComputedStyle(parent);
-      const w = parseFloat(style.width);
-      const h = parseFloat(style.height);
-      const canvas = document.createElement("canvas");
-      canvas.width = Number.isFinite(w) ? Math.max(1, Math.round(w)) : 10;
-      canvas.height = Number.isFinite(h) ? Math.max(1, Math.round(h)) : 10;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      const serializer = new XMLSerializer();
-      svg.setAttribute("width", `${w}px`);
-      svg.setAttribute("height", `${h}px`);
+    await Promise.all(
+      svgs.map((svg) => {
+        return new Promise<void>((resolve) => {
+          const parent = svg.parentElement as HTMLElement | null;
+          if (!parent) return resolve();
+          const style = getComputedStyle(parent);
+          const w = parseFloat(style.width);
+          const h = parseFloat(style.height);
+          const canvas = document.createElement("canvas");
+          canvas.width = Number.isFinite(w) ? Math.max(1, Math.round(w)) : 10;
+          canvas.height = Number.isFinite(h) ? Math.max(1, Math.round(h)) : 10;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return resolve();
+          
+          svg.setAttribute("width", `${w}px`);
+          svg.setAttribute("height", `${h}px`);
+          if (!svg.getAttribute("xmlns")) {
+            svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+          }
 
-      const str = serializer.serializeToString(svg);
-      const instance = Canvg.fromString(ctx, str);
-      instance.render();
+          const serializer = new XMLSerializer();
+          const str = serializer.serializeToString(svg);
+          const svgBlob = new window.Blob([str], { type: "image/svg+xml;charset=utf-8" });
+          const url = URL.createObjectURL(svgBlob);
+          const drawImg = new Image();
 
-      const img = document.createElement("img");
-      img.src = canvas.toDataURL("image/png");
-      img.style.width = `${w}px`;
-      img.style.height = `${h}px`;
-      img.style.display = "block";
+          drawImg.onload = () => {
+            ctx.drawImage(drawImg, 0, 0);
+            URL.revokeObjectURL(url);
 
-      svg.before(img);
-      parent.removeChild(svg);
-    });
+            const img = document.createElement("img");
+            img.src = canvas.toDataURL("image/png");
+            img.style.width = `${w}px`;
+            img.style.height = `${h}px`;
+            img.style.display = "block";
+
+            svg.before(img);
+            if (svg.parentNode) {
+              svg.parentNode.removeChild(svg);
+            }
+            resolve();
+          };
+          drawImg.onerror = () => {
+            URL.revokeObjectURL(url);
+            resolve();
+          };
+          drawImg.src = url;
+        });
+      })
+    );
   };
 
   // 创建临时容器（保留兼容能力，供按页拼接流程复用）。
