@@ -1449,6 +1449,56 @@ const handleRowResizeEnd = () => {
 };
 
 const getColumnPixelWidth = (field: string, width?: number) => {
+  const columns = processedData.value.columns || [];
+  const elementWidth =
+    Number(props.element.width) || tableHostRef.value?.clientWidth || 1;
+  const horizontalMargin = Math.max(0, Number(store.pageSpacingX) || 0);
+  const canvasWidth = Number(store.canvasSize?.width) || 0;
+  const contentRightBoundary =
+    canvasWidth > 0 ? canvasWidth - horizontalMargin : 0;
+  const maxWidthInPrintableArea =
+    contentRightBoundary > 0
+      ? Math.max(1, contentRightBoundary - (Number(props.element.x) || 0))
+      : elementWidth;
+
+  const availableWidth = Math.max(
+    1,
+    Math.min(elementWidth, maxWidthInPrintableArea),
+  );
+  const rawWidths = columns.map((col: any) => {
+    const tempWidth = tempColumnWidths.value[col.field];
+    if (
+      typeof tempWidth === "number" &&
+      Number.isFinite(tempWidth) &&
+      tempWidth > 0
+    ) {
+      return tempWidth;
+    }
+
+    if (
+      typeof col.width === "number" &&
+      Number.isFinite(col.width) &&
+      col.width > 0
+    ) {
+      return col.width;
+    }
+
+    const colCount = Math.max(1, columns.length || 1);
+    return Math.max(20, Math.floor(availableWidth / colCount));
+  });
+
+  const totalWidth = rawWidths.reduce(
+    (sum: number, item: number) => sum + item,
+    0,
+  );
+  const scale = totalWidth > availableWidth ? availableWidth / totalWidth : 1;
+
+  const colIndex = columns.findIndex((col: any) => col.field === field);
+  if (colIndex !== -1) {
+    const scaled = rawWidths[colIndex] * scale;
+    return Math.max(1, Number(scaled.toFixed(2)));
+  }
+
   const tempWidth = tempColumnWidths.value[field];
   if (
     typeof tempWidth === "number" &&
