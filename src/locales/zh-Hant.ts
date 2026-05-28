@@ -656,6 +656,9 @@ export default {
     paginationDebugLogs: "分頁調試日誌",
     paginationDebugLogsDesc:
       "開啓後會在控制台輸出分頁拆分與回流日誌，建議僅在排查問題時使用。",
+    renderDebugLogs: "渲染調試日誌",
+    renderDebugLogsDesc:
+      "開啟後在控制台輸出各列印環節耗時（生成 DOM、截圖、合併等），用於性能優化。",
     printQuality: "打印質量",
     printQualityFast: "極速",
     printQualityNormal: "普通",

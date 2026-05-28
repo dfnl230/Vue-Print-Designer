@@ -684,6 +684,9 @@ export default {
     paginationDebugLogs: "Paginierungs-Debug-Logs",
     paginationDebugLogsDesc:
       "Wenn aktiviert, werden Protokolle zur Seitentrennung und Neuverteilung in der Konsole ausgegeben. Nur zur Fehlersuche verwenden.",
+    renderDebugLogs: "Render-Debug-Logs",
+    renderDebugLogsDesc:
+      "Wenn aktiviert, wird die Dauer von Rendering-Schritten (DOM, Bilder, PDF) in der Konsole ausgegeben. Für die Leistungsoptimierung verwenden.",
     printQuality: "Druckqualität",
     printQualityFast: "Schnell",
     printQualityNormal: "Normal",

@@ -674,6 +674,9 @@ export default {
     paginationDebugLogs: "ページネーション デバッグログ",
     paginationDebugLogsDesc:
       "有効時、ページ分割と再配置のログをコンソールに出力します。調査時のみ使用してください。",
+    renderDebugLogs: "レンダリングデバッグログ",
+    renderDebugLogsDesc:
+      "有効にすると、パフォーマンスの最適化のために、各印刷ステップ（DOMの生成、スクリーンショット、PDF変換など）にかかる時間がコンソールに出力されます。",
     printQuality: "印刷品質",
     printQualityFast: "高速",
     printQualityNormal: "標準",

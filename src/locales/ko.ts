@@ -674,6 +674,9 @@ export default {
     paginationDebugLogs: "페이지네이션 디버그 로그",
     paginationDebugLogsDesc:
       "활성화하면 페이지 분할 및 재배치 로그를 콘솔에 출력합니다. 문제 분석 시에만 사용하세요.",
+    renderDebugLogs: "렌더링 디버그 로그",
+    renderDebugLogsDesc:
+      "활성화되면 성능 최적화를 위해 인쇄 단계(DOM 생성, 스크린샷, PDF 등)의 소요 시간이 콘솔에 출력됩니다.",
     printQuality: "인쇄 품질",
     printQualityFast: "빠름",
     printQualityNormal: "보통",

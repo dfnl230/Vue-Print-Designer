@@ -354,6 +354,7 @@ export interface DesignerState {
   showTextQuickToolbar: boolean;
   showDeveloperMode: boolean;
   showPaginationDebugLogs: boolean;
+  showRenderDebugLogs: boolean;
   showHelp: boolean;
   showSettings: boolean;
   canvasBackground: string;

@@ -140,6 +140,12 @@ const loadPaginationDebugLogs = () => {
   return stored === "true";
 };
 
+const loadRenderDebugLogs = () => {
+  const stored = localStorage.getItem("print-designer-render-debug-logs");
+  if (stored === null) return false;
+  return stored === "true";
+};
+
 const loadTextQuickToolbarEnabled = () => {
   const stored = localStorage.getItem("print-designer-show-text-quick-toolbar");
   if (stored === null) return true;
@@ -605,6 +611,7 @@ export const useDesignerStore = defineStore("designer", {
     showTextQuickToolbar: loadTextQuickToolbarEnabled(),
     showDeveloperMode: loadDeveloperMode(),
     showPaginationDebugLogs: loadDeveloperMode() && loadPaginationDebugLogs(),
+    showRenderDebugLogs: loadDeveloperMode() && loadRenderDebugLogs(),
     showHelp: false,
     showSettings: false,
     canvasBackground: "#ffffff",
@@ -1687,7 +1694,9 @@ export const useDesignerStore = defineStore("designer", {
 
       if (!show) {
         this.showPaginationDebugLogs = false;
+        this.showRenderDebugLogs = false;
         localStorage.setItem("print-designer-pagination-debug-logs", "false");
+        localStorage.setItem("print-designer-render-debug-logs", "false");
       }
     },
     setShowPaginationDebugLogs(show: boolean) {
@@ -1695,6 +1704,14 @@ export const useDesignerStore = defineStore("designer", {
       this.showPaginationDebugLogs = next;
       localStorage.setItem(
         "print-designer-pagination-debug-logs",
+        next ? "true" : "false",
+      );
+    },
+    setShowRenderDebugLogs(show: boolean) {
+      const next = this.showDeveloperMode && show;
+      this.showRenderDebugLogs = next;
+      localStorage.setItem(
+        "print-designer-render-debug-logs",
         next ? "true" : "false",
       );
     },

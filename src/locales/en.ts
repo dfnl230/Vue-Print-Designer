@@ -675,6 +675,9 @@ export default {
     paginationDebugLogs: "Pagination Debug Logs",
     paginationDebugLogsDesc:
       "When enabled, output pagination split and reflow logs in the console. Use only while troubleshooting.",
+    renderDebugLogs: "Render Debug Logs",
+    renderDebugLogsDesc:
+      "When enabled, outputs time cost for rendering steps (DOM, images, PDF) in console. Use for performance tuning.",
     printQuality: "Print Quality",
     printQualityFast: "Fast",
     printQualityNormal: "Normal",
