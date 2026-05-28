@@ -27,7 +27,7 @@ export default defineConfig({
         manualChunks: {
           vendor: ["vue", "pinia", "vue-i18n"],
           monaco: ["@guolao/vue-monaco-editor"],
-          pdf: ["jspdf", "dom-to-image-more"],
+          pdf: ["jspdf", ],
           canvg: ["canvg"],
           utils: ["lodash", "uuid"],
           barcode: ["jsbarcode", "qrcode"],
