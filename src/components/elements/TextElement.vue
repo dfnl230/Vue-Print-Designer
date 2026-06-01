@@ -42,6 +42,8 @@ const modalContainer = inject<Ref<HTMLElement | null>>(
   ref(null),
 );
 const toolbarAnchorRect = ref<DOMRect | null>(null);
+const canvasScrollContainerRef = ref<HTMLElement | null>(null);
+let rootScrollEventTarget: EventTarget | null = null;
 
 const resolvedText = computed(() => {
   const baseContent = props.element.content || "";
@@ -353,12 +355,48 @@ watch(
 onMounted(() => {
   const wrapper = rootRef.value?.closest(".element-wrapper");
   isReadOnlyWrapper.value = wrapper?.getAttribute("data-read-only") === "true";
+
+  canvasScrollContainerRef.value =
+    rootRef.value?.closest(".canvas-scroll") ?? null;
+  if (canvasScrollContainerRef.value) {
+    canvasScrollContainerRef.value.addEventListener(
+      "scroll",
+      updateToolbarAnchorRect,
+      { passive: true },
+    );
+  }
+
+  const rootNode = rootRef.value?.getRootNode();
+  if (rootNode && "addEventListener" in rootNode) {
+    rootScrollEventTarget = rootNode as EventTarget;
+    rootScrollEventTarget.addEventListener(
+      "scroll",
+      updateToolbarAnchorRect,
+      true,
+    );
+  }
+
   window.addEventListener("resize", updateToolbarAnchorRect);
   window.addEventListener("scroll", updateToolbarAnchorRect, true);
   nextTick(updateToolbarAnchorRect);
 });
 
 onUnmounted(() => {
+  if (canvasScrollContainerRef.value) {
+    canvasScrollContainerRef.value.removeEventListener(
+      "scroll",
+      updateToolbarAnchorRect,
+    );
+  }
+  if (rootScrollEventTarget) {
+    rootScrollEventTarget.removeEventListener(
+      "scroll",
+      updateToolbarAnchorRect,
+      true,
+    );
+    rootScrollEventTarget = null;
+  }
+
   window.removeEventListener("resize", updateToolbarAnchorRect);
   window.removeEventListener("scroll", updateToolbarAnchorRect, true);
   if (isInlineEditing.value) {
