@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-import { useI18n } from "vue-i18n";
+import { useI18n } from "@/locales";
 import { useDesignerStore } from "@/stores/designer";
 import Type from "~icons/material-symbols/text-fields";
 import Numbers from "~icons/material-symbols/numbers";

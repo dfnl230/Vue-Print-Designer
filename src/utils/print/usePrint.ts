@@ -1,6 +1,6 @@
 import { nextTick } from "vue";
 import cloneDeep from "lodash/cloneDeep";
-import { v4 as uuidv4 } from "uuid";
+import { uuidv4 } from "@/utils/uuid";
 import { useDesignerStore } from "@/stores/designer";
 import { ElementType, type Page } from "@/types";
 import { usePrintSettings } from "@/composables/usePrintSettings";

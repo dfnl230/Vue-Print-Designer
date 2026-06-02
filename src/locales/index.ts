@@ -1,10 +1,13 @@
-import { createI18n } from "vue-i18n";
 import en from "./en";
 import zh from "./zh";
 import zhHant from "./zh-Hant";
 import ja from "./ja";
 import ko from "./ko";
 import de from "./de";
+import { createI18nInstance as _createI18nCore, setI18nInstance } from "./i18n";
+
+export { useI18n } from "./i18n";
+export type { TranslateFn } from "./i18n";
 
 export const SUPPORTED_LANGUAGES = [
   "zh",
@@ -62,12 +65,13 @@ const getInitialLanguage = () => {
 };
 
 export const createI18nInstance = (initialLocale?: SupportedLanguage) => {
-  return createI18n({
-    legacy: false, // Use Composition API
+  const inst = _createI18nCore({
     locale: initialLocale || getInitialLanguage(),
     fallbackLocale: "en",
     messages,
   });
+  setI18nInstance(inst);
+  return inst;
 };
 
 const i18n = createI18nInstance();

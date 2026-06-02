@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, inject } from "vue";
-import { useI18n } from "vue-i18n";
+import { useI18n } from "@/locales";
 import { usePrint } from "@/utils/print";
 import { useJsonBlobModal } from "@/composables/useJsonBlobModal";
 import { useTemplateStore } from "@/stores/templates";

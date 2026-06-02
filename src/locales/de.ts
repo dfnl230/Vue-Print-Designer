@@ -647,6 +647,10 @@ export default {
     dependencies: "Open-Source-Abhängigkeiten",
     package: "Paket",
     version: "Version",
+    type: "Typ",
+    typeDep: "Laufzeit",
+    typeDev: "Entwicklung",
+    description: "Beschreibung",
   },
   colorPicker: {
     clear: "Löschen",

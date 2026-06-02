@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, inject } from "vue";
-import { useI18n } from "vue-i18n";
+import { useI18n } from "@/locales";
 import { useDesignerStore } from "@/stores/designer";
 import startCase from "lodash/startCase";
 import { formatShortcut } from "@/utils/os";
@@ -54,13 +54,53 @@ onUnmounted(() => {
 });
 
 const dependencies = [
-  ...Object.entries(pkg.dependencies || {}),
-  ...Object.entries(pkg.devDependencies || {}),
-].map(([name, version]) => ({
-  name,
-  version,
-  url: `https://www.npmjs.com/package/${encodeURIComponent(name)}`,
+  ...Object.entries(pkg.dependencies || {}).map(([name, version]) => ({
+    name,
+    version,
+    type: "dep" as const,
+  })),
+  ...Object.entries(pkg.devDependencies || {}).map(([name, version]) => ({
+    name,
+    version,
+    type: "dev" as const,
+  })),
+].map((d) => ({
+  ...d,
+  url: `https://www.npmjs.com/package/${encodeURIComponent(d.name)}`,
 }));
+
+const descriptions = ref<Record<string, string>>({});
+const descLoading = ref(false);
+let _descFetched = false;
+
+const fetchDescriptions = async () => {
+  if (_descFetched) return;
+  _descFetched = true;
+  descLoading.value = true;
+  const results = await Promise.allSettled(
+    dependencies.map(async (dep) => {
+      const res = await fetch(
+        `https://cdn.jsdelivr.net/npm/${dep.name}/package.json`,
+      );
+      const json = await res.json();
+      return { name: dep.name, desc: (json.description as string) || "" };
+    }),
+  );
+  const map: Record<string, string> = {};
+  for (const r of results) {
+    if (r.status === "fulfilled") map[r.value.name] = r.value.desc;
+  }
+  descriptions.value = map;
+  descLoading.value = false;
+};
+
+watch(
+  [() => props.show, activeTab],
+  ([visible, tab]) => {
+    if (visible && tab === "about") fetchDescriptions();
+  },
+  { immediate: true },
+);
 
 const version = pkg.version;
 const projectName = startCase(pkg.name);
@@ -443,11 +483,17 @@ const projectName = startCase(pkg.name);
                   <table class="w-full text-xs text-left">
                     <thead class="bg-gray-100 text-gray-700 font-medium">
                       <tr>
-                        <th class="px-4 py-2 border-b">
+                        <th class="px-3 py-2 border-b w-16">
+                          {{ t("help.type") }}
+                        </th>
+                        <th class="px-3 py-2 border-b">
                           {{ t("help.package") }}
                         </th>
-                        <th class="px-4 py-2 border-b">
+                        <th class="px-3 py-2 border-b w-16">
                           {{ t("help.version") }}
+                        </th>
+                        <th class="px-3 py-2 border-b">
+                          {{ t("help.description") }}
                         </th>
                       </tr>
                     </thead>
@@ -457,8 +503,26 @@ const projectName = startCase(pkg.name);
                         :key="dep.name"
                         class="hover:bg-gray-50"
                       >
+                        <td class="px-3 py-1">
+                          <span
+                            class="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap"
+                            :class="
+                              dep.type === 'dep'
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-gray-100 text-gray-500'
+                            "
+                          >
+                            {{
+                              t(
+                                dep.type === "dep"
+                                  ? "help.typeDep"
+                                  : "help.typeDev",
+                              )
+                            }}
+                          </span>
+                        </td>
                         <td
-                          class="px-4 py-1 text-gray-700 font-mono text-[11px]"
+                          class="px-3 py-1 text-gray-700 font-mono text-[11px]"
                         >
                           <a
                             :href="dep.url"
@@ -469,8 +533,23 @@ const projectName = startCase(pkg.name);
                             >{{ dep.name }}</a
                           >
                         </td>
-                        <td class="px-4 py-1 text-gray-500 text-[11px]">
+                        <td
+                          class="px-3 py-1 text-gray-500 text-[11px] whitespace-nowrap"
+                        >
                           {{ dep.version }}
+                        </td>
+                        <td class="px-3 py-1 max-w-0 w-full">
+                          <span
+                            v-if="descLoading && descriptions[dep.name] === undefined"
+                            class="text-gray-300 text-[11px]"
+                            >···</span
+                          >
+                          <span
+                            v-else
+                            class="block truncate text-gray-400 text-[11px]"
+                            :title="descriptions[dep.name]"
+                            >{{ descriptions[dep.name] || "" }}</span
+                          >
                         </td>
                       </tr>
                     </tbody>

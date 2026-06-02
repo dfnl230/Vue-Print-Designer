@@ -1,7 +1,7 @@
 import { createApp, h } from "vue";
 import { createPinia } from "pinia";
 import cloneDeep from "lodash/cloneDeep";
-import { v4 as uuidv4 } from "uuid";
+import { uuidv4 } from "@/utils/uuid";
 import type { EmbeddedInTableAnchor, Page, WatermarkSettings } from "@/types";
 import i18n from "@/locales";
 import PrintRenderer from "@/components/print/PrintRenderer.vue";

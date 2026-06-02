@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, inject } from "vue";
-import { useI18n } from "vue-i18n";
+import { useI18n } from "@/locales";
 import { useDesignerStore } from "@/stores/designer";
 import { useFloatingTooltip } from "@/composables/useFloatingTooltip";
 import type { Page } from "@/types";

@@ -625,6 +625,10 @@ export default {
     dependencies: "开源依赖",
     package: "依赖包",
     version: "版本",
+    type: "类型",
+    typeDep: "运行时",
+    typeDev: "开发",
+    description: "描述",
   },
   colorPicker: {
     clear: "清除",

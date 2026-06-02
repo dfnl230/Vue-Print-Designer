@@ -8,7 +8,7 @@ import {
   onMounted,
   onUnmounted,
 } from "vue";
-import { useI18n } from "vue-i18n";
+import { useI18n } from "@/locales";
 import { useDesignerStore } from "@/stores/designer";
 import { PAPER_SIZES, type PaperSizeKey } from "@/constants/paper";
 import { pxToUnit, unitToPx, type Unit } from "@/utils/units";

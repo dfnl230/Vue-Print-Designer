@@ -8,7 +8,7 @@ import {
   ref,
   defineAsyncComponent,
 } from "vue";
-import { useI18n } from "vue-i18n";
+import { useI18n } from "@/locales";
 import { useDesignerStore } from "@/stores/designer";
 import { useTheme } from "@/composables/useTheme";
 import Close from "~icons/material-symbols/close";

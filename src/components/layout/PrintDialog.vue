@@ -8,7 +8,7 @@ import {
   onUnmounted,
   inject,
 } from "vue";
-import { useI18n } from "vue-i18n";
+import { useI18n } from "@/locales";
 import X from "~icons/material-symbols/close";
 import Check from "~icons/material-symbols/check";
 import Printer from "~icons/material-symbols/print";

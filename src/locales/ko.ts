@@ -640,6 +640,10 @@ export default {
     dependencies: "오픈소스 의존성",
     package: "패키지",
     version: "버전",
+    type: "유형",
+    typeDep: "런타임",
+    typeDev: "개발",
+    description: "설명",
   },
   colorPicker: {
     clear: "지우기",

@@ -9,7 +9,7 @@ import {
   watch,
   type CSSProperties,
 } from "vue";
-import { useI18n } from "vue-i18n";
+import { useI18n } from "@/locales";
 import type { PrintElement, TableCellRef } from "@/types";
 import { useDesignerStore } from "@/stores/designer";
 import cloneDeep from "lodash/cloneDeep";

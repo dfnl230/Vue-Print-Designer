@@ -9,7 +9,7 @@ import {
   type CSSProperties,
   type Ref,
 } from "vue";
-import { useI18n } from "vue-i18n";
+import { useI18n } from "@/locales";
 import { useDesignerStore } from "@/stores/designer";
 import { ElementType, type PrintElement } from "@/types";
 import ElementWrapper from "../elements/ElementWrapper.vue";

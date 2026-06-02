@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { useI18n } from "vue-i18n";
+import { useI18n } from "@/locales";
 
 const props = defineProps<{
   label: string;

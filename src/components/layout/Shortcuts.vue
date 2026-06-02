@@ -8,7 +8,7 @@ import {
   computed,
   type Ref,
 } from "vue";
-import { useI18n } from "vue-i18n";
+import { useI18n } from "@/locales";
 import { useDesignerStore } from "@/stores/designer";
 import { useTemplateStore } from "@/stores/templates";
 import { formatShortcut } from "@/utils/os";

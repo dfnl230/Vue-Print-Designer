@@ -25,9 +25,9 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ["vue", "pinia", "vue-i18n"],
+          vendor: ["vue", "pinia"],
           monaco: ["@guolao/vue-monaco-editor"],
-          utils: ["lodash", "uuid"],
+          utils: ["lodash"],
           barcode: ["jsbarcode", "qrcode"],
         },
       },

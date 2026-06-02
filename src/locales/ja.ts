@@ -640,6 +640,10 @@ export default {
     dependencies: "オープンソース依存関係",
     package: "パッケージ",
     version: "バージョン",
+    type: "タイプ",
+    typeDep: "本番",
+    typeDev: "開発",
+    description: "説明",
   },
   colorPicker: {
     clear: "クリア",

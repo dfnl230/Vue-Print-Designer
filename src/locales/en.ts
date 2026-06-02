@@ -641,6 +641,10 @@ export default {
     dependencies: "Open Source Dependencies",
     package: "Package",
     version: "Version",
+    type: "Type",
+    typeDep: "Runtime",
+    typeDev: "Dev",
+    description: "Description",
   },
   colorPicker: {
     clear: "Clear",

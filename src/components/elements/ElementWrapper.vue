@@ -5,7 +5,7 @@ import {
   inject,
   type Ref,
 } from "vue";
-import { useI18n } from "vue-i18n";
+import { useI18n } from "@/locales";
 import type { PrintElement } from "@/types";
 import { ElementType } from "@/types";
 import { useDesignerStore } from "@/stores/designer";

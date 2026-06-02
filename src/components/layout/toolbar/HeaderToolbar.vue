@@ -81,7 +81,7 @@ import PaperSettings from "./PaperSettings.vue";
 import InputModal from "@/components/common/InputModal.vue";
 import { useTemplateStore } from "@/stores/templates";
 import CodeEditorModal from "@/components/common/CodeEditorModal.vue";
-import { useI18n } from "vue-i18n";
+import { useI18n } from "@/locales";
 import { formatShortcut } from "@/utils/os";
 import { createFontGroups } from "@/utils/fonts";
 import { toast } from "@/utils/toast";

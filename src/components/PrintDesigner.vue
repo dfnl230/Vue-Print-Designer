@@ -1,6 +1,6 @@
 ﻿<script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick, computed, watch } from "vue";
-import { useI18n } from "vue-i18n";
+import { useI18n } from "@/locales";
 import { uiConfirm } from "@/utils/confirm";
 import { useDesignerStore } from "@/stores/designer";
 import { useTemplateStore } from "@/stores/templates";

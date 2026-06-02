@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, inject, onUnmounted, ref, watch } from "vue";
-import { useI18n } from "vue-i18n";
+import { useI18n } from "@/locales";
 import { useDesignerStore } from "@/stores/designer";
 import { ElementType, type PrintElement } from "@/types";
 import TextFields from "~icons/material-symbols/text-fields";

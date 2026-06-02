@@ -1,6 +1,6 @@
 import { computed, ref } from "vue";
 import cloneDeep from "lodash/cloneDeep";
-import { useI18n } from "vue-i18n";
+import { useI18n } from "@/locales";
 import { useDesignerStore } from "@/stores/designer";
 import { useTemplateStore } from "@/stores/templates";
 import { toast } from "@/utils/toast";

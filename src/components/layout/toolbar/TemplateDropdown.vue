@@ -9,7 +9,7 @@ import {
   inject,
   type Component,
 } from "vue";
-import { useI18n } from "vue-i18n";
+import { useI18n } from "@/locales";
 import { uiConfirm } from "@/utils/confirm";
 import { toast } from "@/utils/toast";
 import { useTemplateStore, type Template } from "@/stores/templates";

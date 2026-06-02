@@ -13,7 +13,7 @@ import type { PrintElement } from "@/types";
 import { useDesignerStore } from "@/stores/designer";
 import { normalizeVariableKey } from "@/utils/variables";
 import { createFontGroups } from "@/utils/fonts";
-import { useI18n } from "vue-i18n";
+import { useI18n } from "@/locales";
 import AlignLeft from "~icons/material-symbols/format-align-left";
 import AlignCenterHorizontal from "~icons/material-symbols/format-align-center";
 import AlignRight from "~icons/material-symbols/format-align-right";

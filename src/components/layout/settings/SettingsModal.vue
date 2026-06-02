@@ -1,6 +1,6 @@
 ﻿<script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted, inject } from "vue";
-import { useI18n } from "vue-i18n";
+import { useI18n } from "@/locales";
 import { useTheme } from "@/composables/useTheme";
 import { useAutoSave } from "@/composables/useAutoSave";
 import { usePrintSettings } from "@/composables/usePrintSettings";

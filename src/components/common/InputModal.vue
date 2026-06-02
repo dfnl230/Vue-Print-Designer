@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onUnmounted, computed, inject } from "vue";
-import { useI18n } from "vue-i18n";
+import { useI18n } from "@/locales";
 import Close from "~icons/material-symbols/close";
 import Check from "~icons/material-symbols/check";
 import { useDesignerStore } from "@/stores/designer";
