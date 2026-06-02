@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, inject, type Ref } from "vue";
+import {
+  ref,
+  computed,
+  inject,
+  type Ref,
+} from "vue";
 import { useI18n } from "vue-i18n";
 import type { PrintElement } from "@/types";
 import { ElementType } from "@/types";
@@ -456,6 +461,63 @@ const isAlignmentTarget = computed(() => {
   return store.highlightedAlignedElementIds.includes(props.element.id);
 });
 
+const resolvedZoom = computed(() =>
+  Number.isFinite(props.zoom) && props.zoom > 0 ? Number(props.zoom) : 1,
+);
+
+const oneDevicePixelInCanvas = computed(() => 1 / resolvedZoom.value);
+
+const oneDevicePixelInCanvasPx = computed(
+  () => `${Number(oneDevicePixelInCanvas.value.toFixed(4))}px`,
+);
+
+const resizeHandleStyles = computed(() => {
+  // Pure CSS positioning — handles are absolute children of the element wrapper.
+  // The wrapper sits inside transform:scale(zoom); CSS percentages & px values
+  // scale automatically, so no JavaScript coordinate math is needed.
+  // -2px offset centers the 5px handle bar on the 1px selection border
+  // (border center is at 0.5px; handle center = -2px + 2.5px = 0.5px ✓).
+  //
+  // Adaptive sizing: cap each arm to dimension/3 so that the layout along every
+  // axis is [corner | gap | edge | gap | corner] with 2*cornerLen+edgeLen ≤ dim,
+  // preventing handles from overlapping on small elements.
+  const W = props.element.width;
+  const H = props.element.height;
+  const thickness = 5;
+  const minArm = thickness + 1; // 6px minimum so the L-arm is always visible
+
+  // Corner size is limited by the smaller axis (square handle)
+  const cornerLen = Math.max(minArm, Math.min(18, Math.floor(Math.min(W, H) / 3)));
+  // Edge handle lengths are limited per-axis independently
+  const edgeLenH = Math.max(minArm, Math.min(20, Math.floor(H / 3))); // left/right
+  const edgeLenW = Math.max(minArm, Math.min(20, Math.floor(W / 3))); // top/bottom
+
+  const offset = "-2px";
+  const t = `${thickness}px`;
+  const cL = `${cornerLen}px`;
+  const eLH = `${edgeLenH}px`;
+  const eLW = `${edgeLenW}px`;
+  const radius = "2.5px";
+  return {
+    left: { width: t, height: eLH, left: offset, top: "50%", transform: "translateY(-50%)", borderRadius: radius },
+    right: { width: t, height: eLH, right: offset, top: "50%", transform: "translateY(-50%)", borderRadius: radius },
+    top: { width: eLW, height: t, top: offset, left: "50%", transform: "translateX(-50%)", borderRadius: radius },
+    bottom: { width: eLW, height: t, bottom: offset, left: "50%", transform: "translateX(-50%)", borderRadius: radius },
+    topLeftCorner: { left: offset, top: offset, width: cL, height: cL },
+    topRightCorner: { right: offset, top: offset, width: cL, height: cL },
+    bottomLeftCorner: { left: offset, bottom: offset, width: cL, height: cL },
+    bottomRightCorner: { right: offset, bottom: offset, width: cL, height: cL },
+    topLeftCornerH: { left: "0", top: "0", width: cL, height: t, borderRadius: radius },
+    topLeftCornerV: { left: "0", top: "0", width: t, height: cL, borderRadius: radius },
+    topRightCornerH: { right: "0", top: "0", width: cL, height: t, borderRadius: radius },
+    topRightCornerV: { right: "0", top: "0", width: t, height: cL, borderRadius: radius },
+    bottomLeftCornerH: { left: "0", bottom: "0", width: cL, height: t, borderRadius: radius },
+    bottomLeftCornerV: { left: "0", bottom: "0", width: t, height: cL, borderRadius: radius },
+    bottomRightCornerH: { right: "0", bottom: "0", width: cL, height: t, borderRadius: radius },
+    bottomRightCornerV: { right: "0", bottom: "0", width: t, height: cL, borderRadius: radius },
+  } as const;
+});
+
 // Dragging Logic
 let startX = 0;
 let startY = 0;
@@ -733,20 +795,47 @@ const handleRotateStart = (e: MouseEvent) => {
   window.addEventListener("mouseup", handleRotateUp);
 };
 
-const handleResizeStart = (e: MouseEvent) => {
+type ResizeHandleDirection =
+  | "left"
+  | "right"
+  | "top"
+  | "bottom"
+  | "top-left"
+  | "top-right"
+  | "bottom-left"
+  | "bottom-right";
+type ResizeEdge = "left" | "top" | "right" | "bottom";
+
+const handleResizeStart = (e: MouseEvent, direction: ResizeHandleDirection) => {
   e.stopPropagation();
   e.preventDefault();
 
   type ResizeSnapCandidate = {
     point: number;
     type: "edge" | "guide" | "element";
-    edge?: "right" | "bottom";
+    edge?: ResizeEdge;
     guideId?: string;
   };
 
   const SNAP_THRESHOLD = 6;
   const MIN_SIZE = 10;
   const ALIGN_EPSILON = 0.5;
+  const resizesFromLeft =
+    direction === "left" ||
+    direction === "top-left" ||
+    direction === "bottom-left";
+  const resizesFromRight =
+    direction === "right" ||
+    direction === "top-right" ||
+    direction === "bottom-right";
+  const resizesFromTop =
+    direction === "top" ||
+    direction === "top-left" ||
+    direction === "top-right";
+  const resizesFromBottom =
+    direction === "bottom" ||
+    direction === "bottom-left" ||
+    direction === "bottom-right";
 
   const findBestSnap = (target: number, candidates: ResizeSnapCandidate[]) => {
     let best: ResizeSnapCandidate | null = null;
@@ -764,15 +853,21 @@ const handleResizeStart = (e: MouseEvent) => {
     return best;
   };
 
-  const getResizeSnapResult = (targetWidth: number, targetHeight: number) => {
-    const x = props.element.x;
-    const y = props.element.y;
-
+  const getResizeSnapResult = (
+    targetX: number,
+    targetY: number,
+    targetWidth: number,
+    targetHeight: number,
+  ) => {
+    let x = targetX;
+    let y = targetY;
     let width = Math.max(MIN_SIZE, targetWidth);
     let height = Math.max(MIN_SIZE, targetHeight);
 
     const marginX = store.pageSpacingX || 0;
     const marginY = store.pageSpacingY || 0;
+    const minLeftBoundary = marginX;
+    const minTopBoundary = marginY;
     const maxRightBoundary = store.canvasSize.width - marginX;
     const maxBottomBoundary = store.canvasSize.height - marginY;
 
@@ -783,122 +878,192 @@ const handleResizeStart = (e: MouseEvent) => {
       ? page.elements.filter((item) => !selectedSet.has(item.id))
       : [];
 
+    const right = x + width;
+    const bottom = y + height;
     const xCandidates: ResizeSnapCandidate[] = [];
     const yCandidates: ResizeSnapCandidate[] = [];
 
-    if (maxRightBoundary - x >= MIN_SIZE) {
-      xCandidates.push({
-        point: maxRightBoundary,
-        type: "edge",
-        edge: "right",
-      });
-    }
-    if (maxBottomBoundary - y >= MIN_SIZE) {
-      yCandidates.push({
-        point: maxBottomBoundary,
-        type: "edge",
-        edge: "bottom",
-      });
-    }
-
-    for (const guide of store.guides) {
-      if (guide.type === "vertical" && guide.position - x >= MIN_SIZE) {
+    if (resizesFromRight) {
+      if (maxRightBoundary - x >= MIN_SIZE) {
         xCandidates.push({
-          point: guide.position,
-          type: "guide",
-          guideId: guide.id,
+          point: maxRightBoundary,
+          type: "edge",
+          edge: "right",
         });
       }
-      if (guide.type === "horizontal" && guide.position - y >= MIN_SIZE) {
-        yCandidates.push({
-          point: guide.position,
-          type: "guide",
-          guideId: guide.id,
-        });
-      }
-    }
 
-    for (const item of referenceElements) {
-      const bounds = store.getElementBoundsAtPosition(item, item.x, item.y);
-      const xPoints = [
-        bounds.minX,
-        (bounds.minX + bounds.maxX) / 2,
-        bounds.maxX,
-      ];
-      const yPoints = [
-        bounds.minY,
-        (bounds.minY + bounds.maxY) / 2,
-        bounds.maxY,
-      ];
-
-      for (const point of xPoints) {
-        if (point - x >= MIN_SIZE) {
-          xCandidates.push({ point, type: "element" });
+      for (const guide of store.guides) {
+        if (guide.type === "vertical" && guide.position - x >= MIN_SIZE) {
+          xCandidates.push({
+            point: guide.position,
+            type: "guide",
+            guideId: guide.id,
+          });
         }
       }
-      for (const point of yPoints) {
-        if (point - y >= MIN_SIZE) {
-          yCandidates.push({ point, type: "element" });
-        }
-      }
-    }
 
-    const targetRight = x + width;
-    const targetBottom = y + height;
-    const bestX = findBestSnap(targetRight, xCandidates);
-    const bestY = findBestSnap(targetBottom, yCandidates);
-
-    if (bestX) {
-      width = Math.max(MIN_SIZE, bestX.point - x);
-    }
-    if (bestY) {
-      height = Math.max(MIN_SIZE, bestY.point - y);
-    }
-
-    const highlightedAlignedElementIds = new Set<string>();
-    const snappedRight = x + width;
-    const snappedBottom = y + height;
-
-    if (bestX?.type === "element" || bestY?.type === "element") {
       for (const item of referenceElements) {
         const bounds = store.getElementBoundsAtPosition(item, item.x, item.y);
-        if (bestX?.type === "element") {
-          const xPoints = [
-            bounds.minX,
-            (bounds.minX + bounds.maxX) / 2,
-            bounds.maxX,
-          ];
-          if (
-            xPoints.some(
-              (point) => Math.abs(point - snappedRight) <= ALIGN_EPSILON,
-            )
-          ) {
-            highlightedAlignedElementIds.add(item.id);
+        const points = [bounds.minX, (bounds.minX + bounds.maxX) / 2, bounds.maxX];
+        for (const point of points) {
+          if (point - x >= MIN_SIZE) {
+            xCandidates.push({ point, type: "element" });
           }
         }
-        if (bestY?.type === "element") {
-          const yPoints = [
-            bounds.minY,
-            (bounds.minY + bounds.maxY) / 2,
-            bounds.maxY,
-          ];
-          if (
-            yPoints.some(
-              (point) => Math.abs(point - snappedBottom) <= ALIGN_EPSILON,
-            )
-          ) {
-            highlightedAlignedElementIds.add(item.id);
+      }
+
+      const bestX = findBestSnap(right, xCandidates);
+      if (bestX) {
+        width = Math.max(MIN_SIZE, bestX.point - x);
+      }
+    } else if (resizesFromLeft) {
+      if (right - minLeftBoundary >= MIN_SIZE) {
+        xCandidates.push({
+          point: minLeftBoundary,
+          type: "edge",
+          edge: "left",
+        });
+      }
+
+      for (const guide of store.guides) {
+        if (guide.type === "vertical" && right - guide.position >= MIN_SIZE) {
+          xCandidates.push({
+            point: guide.position,
+            type: "guide",
+            guideId: guide.id,
+          });
+        }
+      }
+
+      for (const item of referenceElements) {
+        const bounds = store.getElementBoundsAtPosition(item, item.x, item.y);
+        const points = [bounds.minX, (bounds.minX + bounds.maxX) / 2, bounds.maxX];
+        for (const point of points) {
+          if (right - point >= MIN_SIZE) {
+            xCandidates.push({ point, type: "element" });
           }
+        }
+      }
+
+      const bestX = findBestSnap(x, xCandidates);
+      if (bestX) {
+        x = bestX.point;
+        width = Math.max(MIN_SIZE, right - x);
+      }
+    }
+
+    if (resizesFromBottom) {
+      if (maxBottomBoundary - y >= MIN_SIZE) {
+        yCandidates.push({
+          point: maxBottomBoundary,
+          type: "edge",
+          edge: "bottom",
+        });
+      }
+
+      for (const guide of store.guides) {
+        if (guide.type === "horizontal" && guide.position - y >= MIN_SIZE) {
+          yCandidates.push({
+            point: guide.position,
+            type: "guide",
+            guideId: guide.id,
+          });
+        }
+      }
+
+      for (const item of referenceElements) {
+        const bounds = store.getElementBoundsAtPosition(item, item.x, item.y);
+        const points = [bounds.minY, (bounds.minY + bounds.maxY) / 2, bounds.maxY];
+        for (const point of points) {
+          if (point - y >= MIN_SIZE) {
+            yCandidates.push({ point, type: "element" });
+          }
+        }
+      }
+
+      const bestY = findBestSnap(bottom, yCandidates);
+      if (bestY) {
+        height = Math.max(MIN_SIZE, bestY.point - y);
+      }
+    } else if (resizesFromTop) {
+      if (bottom - minTopBoundary >= MIN_SIZE) {
+        yCandidates.push({
+          point: minTopBoundary,
+          type: "edge",
+          edge: "top",
+        });
+      }
+
+      for (const guide of store.guides) {
+        if (guide.type === "horizontal" && bottom - guide.position >= MIN_SIZE) {
+          yCandidates.push({
+            point: guide.position,
+            type: "guide",
+            guideId: guide.id,
+          });
+        }
+      }
+
+      for (const item of referenceElements) {
+        const bounds = store.getElementBoundsAtPosition(item, item.x, item.y);
+        const points = [bounds.minY, (bounds.minY + bounds.maxY) / 2, bounds.maxY];
+        for (const point of points) {
+          if (bottom - point >= MIN_SIZE) {
+            yCandidates.push({ point, type: "element" });
+          }
+        }
+      }
+
+      const bestY = findBestSnap(y, yCandidates);
+      if (bestY) {
+        y = bestY.point;
+        height = Math.max(MIN_SIZE, bottom - y);
+      }
+    }
+
+    const bestX =
+      resizesFromLeft || resizesFromRight
+        ? findBestSnap(
+            resizesFromLeft ? x : x + width,
+            xCandidates,
+          )
+        : null;
+    const bestY =
+      resizesFromTop || resizesFromBottom
+        ? findBestSnap(
+            resizesFromTop ? y : y + height,
+            yCandidates,
+          )
+        : null;
+
+    const highlightedAlignedElementIds = new Set<string>();
+    if (bestX?.type === "element") {
+      const snappedX = resizesFromLeft ? x : x + width;
+      for (const item of referenceElements) {
+        const bounds = store.getElementBoundsAtPosition(item, item.x, item.y);
+        const points = [bounds.minX, (bounds.minX + bounds.maxX) / 2, bounds.maxX];
+        if (points.some((point) => Math.abs(point - snappedX) <= ALIGN_EPSILON)) {
+          highlightedAlignedElementIds.add(item.id);
+        }
+      }
+    }
+    if (bestY?.type === "element") {
+      const snappedY = resizesFromTop ? y : y + height;
+      for (const item of referenceElements) {
+        const bounds = store.getElementBoundsAtPosition(item, item.x, item.y);
+        const points = [bounds.minY, (bounds.minY + bounds.maxY) / 2, bounds.maxY];
+        if (points.some((point) => Math.abs(point - snappedY) <= ALIGN_EPSILON)) {
+          highlightedAlignedElementIds.add(item.id);
         }
       }
     }
 
     let highlightedEdge: "left" | "top" | "right" | "bottom" | null = null;
     if (bestX?.type === "edge") {
-      highlightedEdge = "right";
+      highlightedEdge = bestX.edge || null;
     }
-    if (bestY?.type === "edge") {
-      highlightedEdge = highlightedEdge || "bottom";
+    if (!highlightedEdge && bestY?.type === "edge") {
+      highlightedEdge = bestY.edge || null;
     }
 
     let highlightedGuideId: string | null = null;
@@ -910,6 +1075,8 @@ const handleResizeStart = (e: MouseEvent) => {
     }
 
     return {
+      x,
+      y,
       width,
       height,
       highlightedEdge,
@@ -920,8 +1087,21 @@ const handleResizeStart = (e: MouseEvent) => {
 
   const startX = e.clientX;
   const startY = e.clientY;
+  const initialLeft = props.element.x;
+  const initialTop = props.element.y;
   const initialWidth = props.element.width;
   const initialHeight = props.element.height;
+  const initialRight = initialLeft + initialWidth;
+  const initialBottom = initialTop + initialHeight;
+
+  // For proportional (Shift+corner) resize: lock the driving axis at drag start
+  // so it never switches mid-drag and causes jitter.
+  // "width drives" = true means width is the reference axis; false = height drives.
+  const isCornerHandle =
+    (direction === "top-left" || direction === "top-right" ||
+     direction === "bottom-left" || direction === "bottom-right");
+  // Default: the axis whose initial dimension is larger drives (wider → width drives).
+  const proportionalWidthDrives = initialWidth >= initialHeight;
   const isTableResize = props.element.type === ElementType.TABLE;
   const MIN_TABLE_CELL_SIZE = 0.01;
 
@@ -1208,23 +1388,86 @@ const handleResizeStart = (e: MouseEvent) => {
       hasSnapshot = true;
     }
 
-    let newWidth = initialWidth + dx;
-    let newHeight = initialHeight + dy;
+    let newX = initialLeft;
+    let newY = initialTop;
+    let newWidth = initialWidth;
+    let newHeight = initialHeight;
 
-    if (moveEvent.shiftKey) {
-      const ratio = initialWidth / initialHeight;
-      // Use the larger relative change to drive the size
-      if (
-        Math.abs(newWidth / initialWidth - 1) >
-        Math.abs(newHeight / initialHeight - 1)
-      ) {
-        newHeight = newWidth / ratio;
+    if (moveEvent.shiftKey && isCornerHandle && initialWidth > 0 && initialHeight > 0) {
+      // --- Shift + corner handle: proportional resize ---
+      // Always use the locked driving axis so there is no per-frame oscillation.
+      const aspectRatio = initialWidth / initialHeight;
+      let effectiveDx: number;
+      let effectiveDy: number;
+      if (proportionalWidthDrives) {
+        effectiveDx = dx;
+        effectiveDy = (Math.abs(dx) / aspectRatio) * Math.sign(dy || dx);
       } else {
-        newWidth = newHeight * ratio;
+        effectiveDy = dy;
+        effectiveDx = Math.abs(dy) * aspectRatio * Math.sign(dx || dy);
+      }
+      if (resizesFromRight) {
+        newWidth = initialWidth + effectiveDx;
+      } else {
+        newX = initialLeft + effectiveDx;
+        newWidth = initialRight - newX;
+      }
+      if (resizesFromBottom) {
+        newHeight = initialHeight + effectiveDy;
+      } else {
+        newY = initialTop + effectiveDy;
+        newHeight = initialBottom - newY;
+      }
+    } else {
+      // --- Normal resize ---
+      if (resizesFromRight) {
+        newWidth = initialWidth + dx;
+      } else if (resizesFromLeft) {
+        newX = initialLeft + dx;
+        newWidth = initialRight - newX;
+      }
+
+      if (resizesFromBottom) {
+        newHeight = initialHeight + dy;
+      } else if (resizesFromTop) {
+        newY = initialTop + dy;
+        newHeight = initialBottom - newY;
       }
     }
 
-    const snapped = getResizeSnapResult(newWidth, newHeight);
+    if (newWidth < MIN_SIZE) {
+      if (resizesFromLeft) {
+        newX = initialRight - MIN_SIZE;
+      }
+      newWidth = MIN_SIZE;
+    }
+
+    if (newHeight < MIN_SIZE) {
+      if (resizesFromTop) {
+        newY = initialBottom - MIN_SIZE;
+      }
+      newHeight = MIN_SIZE;
+    }
+
+    const isProportional = moveEvent.shiftKey && isCornerHandle;
+
+    const snapped = getResizeSnapResult(newX, newY, newWidth, newHeight);
+
+    if (isProportional && initialWidth > 0 && initialHeight > 0) {
+      const aspectRatio = initialWidth / initialHeight;
+      // Recompute non-driving axis from the snapped driving-axis value.
+      // Also fix the anchor position for edges that move (left/top).
+      if (proportionalWidthDrives) {
+        snapped.height = snapped.width / aspectRatio;
+        if (resizesFromTop)  snapped.y = initialBottom - snapped.height;
+        if (resizesFromLeft) snapped.x = initialRight  - snapped.width;
+      } else {
+        snapped.width = snapped.height * aspectRatio;
+        if (resizesFromLeft) snapped.x = initialRight  - snapped.width;
+        if (resizesFromTop)  snapped.y = initialBottom - snapped.height;
+      }
+    }
+
     store.setHighlightedGuide(snapped.highlightedGuideId || null);
     store.setHighlightedEdge(snapped.highlightedEdge || null);
     store.setHighlightedAlignedElements(
@@ -1246,6 +1489,9 @@ const handleResizeStart = (e: MouseEvent) => {
           width: snapped.width,
           height: snapped.height,
         };
+
+    updates.x = snapped.x;
+    updates.y = snapped.y;
 
     store.updateElement(props.element.id, updates, false);
   };
@@ -1317,6 +1563,18 @@ const handleResizeStart = (e: MouseEvent) => {
     <!-- Slot for specific element content -->
     <slot></slot>
 
+    <!-- Placeholder dashed outline — always visible in edit mode -->
+    <div
+      v-if="!readOnly"
+      data-print-exclude="true"
+      class="absolute inset-0 pointer-events-none z-10"
+      :style="{
+        borderWidth: oneDevicePixelInCanvasPx,
+        borderStyle: 'dashed',
+        borderColor: 'rgba(100,130,200,0.25)',
+      }"
+    ></div>
+
     <div
       v-if="borderOverlayStyle"
       class="absolute inset-0 pointer-events-none z-20"
@@ -1329,16 +1587,20 @@ const handleResizeStart = (e: MouseEvent) => {
         'absolute inset-0 box-border border pointer-events-none z-30 transition-opacity duration-75',
         isHovered || forceHover ? 'opacity-100' : 'opacity-0',
       ]"
-      style="border-color: var(--brand-300)"
+      :style="{
+        borderColor: 'var(--brand-300)',
+        borderWidth: oneDevicePixelInCanvasPx,
+      }"
     ></div>
 
     <div
       v-if="actualIsSelected"
       data-print-exclude="true"
       :class="[
-        'absolute inset-0 box-border border-2 pointer-events-none z-40',
+        'absolute inset-0 box-border border pointer-events-none z-40',
         element.locked ? 'border-red-500' : 'theme-border-strong',
       ]"
+      :style="{ borderWidth: oneDevicePixelInCanvasPx }"
     ></div>
 
     <template v-if="isAlignmentTarget">
@@ -1346,7 +1608,10 @@ const handleResizeStart = (e: MouseEvent) => {
         data-print-exclude="true"
         class="absolute inset-0 pointer-events-none z-30"
       >
-        <div class="absolute inset-0 border-2 theme-border"></div>
+        <div
+          class="absolute inset-0 border theme-border"
+          :style="{ borderWidth: oneDevicePixelInCanvasPx }"
+        ></div>
         <div
           class="absolute inset-0"
           style="background-color: var(--brand-500-alpha-10)"
@@ -1356,7 +1621,7 @@ const handleResizeStart = (e: MouseEvent) => {
           style="
             left: 50%;
             top: 50%;
-            height: min(45%, 20px);
+            height: 6px;
             transform: translate(-0.5px, -50%);
           "
         ></div>
@@ -1365,7 +1630,7 @@ const handleResizeStart = (e: MouseEvent) => {
           style="
             left: 50%;
             top: 50%;
-            width: min(45%, 20px);
+            width: 6px;
             transform: translate(-50%, -0.5px);
           "
         ></div>
@@ -1390,12 +1655,70 @@ const handleResizeStart = (e: MouseEvent) => {
         !element.locked
       "
     >
-      <!-- Resize Handle -->
-      <div
-        data-print-exclude="true"
-        class="resize-handle absolute bottom-0 right-0 w-3 h-3 bg-blue-600 cursor-se-resize z-50"
-        @mousedown="handleResizeStart"
-      ></div>
+      <!-- Resize Handles (absolute children, centered on selection border) -->
+        <!-- Edge handles -->
+        <div
+          data-print-exclude="true"
+          class="resize-handle absolute cursor-ew-resize theme-bg opacity-85 hover:opacity-100 transition-opacity"
+          :style="resizeHandleStyles.left"
+          @mousedown="(e) => handleResizeStart(e, 'left')"
+        ></div>
+        <div
+          data-print-exclude="true"
+          class="resize-handle absolute cursor-ew-resize theme-bg opacity-85 hover:opacity-100 transition-opacity"
+          :style="resizeHandleStyles.right"
+          @mousedown="(e) => handleResizeStart(e, 'right')"
+        ></div>
+        <div
+          data-print-exclude="true"
+          class="resize-handle absolute cursor-ns-resize theme-bg opacity-85 hover:opacity-100 transition-opacity"
+          :style="resizeHandleStyles.top"
+          @mousedown="(e) => handleResizeStart(e, 'top')"
+        ></div>
+        <div
+          data-print-exclude="true"
+          class="resize-handle absolute cursor-ns-resize theme-bg opacity-85 hover:opacity-100 transition-opacity"
+          :style="resizeHandleStyles.bottom"
+          @mousedown="(e) => handleResizeStart(e, 'bottom')"
+        ></div>
+
+        <!-- Corner L-handles -->
+        <div
+          data-print-exclude="true"
+          class="resize-handle absolute cursor-nwse-resize opacity-90 hover:opacity-100 transition-opacity"
+          :style="resizeHandleStyles.topLeftCorner"
+          @mousedown="(e) => handleResizeStart(e, 'top-left')"
+        >
+          <span class="absolute theme-bg cursor-nwse-resize" :style="resizeHandleStyles.topLeftCornerH"></span>
+          <span class="absolute theme-bg cursor-nwse-resize" :style="resizeHandleStyles.topLeftCornerV"></span>
+        </div>
+        <div
+          data-print-exclude="true"
+          class="resize-handle absolute cursor-nesw-resize opacity-90 hover:opacity-100 transition-opacity"
+          :style="resizeHandleStyles.topRightCorner"
+          @mousedown="(e) => handleResizeStart(e, 'top-right')"
+        >
+          <span class="absolute theme-bg cursor-nesw-resize" :style="resizeHandleStyles.topRightCornerH"></span>
+          <span class="absolute theme-bg cursor-nesw-resize" :style="resizeHandleStyles.topRightCornerV"></span>
+        </div>
+        <div
+          data-print-exclude="true"
+          class="resize-handle absolute cursor-nesw-resize opacity-90 hover:opacity-100 transition-opacity"
+          :style="resizeHandleStyles.bottomLeftCorner"
+          @mousedown="(e) => handleResizeStart(e, 'bottom-left')"
+        >
+          <span class="absolute theme-bg cursor-nesw-resize" :style="resizeHandleStyles.bottomLeftCornerH"></span>
+          <span class="absolute theme-bg cursor-nesw-resize" :style="resizeHandleStyles.bottomLeftCornerV"></span>
+        </div>
+        <div
+          data-print-exclude="true"
+          class="resize-handle absolute cursor-nwse-resize opacity-90 hover:opacity-100 transition-opacity"
+          :style="resizeHandleStyles.bottomRightCorner"
+          @mousedown="(e) => handleResizeStart(e, 'bottom-right')"
+        >
+          <span class="absolute theme-bg cursor-nwse-resize" :style="resizeHandleStyles.bottomRightCornerH"></span>
+          <span class="absolute theme-bg cursor-nwse-resize" :style="resizeHandleStyles.bottomRightCornerV"></span>
+        </div>
 
       <!-- Rotation Handle (top right, no background) -->
       <div

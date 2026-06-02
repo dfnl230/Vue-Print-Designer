@@ -221,6 +221,7 @@ export default {
     copyPage: "페이지 복사",
     pastePage: "페이지 붙여넣기",
     deletePage: "페이지 삭제",
+    deletePageConfirm: "이 페이지를 삭제하시겠습니까? 이 작업은 취소할 수 없으며 페이지의 모든 요소가 삭제됩니다.",
     newText: "새 텍스트",
     headerLabel: "머리글",
     footerLabel: "바닥글",

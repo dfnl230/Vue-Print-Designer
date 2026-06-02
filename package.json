@@ -1,7 +1,7 @@
 {
   "name": "vue-print-designer",
   "private": false,
-  "version": "1.5.8",
+  "version": "1.6.0",
   "license": "AGPL-3.0-only",
   "type": "module",
   "main": "dist/print-designer.umd.js",
@@ -33,7 +33,6 @@
   "dependencies": {
     "@guolao/vue-monaco-editor": "^1.6.0",
     "jsbarcode": "^3.12.3",
-    "jspdf": "4.2",
     "jszip": "^3.10.1",
     "lodash": "^4.17.21",
     "pinia": "^2.3.0",

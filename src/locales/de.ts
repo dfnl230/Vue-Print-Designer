@@ -223,6 +223,7 @@ export default {
     copyPage: "Seite kopieren",
     pastePage: "Seite einfügen",
     deletePage: "Seite löschen",
+    deletePageConfirm: "Möchten Sie diese Seite wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden und alle Elemente auf der Seite werden entfernt.",
     newText: "Neuer Text",
     headerLabel: "Kopfzeile",
     footerLabel: "Fußzeile",

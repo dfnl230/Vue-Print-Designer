@@ -110,9 +110,10 @@ type FloatingPanelKey =
   | "templates"
   | "properties"
   | "structure"
-  | "minimap";
-type FloatingPanelLayerKey = FloatingPanelKey | "history";
-type ResizablePanelKey = Exclude<FloatingPanelKey, "minimap">;
+  | "minimap"
+  | "history";
+type FloatingPanelLayerKey = FloatingPanelKey;
+type ResizablePanelKey = Exclude<FloatingPanelKey, "minimap">;;
 type FloatingPanelHorizontalAnchor = "left" | "right" | "free";
 type FloatingPanelVerticalAnchor = "top" | "bottom" | "free";
 type FloatingPanelHeightMode = "fit" | "fixed";
@@ -133,6 +134,7 @@ const STRUCTURE_PANEL_VISIBILITY_STORAGE_KEY =
 const MINIMAP_PANEL_FALLBACK_WIDTH = 212;
 const MINIMAP_PANEL_FALLBACK_HEIGHT = 252;
 const MINIMAP_PANEL_MIN_WIDTH = 160;
+const HISTORY_PANEL_DEFAULT_WIDTH = 280;
 const MINIMAP_PANEL_MAX_WIDTH = 420;
 const MINIMAP_PANEL_MIN_HEIGHT = 140;
 const MINIMAP_PANEL_MAX_HEIGHT = 420;
@@ -267,6 +269,19 @@ const sidebarPanelHeightMode = ref<FloatingPanelHeightMode>("fit");
 const templatePanelHeightMode = ref<FloatingPanelHeightMode>("fit");
 const propertiesPanelHeightMode = ref<FloatingPanelHeightMode>("fit");
 const structurePanelHeightMode = ref<FloatingPanelHeightMode>("fit");
+const historyPanelPos = ref({ x: FLOAT_PANEL_MARGIN, y: FLOAT_PANEL_MARGIN });
+const historyPanelPreferredPos = ref({
+  x: FLOAT_PANEL_MARGIN,
+  y: FLOAT_PANEL_MARGIN,
+});
+const historyPanelWidth = ref(HISTORY_PANEL_DEFAULT_WIDTH);
+const historyPanelHeight = ref(FLOAT_PANEL_MIN_HEIGHT);
+const historyPanelPreferredWidth = ref(HISTORY_PANEL_DEFAULT_WIDTH);
+const historyPanelPreferredHeight = ref(FLOAT_PANEL_MIN_HEIGHT);
+const hasInitializedHistoryPanel = ref(false);
+const historyPanelAnchorX = ref<FloatingPanelHorizontalAnchor>("free");
+const historyPanelAnchorY = ref<FloatingPanelVerticalAnchor>("top");
+const historyPanelHeightMode = ref<FloatingPanelHeightMode>("fit");
 const restoredTemplatePanelLayout = ref({
   x: false,
   y: false,
@@ -803,6 +818,13 @@ const getPanelAnchors = (panel: ResizablePanelKey) => {
     };
   }
 
+  if (panel === "history") {
+    return {
+      x: historyPanelAnchorX.value,
+      y: historyPanelAnchorY.value,
+    };
+  }
+
   return {
     x: propertiesPanelAnchorX.value,
     y: propertiesPanelAnchorY.value,
@@ -834,6 +856,12 @@ const setPanelAnchors = (
     return;
   }
 
+  if (panel === "history") {
+    historyPanelAnchorX.value = anchors.x;
+    historyPanelAnchorY.value = anchors.y;
+    return;
+  }
+
   propertiesPanelAnchorX.value = anchors.x;
   propertiesPanelAnchorY.value = anchors.y;
 };
@@ -854,6 +882,11 @@ const setPanelHeightMode = (
 
   if (panel === "structure") {
     structurePanelHeightMode.value = heightMode;
+    return;
+  }
+
+  if (panel === "history") {
+    historyPanelHeightMode.value = heightMode;
     return;
   }
 
@@ -1274,7 +1307,48 @@ const initOrClampFloatingPanels = () => {
   structurePanelWidth.value = structureLayout.width;
   structurePanelHeight.value = structureLayout.height;
 
-  if (!store.showMinimap) return;
+  if (!store.showMinimap) {
+    if (store.showHistoryPanel) {
+      if (!hasInitializedHistoryPanel.value) {
+        historyPanelAnchorX.value = "free";
+        historyPanelAnchorY.value = "top";
+        historyPanelHeightMode.value = "fit";
+        historyPanelPreferredHeight.value = bounds.maxHeight;
+        historyPanelPreferredPos.value = {
+          x: Math.max(
+            bounds.minX,
+            bounds.maxRight -
+              propertiesPanelWidth.value -
+              HISTORY_PANEL_DEFAULT_WIDTH -
+              FLOAT_PANEL_MARGIN * 2,
+          ),
+          y: bounds.minY,
+        };
+        historyPanelPreferredWidth.value = HISTORY_PANEL_DEFAULT_WIDTH;
+        hasInitializedHistoryPanel.value = true;
+      }
+      historyPanelPreferredWidth.value = clampPreferredPanelWidth(
+        historyPanelPreferredWidth.value,
+      );
+      historyPanelPreferredHeight.value = clampPreferredPanelHeight(
+        historyPanelPreferredHeight.value,
+      );
+      const historyLayout = resolvePanelLayout(
+        historyPanelPreferredPos.value,
+        historyPanelPreferredWidth.value,
+        historyPanelPreferredHeight.value,
+        {
+          horizontalAnchor: historyPanelAnchorX.value,
+          verticalAnchor: historyPanelAnchorY.value,
+          heightMode: historyPanelHeightMode.value,
+        },
+      );
+      historyPanelPos.value = historyLayout.pos;
+      historyPanelWidth.value = historyLayout.width;
+      historyPanelHeight.value = historyLayout.height;
+    }
+    return;
+  }
 
   if (!hasInitializedMinimapPanel.value) {
     placeMinimapNearPropertiesPanel();
@@ -1290,6 +1364,46 @@ const initOrClampFloatingPanels = () => {
   minimapPanelWidth.value = minimapLayout.width;
   minimapPanelHeight.value = minimapLayout.height;
   minimapPanelPreferredPos.value = { ...minimapLayout.pos };
+
+  if (store.showHistoryPanel) {
+    if (!hasInitializedHistoryPanel.value) {
+      historyPanelAnchorX.value = "free";
+      historyPanelAnchorY.value = "top";
+      historyPanelHeightMode.value = "fit";
+      historyPanelPreferredHeight.value = bounds.maxHeight;
+      historyPanelPreferredPos.value = {
+        x: Math.max(
+          bounds.minX,
+          bounds.maxRight -
+            propertiesPanelWidth.value -
+            HISTORY_PANEL_DEFAULT_WIDTH -
+            FLOAT_PANEL_MARGIN * 2,
+        ),
+        y: bounds.minY,
+      };
+      historyPanelPreferredWidth.value = HISTORY_PANEL_DEFAULT_WIDTH;
+      hasInitializedHistoryPanel.value = true;
+    }
+    historyPanelPreferredWidth.value = clampPreferredPanelWidth(
+      historyPanelPreferredWidth.value,
+    );
+    historyPanelPreferredHeight.value = clampPreferredPanelHeight(
+      historyPanelPreferredHeight.value,
+    );
+    const historyLayout = resolvePanelLayout(
+      historyPanelPreferredPos.value,
+      historyPanelPreferredWidth.value,
+      historyPanelPreferredHeight.value,
+      {
+        horizontalAnchor: historyPanelAnchorX.value,
+        verticalAnchor: historyPanelAnchorY.value,
+        heightMode: historyPanelHeightMode.value,
+      },
+    );
+    historyPanelPos.value = historyLayout.pos;
+    historyPanelWidth.value = historyLayout.width;
+    historyPanelHeight.value = historyLayout.height;
+  }
 };
 
 const sidebarPanelStyle = computed(() => {
@@ -1325,6 +1439,15 @@ const structurePanelStyle = computed(() => {
     top: `${structurePanelPos.value.y}px`,
     width: `${structurePanelWidth.value}px`,
     height: `${structurePanelHeight.value}px`,
+  };
+});
+
+const historyPanelStyle = computed(() => {
+  return {
+    left: `${historyPanelPos.value.x}px`,
+    top: `${historyPanelPos.value.y}px`,
+    width: `${historyPanelWidth.value}px`,
+    height: `${historyPanelHeight.value}px`,
   };
 });
 
@@ -1383,10 +1506,6 @@ const getPanelZIndex = (panel: FloatingPanelKey) => {
   }
   return panelBaseZIndex;
 };
-
-const historyPanelBaseZIndex = computed(() =>
-  getPanelLayerBaseZIndex("history"),
-);
 
 const handleBringPanelToFrontEvent = (e: Event) => {
   if (!isEventForCurrentDesigner(e)) return;
@@ -1498,6 +1617,27 @@ const restoreCanvasViewportPosition = (
   });
 };
 
+// Deselect elements only when clicking completely outside the designer root.
+// Inside the designer, deselection is handled by specific canvas handlers:
+// - scrollContainer @click (gray background)
+// - Canvas handleBackgroundClick (page white area, .self)
+const handleOutsideClickDeselect = (e: MouseEvent) => {
+  if (store.selectedElementIds.length === 0) return;
+  if (!rootContainer.value) return;
+  const path = e.composedPath();
+  // Any click still inside the designer root — let canvas handlers decide.
+  if (path.includes(rootContainer.value)) return;
+  // Exempt the properties panel which may be teleported outside rootContainer.
+  for (const node of path) {
+    if (
+      node instanceof Element &&
+      node.getAttribute("data-floating-panel-key") === "properties"
+    )
+      return;
+  }
+  store.clearSelection();
+};
+
 const handleGlobalHandPanMouseDown = (e: MouseEvent) => {
   if (!isHandPanActive.value) return;
   if (e.button !== 0) return;
@@ -1565,6 +1705,8 @@ const handlePanelDragMove = (e: MouseEvent) => {
           ? propertiesPanelWidth.value
           : draggingPanel === "structure"
             ? structurePanelWidth.value
+            : draggingPanel === "history"
+              ? historyPanelWidth.value
           : getMinimapPanelSize().width;
   const panelHeight =
     draggingPanel === "sidebar"
@@ -1575,6 +1717,8 @@ const handlePanelDragMove = (e: MouseEvent) => {
           ? propertiesPanelHeight.value
           : draggingPanel === "structure"
             ? structurePanelHeight.value
+            : draggingPanel === "history"
+              ? historyPanelHeight.value
           : getMinimapPanelSize().height;
   const nextPos = clampPanelPos(
     dragStartPanelPos.x + deltaX,
@@ -1638,6 +1782,21 @@ const handlePanelDragMove = (e: MouseEvent) => {
         nextPos,
         structurePanelWidth.value,
         structurePanelHeight.value,
+      ),
+    );
+    return;
+  }
+
+  if (draggingPanel === "history") {
+    historyPanelPos.value = nextPos;
+    historyPanelPreferredPos.value = { ...nextPos };
+    setPanelAnchors(
+      "history",
+      detectPanelAnchors(
+        "history",
+        nextPos,
+        historyPanelWidth.value,
+        historyPanelHeight.value,
       ),
     );
     return;
@@ -1765,6 +1924,35 @@ const handlePanelResizeMove = (e: MouseEvent) => {
     return;
   }
 
+  if (resizingPanel === "history") {
+    const resizedLayout = resolvePanelResizeLayout(
+      resizeStartPanelPos,
+      resizeStartWidth,
+      resizeStartHeight,
+      deltaX,
+      deltaY,
+      resizeStartPanelAnchors,
+    );
+
+    historyPanelWidth.value = resizedLayout.width;
+    historyPanelHeight.value = resizedLayout.height;
+    historyPanelPos.value = resizedLayout.pos;
+    historyPanelPreferredWidth.value = resizedLayout.width;
+    historyPanelPreferredHeight.value = resizedLayout.height;
+    historyPanelPreferredPos.value = { ...resizedLayout.pos };
+    setPanelHeightMode("history", "fixed");
+    setPanelAnchors(
+      "history",
+      detectPanelAnchors(
+        "history",
+        resizedLayout.pos,
+        resizedLayout.width,
+        resizedLayout.height,
+      ),
+    );
+    return;
+  }
+
   const resizedLayout = resolvePanelResizeLayout(
     resizeStartPanelPos,
     resizeStartWidth,
@@ -1815,6 +2003,8 @@ const startPanelResize = (panel: FloatingPanelKey, e: MouseEvent) => {
           ? propertiesPanelWidth.value
           : panel === "structure"
             ? structurePanelWidth.value
+            : panel === "history"
+              ? historyPanelWidth.value
           : minimapPanelWidth.value;
   resizeStartHeight =
     panel === "sidebar"
@@ -1825,6 +2015,8 @@ const startPanelResize = (panel: FloatingPanelKey, e: MouseEvent) => {
           ? propertiesPanelHeight.value
           : panel === "structure"
             ? structurePanelHeight.value
+            : panel === "history"
+              ? historyPanelHeight.value
           : minimapPanelHeight.value;
   resizeStartPanelPos =
     panel === "sidebar"
@@ -1835,6 +2027,8 @@ const startPanelResize = (panel: FloatingPanelKey, e: MouseEvent) => {
           ? { ...propertiesPanelPos.value }
           : panel === "structure"
             ? { ...structurePanelPos.value }
+            : panel === "history"
+              ? { ...historyPanelPos.value }
           : { ...minimapPanelPos.value };
   resizeStartPanelAnchors =
     panel === "minimap"
@@ -1861,6 +2055,8 @@ const startPanelDrag = (panel: FloatingPanelKey, e: MouseEvent) => {
           ? { ...propertiesPanelPos.value }
           : panel === "structure"
             ? { ...structurePanelPos.value }
+            : panel === "history"
+              ? { ...historyPanelPos.value }
           : { ...minimapPanelPos.value };
 
   window.addEventListener("mousemove", handlePanelDragMove);
@@ -1902,8 +2098,12 @@ watch(
 watch(
   () => store.showHistoryPanel,
   (show) => {
-    if (!show) return;
+    if (!show) {
+      hasInitializedHistoryPanel.value = false;
+      return;
+    }
     bringPanelToFront("history");
+    nextTick(() => initOrClampFloatingPanels());
   },
 );
 
@@ -2025,6 +2225,7 @@ onMounted(() => {
     "designer:set-hand-pan-mode",
     handleSetHandPanModeEvent as EventListener,
   );
+  window.addEventListener("mousedown", handleOutsideClickDeselect, true);
   window.addEventListener("mousedown", handleGlobalHandPanMouseDown, true);
   window.addEventListener("click", handleGlobalHandPanClickCapture, true);
 
@@ -2197,6 +2398,7 @@ const contentOffsetX = ref(0);
 const contentOffsetY = ref(0);
 const RULER_SIZE = 20;
 const PROJECTION_LINE_OVERDRAW = 0;
+const PROJECTION_STROKE_PX = 1;
 const projectionViewportOffsetX = ref(0);
 const projectionViewportOffsetY = ref(0);
 
@@ -2221,9 +2423,15 @@ const handleScroll = (e: Event) => {
   updateProjectionViewportOffset();
 };
 
-const getProjectionHorizontalLineStyle = (y: number) => {
+const getProjectionHorizontalLineStyle = (y: number, alignEnd = false) => {
   return {
-    top: `${projectionViewportOffsetY.value + y * store.zoom}px`,
+    top: `${projectionViewportOffsetY.value + y * store.zoom - (alignEnd ? PROJECTION_STROKE_PX : 0)}px`,
+  };
+};
+
+const getProjectionVerticalLineStyle = (x: number, alignEnd = false) => {
+  return {
+    left: `${projectionViewportOffsetX.value + x * store.zoom - (alignEnd ? PROJECTION_STROKE_PX : 0)}px`,
   };
 };
 
@@ -2439,6 +2647,7 @@ onUnmounted(() => {
     "designer:set-hand-pan-mode",
     handleSetHandPanModeEvent as EventListener,
   );
+  window.removeEventListener("mousedown", handleOutsideClickDeselect, true);
   window.removeEventListener("mousedown", handleGlobalHandPanMouseDown, true);
   window.removeEventListener("click", handleGlobalHandPanClickCapture, true);
   scrollContainer.value?.removeEventListener("wheel", handleZoomWheel);
@@ -2854,6 +3063,9 @@ const rulerRanges = computed(() => {
                       e.target === e.currentTarget
                     ) {
                       store.selectGuide(null);
+                      // Clicking the canvas background (not on any element)
+                      // should deselect all elements.
+                      store.clearSelection();
                     }
                   }
                 "
@@ -2973,26 +3185,40 @@ const rulerRanges = computed(() => {
                   <div
                     v-if="store.highlightedEdge === 'top'"
                     class="absolute left-0 right-0 border-t theme-border"
-                    :style="{ top: `${projectionViewportOffsetY + (store.pageSpacingY || 0) * store.zoom}px` }"
+                    :style="
+                      getProjectionHorizontalLineStyle(
+                        store.pageSpacingY || 0,
+                      )
+                    "
                   ></div>
                   <div
                     v-else-if="store.highlightedEdge === 'bottom'"
                     class="absolute left-0 right-0 border-t theme-border"
-                    :style="{
-                      top: `${projectionViewportOffsetY + (store.canvasSize.height - (store.pageSpacingY || 0)) * store.zoom}px`,
-                    }"
+                    :style="
+                      getProjectionHorizontalLineStyle(
+                        store.canvasSize.height - (store.pageSpacingY || 0),
+                        true,
+                      )
+                    "
                   ></div>
                   <div
                     v-else-if="store.highlightedEdge === 'left'"
                     class="absolute top-0 bottom-0 border-l theme-border"
-                    :style="{ left: `${projectionViewportOffsetX + (store.pageSpacingX || 0) * store.zoom}px` }"
+                    :style="
+                      getProjectionVerticalLineStyle(
+                        store.pageSpacingX || 0,
+                      )
+                    "
                   ></div>
                   <div
                     v-else-if="store.highlightedEdge === 'right'"
                     class="absolute top-0 bottom-0 border-l theme-border"
-                    :style="{
-                      left: `${projectionViewportOffsetX + (store.canvasSize.width - (store.pageSpacingX || 0)) * store.zoom}px`,
-                    }"
+                    :style="
+                      getProjectionVerticalLineStyle(
+                        store.canvasSize.width - (store.pageSpacingX || 0),
+                        true,
+                      )
+                    "
                   ></div>
                 </div>
               </div>
@@ -3021,7 +3247,10 @@ const rulerRanges = computed(() => {
                   <div
                     class="absolute left-0 right-0 border-t border-dashed theme-border"
                     :style="
-                      getProjectionHorizontalLineStyle(dragProjection.maxY)
+                      getProjectionHorizontalLineStyle(
+                        dragProjection.maxY,
+                        true,
+                      )
                     "
                   >
                     <div
@@ -3035,9 +3264,7 @@ const rulerRanges = computed(() => {
                   <!-- Left Line -->
                   <div
                     class="absolute top-0 bottom-0 border-l border-dashed theme-border"
-                    :style="{
-                      left: `${projectionViewportOffsetX + dragProjection.minX * store.zoom}px`,
-                    }"
+                    :style="getProjectionVerticalLineStyle(dragProjection.minX)"
                   >
                     <div
                       class="absolute -left-2 transform -translate-x-full theme-bg text-white text-xs px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap"
@@ -3050,9 +3277,12 @@ const rulerRanges = computed(() => {
                   <!-- Right Line -->
                   <div
                     class="absolute top-0 bottom-0 border-l border-dashed theme-border"
-                    :style="{
-                      left: `${projectionViewportOffsetX + dragProjection.maxX * store.zoom}px`,
-                    }"
+                    :style="
+                      getProjectionVerticalLineStyle(
+                        dragProjection.maxX,
+                        true,
+                      )
+                    "
                   >
                     <div
                       class="absolute -left-2 transform -translate-x-full theme-bg text-white text-xs px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap"
@@ -3084,11 +3314,11 @@ const rulerRanges = computed(() => {
             @mousedown="(e) => handleFloatingPanelMouseDown('minimap', e)"
           >
             <div
-              class="flex shrink-0 items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 cursor-move select-none rounded-t"
+              class="flex shrink-0 items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 cursor-move select-none rounded-t"
               data-floating-panel-drag-handle="true"
             >
               <h3
-                class="text-sm font-semibold text-gray-700 dark:text-gray-200 m-0"
+                class="text-sm font-semibold text-gray-900 dark:text-gray-100 m-0"
               >
                 {{ t("editor.showMinimap") }}
               </h3>
@@ -3100,7 +3330,7 @@ const rulerRanges = computed(() => {
               </button>
             </div>
 
-            <div class="min-h-0 flex-1 bg-gray-100 dark:bg-gray-800">
+            <div class="min-h-0 flex-1 bg-gray-100 dark:bg-gray-700">
               <MinimapPanel
                 :scroll-width="minimapScrollWidth"
                 :scroll-height="minimapScrollHeight"
@@ -3525,6 +3755,52 @@ const rulerRanges = computed(() => {
           </svg>
         </button>
       </div>
+      <div
+        v-show="store.showHistoryPanel"
+        data-floating-panel-surface="true"
+        data-floating-panel-key="history"
+        class="absolute pointer-events-none"
+        :style="[historyPanelStyle, { zIndex: getPanelZIndex('history') }]"
+      >
+        <div
+          class="relative h-full w-full pointer-events-auto rounded-t-lg overflow-hidden shadow-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+          @mousedown="(e) => handleFloatingPanelMouseDown('history', e)"
+        >
+          <HistoryPanel />
+        </div>
+        <button
+          type="button"
+          title="Resize panel"
+          class="absolute bottom-0.5 right-0.5 z-20 h-4 w-4 cursor-se-resize bg-transparent p-0 text-gray-400 pointer-events-auto hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400"
+          @mousedown.stop.prevent="(e) => startPanelResize('history', e)"
+        >
+          <svg
+            class="h-4 w-4"
+            viewBox="0 0 16 16"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M6.5 14L14 6.5"
+              stroke="currentColor"
+              stroke-width="1.4"
+              stroke-linecap="round"
+            />
+            <path
+              d="M3 14L14 3"
+              stroke="currentColor"
+              stroke-width="1.4"
+              stroke-linecap="round"
+            />
+            <path
+              d="M9.8 14L14 9.8"
+              stroke="currentColor"
+              stroke-width="1.4"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+      </div>
     </div>
 
     <InputModal
@@ -3570,6 +3846,5 @@ const rulerRanges = computed(() => {
       ref="modalContainer"
       class="print-designer-modals fixed inset-0 pointer-events-none z-[9999]"
     ></div>
-    <HistoryPanel :base-z-index="historyPanelBaseZIndex" />
   </div>
 </template>

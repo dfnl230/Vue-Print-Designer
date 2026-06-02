@@ -219,6 +219,7 @@ export default {
     copyPage: "複製頁",
     pastePage: "粘貼頁",
     deletePage: "刪除頁",
+    deletePageConfirm: "確定要刪除該頁嗎？此操作無法撤銷，頁面上的所有元素將一併刪除。",
     newText: "新文本",
     headerLabel: "頁眉",
     footerLabel: "頁腳",

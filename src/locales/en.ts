@@ -221,6 +221,7 @@ export default {
     copyPage: "Copy Page",
     pastePage: "Paste Page",
     deletePage: "Delete Page",
+    deletePageConfirm: "Are you sure you want to delete this page? This action cannot be undone and all elements on the page will be removed.",
     newText: "New Text",
     headerLabel: "Header",
     footerLabel: "Footer",

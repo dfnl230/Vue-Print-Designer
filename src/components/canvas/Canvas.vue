@@ -23,6 +23,7 @@ import LineElement from "../elements/LineElement.vue";
 import RectElement from "../elements/RectElement.vue";
 import CircleElement from "../elements/CircleElement.vue";
 import InputModal from "../common/InputModal.vue";
+import { uiConfirm } from "@/utils/confirm";
 import AddIcon from "~icons/material-symbols/add";
 import DeleteIcon from "~icons/material-symbols/delete";
 import CopyIcon from "~icons/material-symbols/content-copy";
@@ -1352,7 +1353,15 @@ const getGlobalElements = () => {
           class="w-8 h-8 flex items-center justify-center bg-white border border-gray-200 rounded shadow hover:bg-red-50 hover:text-red-600 text-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           :title="t('canvas.deletePage')"
           :disabled="!isTemplateEditable"
-          @click="store.removePage(index)"
+          @click="
+            uiConfirm
+              .show(t('canvas.deletePageConfirm'), {
+                title: t('canvas.deletePage'),
+                confirmText: t('common.confirm'),
+                cancelText: t('common.cancel'),
+              })
+              .then((ok) => ok && store.removePage(index))
+          "
         >
           <DeleteIcon />
         </button>

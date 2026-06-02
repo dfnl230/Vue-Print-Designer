@@ -50,10 +50,10 @@ const MINIMAP_MAX_ELEMENT_Z_INDEX = MINIMAP_PAGE_NUMBER_Z_INDEX - 1;
 const VIEWPORT_STROKE_WIDTH = 2;
 
 const previewWidth = computed(() =>
-  Math.max(MIN_WIDTH, props.previewWidth ?? 180),
+  Math.ceil(Math.max(MIN_WIDTH, props.previewWidth ?? 180)),
 );
 const previewMaxHeight = computed(() =>
-  Math.max(80, props.previewMaxHeight ?? 300),
+  Math.ceil(Math.max(80, props.previewMaxHeight ?? 300)),
 );
 
 const ratio = computed(() => {
@@ -63,36 +63,34 @@ const ratio = computed(() => {
 });
 
 const height = computed(() => {
-  return props.scrollHeight * ratio.value;
+  return Math.ceil(props.scrollHeight * ratio.value);
 });
 
 const previewScale = computed(() => props.zoom * ratio.value);
 
 const contentHeight = computed(() =>
-  Math.max(height.value, previewMaxHeight.value),
+  Math.ceil(Math.max(height.value, previewMaxHeight.value)) + 2,
 );
 
 const viewportRect = computed(() => {
   const scaledWidth = props.scrollWidth * ratio.value;
   const scaledHeight = props.scrollHeight * ratio.value;
-  const left = Math.max(
-    0,
-    Math.min(scaledWidth, props.scrollLeft * ratio.value),
-  );
-  const top = Math.max(
-    0,
-    Math.min(scaledHeight, props.scrollTop * ratio.value),
-  );
-  const width = Math.max(
-    0,
-    Math.min(props.viewportWidth * ratio.value, scaledWidth - left),
-  );
-  const height = Math.max(
-    0,
-    Math.min(props.viewportHeight * ratio.value, scaledHeight - top),
-  );
+  const exactLeft = Math.max(0, Math.min(scaledWidth, props.scrollLeft * ratio.value));
+  const exactTop = Math.max(0, Math.min(scaledHeight, props.scrollTop * ratio.value));
+  const exactRight = Math.min(scaledWidth, exactLeft + props.viewportWidth * ratio.value);
+  const exactBottom = Math.min(scaledHeight, exactTop + props.viewportHeight * ratio.value);
 
-  return { left, top, width, height };
+  const left = Math.round(exactLeft);
+  const top = Math.round(exactTop);
+  const right = Math.round(exactRight);
+  const bot = Math.round(exactBottom);
+
+  return {
+    left,
+    top,
+    width: Math.max(0, right - left),
+    height: Math.max(0, bot - top)
+  };
 });
 
 const viewportStyle = computed(() => {
@@ -633,7 +631,7 @@ const handleMouseDown = (e: MouseEvent) => {
 <template>
   <div
     ref="scrollContainer"
-    class="bg-gray-100 dark:bg-gray-800 overflow-y-auto overflow-x-hidden box-content no-scrollbar"
+    class="bg-gray-100 dark:bg-gray-700 overflow-y-auto overflow-x-hidden box-content no-scrollbar"
     :style="{
       width: `${previewWidth}px`,
       height: `${previewMaxHeight}px`,
@@ -648,7 +646,7 @@ const handleMouseDown = (e: MouseEvent) => {
       @mousedown="handleMouseDown"
     >
       <!-- Background -->
-      <div class="absolute inset-0 bg-gray-100"></div>
+      <div class="absolute inset-0 bg-gray-100 dark:bg-gray-700"></div>
 
       <!-- Pages -->
       <div

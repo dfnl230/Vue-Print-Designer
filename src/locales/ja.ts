@@ -221,6 +221,7 @@ export default {
     copyPage: "ページをコピー",
     pastePage: "ページを貼り付け",
     deletePage: "ページを削除",
+    deletePageConfirm: "このページを削除しますか？この操作は元に戻せず、ページ上のすべての要素が削除されます。",
     newText: "新しいテキスト",
     headerLabel: "ヘッダー",
     footerLabel: "フッター",

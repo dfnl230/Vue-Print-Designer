@@ -8,6 +8,7 @@ import {
   isShadowDomContent,
   lockViewportScroll,
 } from "../dom";
+import { buildPdfFromJpegs } from "./pdfBuilder";
 import type {
   DesignerStore,
   PrepareEnvironmentFn,
@@ -825,7 +826,7 @@ export const createImageRenderer = (deps: ImageRendererDeps) => {
     }
   };
 
-  // 生成 jsPDF 文档对象，并按页写入截图图像。
+  // 生成 PDF 文档对象，并按页写入截图图像。
   const createPdfDocument = async (content: RenderContent) => {
     const startTime = performance.now();
     if (store.showRenderDebugLogs) {
@@ -863,29 +864,12 @@ export const createImageRenderer = (deps: ImageRendererDeps) => {
         console.log(`[Render Debug] PDF processContentForImage took ${(performance.now() - processStart).toFixed(2)}ms`); // 包括克隆DOM、清洗、等20ms以及处理分页的耗时
       }
 
-      const jsPdfModule = await import("jspdf");
-      const jsPDF =
-        (jsPdfModule as any)?.default ||
-        (jsPdfModule as any)?.jsPDF ||
-        jsPdfModule;
-      const pdf = new jsPDF({
-        orientation: width > height ? "l" : "p",
-        unit: "mm",
-        format: [widthMm, heightMm],
-        hotfixes: ["px_scaling"],
-      });
-
       const pageImages = await generatePageImages(container, width, height);
 
       const addImagesStart = performance.now();
-      for (let i = 0; i < pageImages.length; i++) {
-        if (i % 3 === 0) {
-          // 每添加几页主动释放主线程，防止 base64 解析引起长时间卡顿
-          await new Promise((resolve) => setTimeout(resolve, 0));
-        }
-        if (i > 0) pdf.addPage([widthMm, heightMm]);
-        pdf.addImage(pageImages[i], "JPEG", 0, 0, widthMm, heightMm);
-      }
+
+      const pdf = buildPdfFromJpegs(pageImages, widthMm, heightMm);
+
       if (store.showRenderDebugLogs) {
         console.log(`[Render Debug] addImage to PDF took ${(performance.now() - addImagesStart).toFixed(2)}ms`);
       }
