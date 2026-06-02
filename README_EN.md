@@ -4,7 +4,11 @@
 
 <h1 align="center">Vue Print Designer</h1>
 
+<p align="center"><b>Recent Update</b>&emsp;Removed 6 heavy third-party packages, first-load bundle size reduced by ~<b>65%</b>; render engine fully rewritten in-house, single-page render time reduced from ~<b>300 ms to 80 ms</b> (−73%); language support expanded 2 → <b>6</b>, auto-detected from the browser.</p>
+
 <p align="center">
+  <a href="https://gitee.com/theGreatOldFive/vue-print-designer/stargazers"><img src="https://gitee.com/theGreatOldFive/vue-print-designer/badge/star.svg?theme=flat" alt="Gitee stars"></a>
+  <a href="https://gitee.com/theGreatOldFive/vue-print-designer/members"><img src="https://gitee.com/theGreatOldFive/vue-print-designer/badge/fork.svg?theme=flat" alt="Gitee forks"></a>
   <a href="https://github.com/0ldFive/Vue-Print-Designer/stargazers"><img src="https://img.shields.io/github/stars/0ldFive/Vue-Print-Designer?style=flat-square&logo=github" alt="GitHub stars"></a>
   <a href="https://github.com/0ldFive/Vue-Print-Designer/network/members"><img src="https://img.shields.io/github/forks/0ldFive/Vue-Print-Designer?style=flat-square&logo=github" alt="GitHub forks"></a>
   <a href="https://www.npmjs.com/package/vue-print-designer"><img src="https://img.shields.io/npm/dm/vue-print-designer.svg?style=flat-square&logo=npm" alt="NPM Downloads"></a>
@@ -21,15 +25,16 @@ Vue Print Designer is a visual print designer for business forms, labels, receip
 
 <h2>LIVE DEMO: <a href="https://0ldfive.github.io/Vue-Print-Designer/" target="_blank" rel="noopener noreferrer">https://0ldfive.github.io/Vue-Print-Designer/</a></h2>
 
+
 ## UI Preview
 
 | Designer main view and canvas                                                                                                            | Print preview                                                                                                                       | Print parameter settings                                                                                                               |
 | ---------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/1.png" alt="Designer main view" width="240" /> | <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/2.png" alt="Print preview" width="240" /> | <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/3.png" alt="Print parameters" width="240" /> |
+| <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/1.png" alt="Designer main view" width="160" /> | <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/2.png" alt="Print preview" width="160" /> | <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/3.png" alt="Print parameters" width="160" /> |
 
 | System settings and preferences                                                                                                       | Shortcut reference                                                                                                              | Advanced table editing                                                                                                               |
 | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/4.png" alt="System settings" width="240" /> | <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/5.png" alt="Shortcuts" width="240" /> | <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/6.png" alt="Advanced table" width="240" /> |
+| <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/4.png" alt="System settings" width="160" /> | <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/5.png" alt="Shortcuts" width="160" /> | <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/6.png" alt="Advanced table" width="160" /> |
 
 ## Integration Example
 
@@ -37,7 +42,7 @@ To help developers get started quickly, we provide a complete integration exampl
 
 | Parameter Debugging                                                                                                                           | Designer                                                                                                                                      | Dark Mode                                                                                                                                     |
 | --------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/11.png" alt="Integration example 11" width="240" /> | <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/12.png" alt="Integration example 12" width="240" /> | <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/13.png" alt="Integration example 13" width="240" /> |
+| <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/11.png" alt="Integration example 11" width="160" /> | <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/12.png" alt="Integration example 12" width="160" /> | <img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/13.png" alt="Integration example 13" width="160" /> |
 
 - **Repository**: [https://github.com/0ldFive/vue-designer-sample](https://github.com/0ldFive/vue-designer-sample)
 - **Live Demo**: [https://0ldfive.github.io/vue-designer-sample/#/designer](https://0ldfive.github.io/vue-designer-sample/#/designer)
@@ -229,7 +234,7 @@ src/                      # Project source root
 
 ## i18n
 
-Built-in Chinese (zh) and English (en). The default follows browser language and can be switched by API.
+Built-in support for 6 languages: Simplified Chinese (zh), Traditional Chinese (zh-Hant), English (en), Japanese (ja), Korean (ko), and German (de). Automatically detected from browser language by default; can also be switched via API.
 
 ## License
 
