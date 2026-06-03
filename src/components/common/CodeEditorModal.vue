@@ -223,7 +223,6 @@ onUnmounted(() => {
             <Close class="w-4 h-4" />
           </button>
         </div>
-            class="flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-xs transition-colors"
         <!-- Content -->
         <div class="flex-1 overflow-hidden relative">
           <Editor
