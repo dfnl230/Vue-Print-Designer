@@ -532,6 +532,19 @@ class PrintDesignerElement extends HTMLElement {
   async getPreviewHtml(request: DesignerPreviewRequest = {}) {
     if (!this.printApi) return "";
     const stopProgress = this.bindProgressReporter("preview", request.onProgress);
+    const preparingMessage =
+      this.i18n?.global.t("statusBar.progress.preparing") || "Preparing";
+    const renderingMessage =
+      this.i18n?.global.t("statusBar.progress.rendering") || "Rendering";
+    let renderProgress = 35;
+    let renderTicker: number | ReturnType<typeof setInterval> | null = null;
+    const stopRenderTicker = () => {
+      if (renderTicker !== null) {
+        window.clearInterval(renderTicker);
+        renderTicker = null;
+      }
+    };
+
     try {
       this.emitProgress(
         "preview",
@@ -539,7 +552,7 @@ class PrintDesignerElement extends HTMLElement {
           phase: "preview",
           current: 0,
           total: 100,
-          message: this.i18n?.global.t("statusBar.progress.preparing") || "Preparing",
+          message: preparingMessage,
         },
         request.onProgress,
       );
@@ -547,20 +560,57 @@ class PrintDesignerElement extends HTMLElement {
         "preview",
         {
           phase: "preview",
-          current: 35,
+          current: renderProgress,
           total: 100,
-          message: this.i18n?.global.t("statusBar.progress.rendering") || "Rendering",
+          message: renderingMessage,
         },
         request.onProgress,
       );
+
+      renderTicker = window.setInterval(() => {
+        if (renderProgress >= 94) {
+          stopRenderTicker();
+          return;
+        }
+
+        const step = renderProgress < 70 ? 4 : renderProgress < 86 ? 2 : 1;
+        renderProgress = Math.min(94, renderProgress + step);
+        this.emitProgress(
+          "preview",
+          {
+            phase: "preview",
+            current: renderProgress,
+            total: 100,
+            message: renderingMessage,
+          },
+          request.onProgress,
+        );
+      }, 140);
+
       const html = await this.printApi.getPrintHtml(this.getPrintPages());
+      stopRenderTicker();
+
+      if (renderProgress < 98) {
+        renderProgress = 98;
+        this.emitProgress(
+          "preview",
+          {
+            phase: "preview",
+            current: renderProgress,
+            total: 100,
+            message: renderingMessage,
+          },
+          request.onProgress,
+        );
+      }
+
       this.emitProgress(
         "preview",
         {
           phase: "preview",
           current: 100,
           total: 100,
-          message: this.i18n?.global.t("statusBar.progress.rendering") || "Rendering",
+          message: renderingMessage,
         },
         request.onProgress,
       );
@@ -573,6 +623,7 @@ class PrintDesignerElement extends HTMLElement {
       );
       throw error;
     } finally {
+      stopRenderTicker();
       stopProgress();
     }
   }
