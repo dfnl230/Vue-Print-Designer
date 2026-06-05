@@ -125,25 +125,25 @@ class ConfirmManager {
       cancelBtn.style.display = "inline-flex";
       cancelBtn.style.alignItems = "center";
       cancelBtn.style.gap = "6px";
+      cancelBtn.style.whiteSpace = "nowrap";
       cancelBtn.innerHTML = `
         ${confirmCloseIconSvg}
         <span>${options.cancelText || "取消"}</span>
       `;
-      cancelBtn.style.padding = "6px 12px"; // px-4 py-2
-      cancelBtn.style.fontSize = "0.8125rem"; // text-sm
-      cancelBtn.style.fontWeight = "500"; // font-medium
-      cancelBtn.style.border = "none";
-      cancelBtn.style.borderRadius = "0.375rem"; // rounded-md
+      cancelBtn.style.padding = "6px 12px";
+      cancelBtn.style.fontSize = "0.75rem";
+      cancelBtn.style.border = `1px solid ${isDark ? "#4b5563" : "#d1d5db"}`;
+      cancelBtn.style.borderRadius = "0.25rem";
       cancelBtn.style.cursor = "pointer";
-      cancelBtn.style.transition = "background-color 0.15s ease";
-      cancelBtn.style.backgroundColor = isDark ? "#1f2937" : "#f3f4f6"; // dark:bg-gray-800 / bg-gray-100
-      cancelBtn.style.color = isDark ? "#d1d5db" : "#374151"; // dark:text-gray-300 / text-gray-700
+      cancelBtn.style.transition = "background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease";
+      cancelBtn.style.backgroundColor = "transparent";
+      cancelBtn.style.color = isDark ? "#d1d5db" : "#374151";
 
       cancelBtn.onmouseover = () => {
-        cancelBtn.style.backgroundColor = isDark ? "#374151" : "#e5e7eb";
-      }; // dark:hover:bg-gray-700 / hover:bg-gray-200
+        cancelBtn.style.backgroundColor = isDark ? "#374151" : "#f3f4f6";
+      };
       cancelBtn.onmouseout = () => {
-        cancelBtn.style.backgroundColor = isDark ? "#1f2937" : "#f3f4f6";
+        cancelBtn.style.backgroundColor = "transparent";
       };
 
       // Confirm Button
@@ -163,12 +163,12 @@ class ConfirmManager {
       confirmBtn.style.borderRadius = "0.375rem";
       confirmBtn.style.cursor = "pointer";
       confirmBtn.style.transition = "background-color 0.15s ease";
-      confirmBtn.style.backgroundColor = isDark ? "#3b82f6" : "#2563eb"; // dark:bg-blue-500 / bg-blue-600
+      confirmBtn.style.backgroundColor = isDark ? "#3b82f6" : "#2563eb";
       confirmBtn.style.color = "#ffffff";
 
       confirmBtn.onmouseover = () => {
         confirmBtn.style.backgroundColor = isDark ? "#2563eb" : "#1d4ed8";
-      }; // dark:hover:bg-blue-600 / hover:bg-blue-700
+      };
       confirmBtn.onmouseout = () => {
         confirmBtn.style.backgroundColor = isDark ? "#3b82f6" : "#2563eb";
       };

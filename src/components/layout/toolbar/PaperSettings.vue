@@ -1583,7 +1583,7 @@ onUnmounted(() => {
           >
             <button
               @click="showHeaderFooterLineSettings = false"
-              class="whitespace-nowrap px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-100 text-xs text-gray-700 flex items-center gap-1.5 transition-colors"
+              class="whitespace-nowrap px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-xs text-gray-700 dark:text-gray-300 flex items-center gap-1.5 transition-colors"
             >
               <X class="w-4 h-4 shrink-0" />
               {{ t("common.close") }}
@@ -1757,7 +1757,7 @@ onUnmounted(() => {
           >
             <button
               @click="showAdvancedSettings = false"
-              class="whitespace-nowrap px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-100 text-xs text-gray-700 flex items-center gap-1.5 transition-colors"
+              class="whitespace-nowrap px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-xs text-gray-700 dark:text-gray-300 flex items-center gap-1.5 transition-colors"
             >
               <X class="w-4 h-4 shrink-0" />
               {{ t("common.close") }}

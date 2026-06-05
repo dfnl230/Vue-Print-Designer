@@ -2422,7 +2422,7 @@ export const elementPropertiesSchema: ElementPropertiesSchema = {
             }}</label>
             <input
               v-model="editForm.header"
-              class="border border-gray-300 rounded px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
+              class="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded px-2 py-1 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
               :placeholder="t('properties.label.headerNamePlaceholder')"
               @keydown.enter="saveHeaderEdit"
               autofocus
@@ -2434,7 +2434,7 @@ export const elementPropertiesSchema: ElementPropertiesSchema = {
             }}</label>
             <input
               v-model="editForm.field"
-              class="border border-gray-300 rounded px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
+              class="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded px-2 py-1 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
               :placeholder="t('properties.label.fieldKey')"
               @keydown.enter="saveHeaderEdit"
             />
@@ -2448,7 +2448,7 @@ export const elementPropertiesSchema: ElementPropertiesSchema = {
             }}</label>
             <input
               v-model="editForm.value"
-              class="border border-gray-300 rounded px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
+              class="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded px-2 py-1 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
               :placeholder="t('properties.label.displayTextPlaceholder')"
               @keydown.enter="saveHeaderEdit"
               autofocus
@@ -2460,7 +2460,7 @@ export const elementPropertiesSchema: ElementPropertiesSchema = {
             }}</label>
             <input
               v-model="editForm.variable"
-              class="border border-gray-300 rounded px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
+              class="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded px-2 py-1 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
               :placeholder="t('properties.label.dataFieldPlaceholder')"
               @keydown.enter="saveHeaderEdit"
             />
@@ -2470,7 +2470,7 @@ export const elementPropertiesSchema: ElementPropertiesSchema = {
         <div class="flex justify-end gap-2 mt-1">
           <button
             @click="closeEditForm"
-            class="px-3 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded"
+            class="whitespace-nowrap px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-xs text-gray-700 dark:text-gray-300 flex items-center gap-1.5 transition-colors"
           >
             {{ t("common.cancel") }}
           </button>

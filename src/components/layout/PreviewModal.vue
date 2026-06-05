@@ -322,7 +322,7 @@ onUnmounted(() => {
           <button
             v-if="store.showDeveloperMode"
             @click="handleViewImageBlob"
-            class="px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-100 text-xs text-gray-700 flex items-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-100"
+            class="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-xs text-gray-700 dark:text-gray-300 flex items-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-gray-700"
           >
             <DataObject class="w-4 h-4 shrink-0" />
             {{ t("editor.viewImageBlob") }}
@@ -330,7 +330,7 @@ onUnmounted(() => {
           <button
             v-if="store.showDeveloperMode"
             @click="handleViewPdfBlob"
-            class="px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-100 text-xs text-gray-700 flex items-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-100"
+            class="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-xs text-gray-700 dark:text-gray-300 flex items-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-gray-700"
           >
             <DataObject class="w-4 h-4 shrink-0" />
             {{ t("editor.viewPdfBlob") }}
@@ -338,14 +338,14 @@ onUnmounted(() => {
           <button
             v-if="store.showDeveloperMode"
             @click="handleViewJson"
-            class="px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-100 text-xs text-gray-700 flex items-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-100"
+            class="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-xs text-gray-700 dark:text-gray-300 flex items-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-gray-700"
           >
             <DataObject class="w-4 h-4 shrink-0" />
             {{ t("editor.viewJson") }}
           </button>
           <button
             @click="handleClose"
-            class="whitespace-nowrap px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-100 text-xs text-gray-700 flex items-center gap-1.5 transition-colors"
+            class="whitespace-nowrap px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-xs text-gray-700 dark:text-gray-300 flex items-center gap-1.5 transition-colors"
           >
             <Close class="w-4 h-4 shrink-0" />
             {{ t("common.close") }}

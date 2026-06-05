@@ -18,7 +18,7 @@
               />
             </div>
             <span
-              class="text-[10px] text-blue-900 font-semibold select-none whitespace-nowrap"
+              class="rounded px-1 text-[10px] font-semibold tabular-nums text-blue-900 dark:bg-gray-950/70 dark:text-white select-none whitespace-nowrap"
               style="letter-spacing: 0.3px;"
             >{{ progressPercent }}%</span>
           </div>
