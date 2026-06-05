@@ -262,7 +262,7 @@ onUnmounted(() => {
           </button>
           <button
             @click="handleClose"
-            class="flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 border border-red-200 bg-red-50 text-red-600 rounded hover:bg-red-100 text-xs transition-colors"
+            class="whitespace-nowrap px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-100 text-xs text-gray-700 flex items-center gap-1.5 transition-colors"
           >
             <Close class="w-4 h-4" />
             {{ t("common.close") }}
