@@ -358,18 +358,23 @@ export const usePrint = () => {
           return;
         }
 
-        popup.addEventListener("beforeunload", () => {
+        let blobRevoked = false;
+        const revokeBlob = () => {
+          if (blobRevoked) return;
+          blobRevoked = true;
           URL.revokeObjectURL(blobUrl);
-        });
+        };
+
+        popup.addEventListener("afterprint", revokeBlob);
+        popup.addEventListener("beforeunload", revokeBlob);
 
         popup.onload = () => {
           try {
             popup.focus();
             popup.print();
           } finally {
-            setTimeout(() => {
-              URL.revokeObjectURL(blobUrl);
-            }, 1000);
+            // Fallback: in case neither afterprint nor beforeunload fires.
+            setTimeout(revokeBlob, 60_000);
           }
         };
         return { status: "success", mode: "browser" };
@@ -380,28 +385,41 @@ export const usePrint = () => {
         iframe.style.position = "fixed";
         iframe.style.left = "0";
         iframe.style.top = "0";
-        iframe.style.width = "0px";
-        iframe.style.height = "0px";
+        iframe.style.width = "100%";
+        iframe.style.height = "100%";
         iframe.style.border = "0";
         iframe.style.visibility = "hidden";
+        iframe.style.opacity = "0";
+        iframe.style.pointerEvents = "none";
         iframe.src = blobUrl;
         document.body.appendChild(iframe);
+
+        let cleaned = false;
+        const cleanup = () => {
+          if (cleaned) return;
+          cleaned = true;
+          if (iframe.parentNode) {
+            iframe.parentNode.removeChild(iframe);
+          }
+          URL.revokeObjectURL(blobUrl);
+        };
 
         iframe.onload = () => {
           const win = iframe.contentWindow;
           if (win) {
+            // Clean up iframe after the user finishes or cancels printing.
+            win.addEventListener("afterprint", cleanup);
             win.focus();
             setTimeout(() => {
               win.print();
-            }, 100);
+            }, 200);
           }
-          setTimeout(() => {
-            if (iframe.parentNode) {
-              iframe.parentNode.removeChild(iframe);
-            }
-            URL.revokeObjectURL(blobUrl);
-            resolve();
-          }, 1000);
+          // Fallback: in case afterprint never fires (some browsers).
+          setTimeout(cleanup, 60_000);
+
+          // Resolve immediately so the progress indicator is dismissed
+          // without waiting for the print dialog to close.
+          resolve();
         };
       });
       return { status: "success", mode: "browser" };
