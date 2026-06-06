@@ -682,10 +682,10 @@ onUnmounted(() => {
       :style="{ left: `${menuX}px`, top: `${menuY}px` }"
     >
       <div
-        class="bg-white border border-gray-200 shadow-xl rounded-md min-w-[160px] py-1"
+        class="designer-context-menu bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl rounded-md min-w-[160px] py-1 text-gray-700 dark:text-gray-200"
       >
         <button
-          class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 flex items-center gap-2"
+          class="w-full text-left px-3 py-2 text-sm hover:!bg-gray-50 dark:hover:!bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-2"
           :disabled="
             (store.selectedElementIds.length === 0 && !store.selectedGuideId) ||
             store.selectedElement?.locked
@@ -717,7 +717,7 @@ onUnmounted(() => {
           }}</span>
         </button>
         <button
-          class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 flex items-center gap-2"
+          class="w-full text-left px-3 py-2 text-sm hover:!bg-gray-50 dark:hover:!bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-2"
           :disabled="!store.selectedElementId || store.selectedElement?.locked"
           @click="
             () => {
@@ -733,7 +733,7 @@ onUnmounted(() => {
           }}</span>
         </button>
         <button
-          class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 flex items-center gap-2"
+          class="w-full text-left px-3 py-2 text-sm hover:!bg-gray-50 dark:hover:!bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-2"
           :disabled="!store.selectedElementId || store.selectedElement?.locked"
           @click="
             () => {
@@ -749,7 +749,7 @@ onUnmounted(() => {
           }}</span>
         </button>
         <button
-          class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 flex items-center gap-2"
+          class="w-full text-left px-3 py-2 text-sm hover:!bg-gray-50 dark:hover:!bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-2"
           :disabled="store.clipboard.length === 0"
           @click="
             () => {
@@ -767,7 +767,7 @@ onUnmounted(() => {
         <template v-if="showTableCellActions">
           <div class="relative group">
             <button
-              class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400 flex items-center gap-2"
+              class="w-full text-left px-3 py-2 text-sm hover:!bg-gray-50 dark:hover:!bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400 flex items-center gap-2"
               :disabled="!canInsertIntoSelectedTableCell"
             >
               <ImageIcon class="w-4 h-4" />
@@ -776,10 +776,10 @@ onUnmounted(() => {
             </button>
             <div
               v-if="canInsertIntoSelectedTableCell"
-              class="absolute left-full top-0 z-10 ml-1 hidden min-w-[140px] rounded-md border border-gray-200 bg-white py-1 shadow-xl group-hover:block"
+              class="absolute left-full top-0 z-10 ml-1 hidden min-w-[140px] rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 py-1 shadow-xl group-hover:block before:pointer-events-auto before:absolute before:-left-1 before:top-0 before:h-full before:w-1 before:content-['']"
             >
               <button
-                class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
+                class="w-full text-left px-3 py-2 text-sm hover:!bg-gray-50 dark:hover:!bg-gray-700 transition-colors flex items-center gap-2"
                 @click="
                   () =>
                     insertStandardElementIntoSelectedTableCell(
@@ -791,7 +791,7 @@ onUnmounted(() => {
                 <span class="flex-1">{{ t("elementsPanel.image") }}</span>
               </button>
               <button
-                class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
+                class="w-full text-left px-3 py-2 text-sm hover:!bg-gray-50 dark:hover:!bg-gray-700 transition-colors flex items-center gap-2"
                 @click="
                   () =>
                     insertStandardElementIntoSelectedTableCell(
@@ -803,7 +803,7 @@ onUnmounted(() => {
                 <span class="flex-1">{{ t("elementsPanel.qrcode") }}</span>
               </button>
               <button
-                class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
+                class="w-full text-left px-3 py-2 text-sm hover:!bg-gray-50 dark:hover:!bg-gray-700 transition-colors flex items-center gap-2"
                 @click="
                   () =>
                     insertStandardElementIntoSelectedTableCell(
@@ -817,7 +817,7 @@ onUnmounted(() => {
             </div>
           </div>
           <button
-            class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400 flex items-center gap-2"
+            class="w-full text-left px-3 py-2 text-sm hover:!bg-gray-50 dark:hover:!bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400 flex items-center gap-2"
             :disabled="!canMergeSelectedTableCells"
             @click="
               () => {
@@ -830,7 +830,7 @@ onUnmounted(() => {
             <span class="flex-1">{{ t("editor.mergeCells") }}</span>
           </button>
           <button
-            class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400 flex items-center gap-2"
+            class="w-full text-left px-3 py-2 text-sm hover:!bg-gray-50 dark:hover:!bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400 flex items-center gap-2"
             :disabled="!canSplitSelectedTableCell"
             @click="
               () => {
@@ -843,9 +843,9 @@ onUnmounted(() => {
             <span class="flex-1">{{ t("editor.splitCells") }}</span>
           </button>
         </template>
-        <div class="border-t border-gray-200 my-1"></div>
+        <div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
         <button
-          class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400 flex items-center gap-2"
+          class="w-full text-left px-3 py-2 text-sm hover:!bg-gray-50 dark:hover:!bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400 flex items-center gap-2"
           :disabled="!canBringToFront"
           @click="() => handleLayerMove('front')"
         >
@@ -853,7 +853,7 @@ onUnmounted(() => {
           <span class="flex-1">{{ t("properties.action.bringToFront") }}</span>
         </button>
         <button
-          class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400 flex items-center gap-2"
+          class="w-full text-left px-3 py-2 text-sm hover:!bg-gray-50 dark:hover:!bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400 flex items-center gap-2"
           :disabled="!canSendToBack"
           @click="() => handleLayerMove('back')"
         >
@@ -861,7 +861,7 @@ onUnmounted(() => {
           <span class="flex-1">{{ t("properties.action.sendToBack") }}</span>
         </button>
         <button
-          class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400 flex items-center gap-2"
+          class="w-full text-left px-3 py-2 text-sm hover:!bg-gray-50 dark:hover:!bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400 flex items-center gap-2"
           :disabled="!canMoveLayerUp"
           @click="() => handleLayerMove('forward')"
         >
@@ -869,7 +869,7 @@ onUnmounted(() => {
           <span class="flex-1">{{ t("properties.action.moveUp") }}</span>
         </button>
         <button
-          class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400 flex items-center gap-2"
+          class="w-full text-left px-3 py-2 text-sm hover:!bg-gray-50 dark:hover:!bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400 flex items-center gap-2"
           :disabled="!canMoveLayerDown"
           @click="() => handleLayerMove('backward')"
         >
@@ -877,7 +877,7 @@ onUnmounted(() => {
           <span class="flex-1">{{ t("properties.action.moveDown") }}</span>
         </button>
         <button
-          class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 flex items-center gap-2"
+          class="w-full text-left px-3 py-2 text-sm hover:!bg-gray-50 dark:hover:!bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-2"
           :disabled="store.selectedElementIds.length === 0"
           @click="
             () => {
@@ -899,9 +899,9 @@ onUnmounted(() => {
             formatShortcut(["Ctrl", "L"])
           }}</span>
         </button>
-        <div class="border-t border-gray-200 my-1"></div>
+        <div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
         <button
-          class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
+          class="w-full text-left px-3 py-2 text-sm hover:!bg-gray-50 dark:hover:!bg-gray-700 transition-colors flex items-center gap-2"
           @click="
             store.undo();
             showMenu = false;
@@ -914,7 +914,7 @@ onUnmounted(() => {
           }}</span>
         </button>
         <button
-          class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
+          class="w-full text-left px-3 py-2 text-sm hover:!bg-gray-50 dark:hover:!bg-gray-700 transition-colors flex items-center gap-2"
           @click="
             store.redo();
             showMenu = false;
