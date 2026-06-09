@@ -942,6 +942,11 @@ const setNextAlignmentCycleStep = (
 };
 
 const handleAlignmentClick = (type: AlignmentType) => {
+  if (store.selectedElementIds.length > 1) {
+    store.alignSelectedElements(type);
+    return;
+  }
+
   if (hasSelectedTableCells.value) {
     if (isHorizontalAlignment(type)) {
       updateToolbarTextStyle({

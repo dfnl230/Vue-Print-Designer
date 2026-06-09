@@ -14,7 +14,7 @@ const { t } = useI18n();
 const pageText = computed(() => {
   const current = props.pageIndex + 1;
   const total = props.totalPages || 1;
-  const format = props.element.format || "1/Total";
+  const format = props.element.format || "1";
 
   switch (format) {
     case "1":
@@ -260,6 +260,8 @@ export const elementPropertiesSchema: ElementPropertiesSchema = {
   <div
     class="w-full h-full overflow-hidden"
     data-print-type="page-number"
+    :data-page-format="element.format || '1'"
+    :data-page-template="pageText"
     :style="{
       fontSize: `${element.style.fontSize}px`,
       fontFamily: element.style.fontFamily,

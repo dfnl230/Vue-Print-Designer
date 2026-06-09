@@ -110,6 +110,107 @@ const PRINT_CSS_PROPS = [
   "fill", "stroke", "stroke-width"
 ];
 
+const DEFAULT_PRINT_CSS_VALUES: Record<string, string> = {
+  "position": "static",
+  "top": "auto",
+  "right": "auto",
+  "bottom": "auto",
+  "left": "auto",
+  "z-index": "auto",
+  "float": "none",
+  "clear": "none",
+  "max-width": "none",
+  "max-height": "none",
+  "min-width": "0px",
+  "min-height": "0px",
+  "box-sizing": "content-box",
+  "margin-top": "0px",
+  "margin-right": "0px",
+  "margin-bottom": "0px",
+  "margin-left": "0px",
+  "padding-top": "0px",
+  "padding-right": "0px",
+  "padding-bottom": "0px",
+  "padding-left": "0px",
+  "flex-direction": "row",
+  "justify-content": "normal",
+  "align-items": "normal",
+  "align-content": "normal",
+  "align-self": "auto",
+  "flex-wrap": "nowrap",
+  "flex-grow": "0",
+  "flex-shrink": "1",
+  "flex-basis": "auto",
+  "grid-template-columns": "none",
+  "grid-template-rows": "none",
+  "grid-column": "auto",
+  "grid-row": "auto",
+  "gap": "normal",
+  "background-color": "rgba(0, 0, 0, 0)",
+  "background-image": "none",
+  "background-size": "auto",
+  "background-position": "0% 0%",
+  "background-repeat": "repeat",
+  "font-weight": "400",
+  "font-style": "normal",
+  "text-align": "start",
+  "text-decoration": "none",
+  "text-transform": "none",
+  "direction": "ltr",
+  "letter-spacing": "normal",
+  "word-spacing": "0px",
+  "white-space": "normal",
+  "word-break": "normal",
+  "word-wrap": "normal",
+  "text-overflow": "clip",
+  "border-top-width": "0px",
+  "border-right-width": "0px",
+  "border-bottom-width": "0px",
+  "border-left-width": "0px",
+  "border-top-style": "none",
+  "border-right-style": "none",
+  "border-bottom-style": "none",
+  "border-left-style": "none",
+  "border-top-left-radius": "0px",
+  "border-top-right-radius": "0px",
+  "border-bottom-left-radius": "0px",
+  "border-bottom-right-radius": "0px",
+  "box-shadow": "none",
+  "opacity": "1",
+  "transform": "none",
+  "visibility": "visible",
+  "overflow": "visible",
+  "clip-path": "none",
+  "table-layout": "auto",
+  "border-collapse": "separate",
+  "border-spacing": "0px",
+  "empty-cells": "show",
+  "vertical-align": "baseline",
+  "object-fit": "fill",
+  "object-position": "50% 50%",
+  "stroke": "none",
+  "stroke-width": "1px",
+};
+
+const isDefaultPrintCssValue = (prop: string, value: string) => {
+  return DEFAULT_PRINT_CSS_VALUES[prop] === value;
+};
+
+const serializeComputedPrintStyle = (computed: CSSStyleDeclaration) => {
+  const rules: string[] = [];
+
+  for (const prop of PRINT_CSS_PROPS) {
+    const val = computed.getPropertyValue(prop);
+    if (!val) continue;
+    if (isDefaultPrintCssValue(prop, val)) continue;
+
+    const priority = computed.getPropertyPriority(prop);
+    rules.push(`${prop}: ${val}${priority ? " !important" : ""}`);
+  }
+
+  return rules.join("; ");
+};
+
 /**
  * 跨页共享的路径感知样式缓存。
  * 多页同模板文档中，第 2+ 页与第 1 页结构相同，绝大多数元素可直接命中缓存，
@@ -164,21 +265,7 @@ export const cloneElementWithStyles = (
       let cssText = styleValues.get(pathId);
       if (cssText === undefined) {
         const computed = getComputedStyleFn(source);
-        cssText = computed.cssText;
-        if (!cssText) {
-          const len = PRINT_CSS_PROPS.length;
-          const rules: string[] = [];
-          for (let i = 0; i < len; i++) {
-            const prop = PRINT_CSS_PROPS[i];
-            const val = computed.getPropertyValue(prop);
-            // 仅剔除绝对空值，保留明确设置的默认值以覆盖外部可能存在的全局样式
-            if (val) {
-              const priority = computed.getPropertyPriority(prop);
-              rules.push(`${prop}: ${val}${priority ? " !important" : ""}`);
-            }
-          }
-          cssText = rules.join("; ");
-        }
+        cssText = serializeComputedPrintStyle(computed);
         styleValues.set(pathId, cssText);
       }
 
@@ -229,7 +316,7 @@ export const deduplicateInlineStyles = (root: HTMLElement): void => {
     }
 
     el.removeAttribute("style");
-    el.className = cls;
+    el.classList.add(cls);
   }
 
   if (rules.length === 0) return;

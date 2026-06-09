@@ -579,8 +579,84 @@ export const guideActions = {
 
         return null;
       };
+      let handledAsGroupAlignment = false;
 
-      if (normalElements.length === 1) {
+      if (elements.length > 1) {
+        const minX = Math.min(...elements.map((e) => e.x));
+        const maxX = Math.max(...elements.map((e) => e.x + e.width));
+        const minY = Math.min(...elements.map((e) => e.y));
+        const maxY = Math.max(...elements.map((e) => e.y + e.height));
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+        const normalVerticalAreas = normalElements.map((el) =>
+          getVerticalAlignmentArea(el),
+        );
+        const sharedVerticalArea =
+          normalElements.length === elements.length &&
+          normalVerticalAreas[0] &&
+          normalVerticalAreas.every(
+            (area) =>
+              area &&
+              area.y === normalVerticalAreas[0]!.y &&
+              area.height === normalVerticalAreas[0]!.height,
+          )
+            ? normalVerticalAreas[0]
+            : null;
+        const verticalTargetArea = sharedVerticalArea || {
+          y: contentY,
+          height: contentH,
+        };
+        let offsetX = 0;
+        let offsetY = 0;
+
+        switch (type) {
+          case "left":
+            offsetX = contentX - minX;
+            break;
+          case "center":
+            offsetX = contentX + contentW / 2 - centerX;
+            break;
+          case "right":
+            offsetX = contentX + contentW - maxX;
+            break;
+          case "top":
+            offsetY = verticalTargetArea.y - minY;
+            break;
+          case "middle":
+            offsetY = verticalTargetArea.y + verticalTargetArea.height / 2 - centerY;
+            break;
+          case "bottom":
+            offsetY = verticalTargetArea.y + verticalTargetArea.height - maxY;
+            break;
+        }
+
+        const embeddedBoundsById = new Map(
+          embeddedElements.map((item) => [item.element.id, item.bounds]),
+        );
+
+        elements.forEach((el) => {
+          const targetX = el.x + offsetX;
+          const targetY = el.y + offsetY;
+          const embeddedBounds = embeddedBoundsById.get(el.id);
+
+          if (embeddedBounds) {
+            const constrained = this.constrainElementPositionToBounds(
+              el,
+              targetX,
+              targetY,
+              embeddedBounds,
+            );
+            el.x = constrained.x;
+            el.y = constrained.y;
+            return;
+          }
+
+          el.x = targetX;
+          el.y = targetY;
+        });
+
+        handledAsGroupAlignment = true;
+      } else if (normalElements.length === 1) {
         // Align to canvas (respecting margins)
         const el = normalElements[0];
         const verticalArea = getVerticalAlignmentArea(el) || {
@@ -608,46 +684,9 @@ export const guideActions = {
             el.y = verticalArea.y + verticalArea.height - el.height;
             break;
         }
-      } else if (normalElements.length > 1) {
-        // Align relative to selection bounds
-        const minX = Math.min(...normalElements.map((e) => e.x));
-        const maxX = Math.max(...normalElements.map((e) => e.x + e.width));
-        const minY = Math.min(...normalElements.map((e) => e.y));
-        const maxY = Math.max(...normalElements.map((e) => e.y + e.height));
-        const centerX = (minX + maxX) / 2;
-        const centerY = (minY + maxY) / 2;
-
-        normalElements.forEach((el) => {
-          const verticalArea = getVerticalAlignmentArea(el);
-
-          switch (type) {
-            case "left":
-              el.x = minX;
-              break;
-            case "center":
-              el.x = centerX - el.width / 2;
-              break;
-            case "right":
-              el.x = maxX - el.width;
-              break;
-            case "top":
-              el.y = verticalArea ? verticalArea.y : minY;
-              break;
-            case "middle":
-              el.y = verticalArea
-                ? verticalArea.y + (verticalArea.height - el.height) / 2
-                : centerY - el.height / 2;
-              break;
-            case "bottom":
-              el.y = verticalArea
-                ? verticalArea.y + verticalArea.height - el.height
-                : maxY - el.height;
-              break;
-          }
-        });
       }
 
-      embeddedElements.forEach(({ element, bounds }) => {
+      if (!handledAsGroupAlignment) embeddedElements.forEach(({ element, bounds }) => {
         let x = element.x;
         let y = element.y;
 

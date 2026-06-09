@@ -3,18 +3,46 @@ import { onMounted, watch, ref, nextTick, computed, inject } from "vue";
 import type { PrintElement } from "@/types";
 import { useDesignerStore } from "@/stores/designer";
 import { normalizeVariableKey } from "@/utils/variables";
+import { usePrintSettings } from "@/composables/usePrintSettings";
 
 const props = defineProps<{
   element: PrintElement;
 }>();
 
 const store = useDesignerStore();
+const { printQuality } = usePrintSettings();
 const registerRenderTask = inject<((task: Promise<void>) => void) | null>(
   "registerRenderTask",
   null,
 );
 
 const qrSrc = ref("");
+const qrRef = ref<HTMLImageElement | null>(null);
+
+const getPrintQualityScale = () => {
+  if (printQuality.value === "fast") return 0.5;
+  if (printQuality.value === "high") return 1.5;
+  if (printQuality.value === "ultra") return 2;
+  return 1;
+};
+
+const waitForImageReady = async (img: HTMLImageElement) => {
+  if (typeof img.decode === "function") {
+    try {
+      await img.decode();
+      return;
+    } catch {
+      // Fall back to load/error events below.
+    }
+  }
+
+  if (img.complete) return;
+
+  await new Promise<void>((resolve) => {
+    img.addEventListener("load", () => resolve(), { once: true });
+    img.addEventListener("error", () => resolve(), { once: true });
+  });
+};
 
 const resolvedContent = computed(() => {
   const variable = props.element.variable || "";
@@ -59,8 +87,17 @@ const renderQR = async () => {
     const qrcodeModule = await import("qrcode");
     const QRCode = (qrcodeModule as any)?.default || qrcodeModule;
     const content = resolvedContent.value;
+    const qualityScale = getPrintQualityScale();
+    const pixelWidth = Math.max(
+      64,
+      Math.ceil(
+        Math.max(props.element.width || 0, props.element.height || 0) *
+          qualityScale,
+      ),
+    );
 
     qrSrc.value = await QRCode.toDataURL(content, {
+      width: pixelWidth,
       margin: 0,
       color: {
         dark: props.element.style.color || "#000000",
@@ -69,6 +106,9 @@ const renderQR = async () => {
       errorCorrectionLevel:
         (props.element.style as any).qrErrorCorrection || "M",
     });
+
+    await nextTick();
+    if (qrRef.value) await waitForImageReady(qrRef.value);
   } catch (e) {
     console.error("QR render error", e);
   }
@@ -84,6 +124,9 @@ watch(
     props.element.content,
     props.element.variable,
     props.element.style,
+    props.element.width,
+    props.element.height,
+    printQuality.value,
     store.isExporting,
     store.testData,
     (store as any).variables,
@@ -151,6 +194,7 @@ export const elementPropertiesSchema: ElementPropertiesSchema = {
 <template>
   <div class="w-full h-full flex items-center justify-center overflow-hidden">
     <img
+      ref="qrRef"
       v-if="qrSrc"
       :src="qrSrc"
       class="w-full h-full object-contain pointer-events-none"

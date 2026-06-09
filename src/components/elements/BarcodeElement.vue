@@ -3,18 +3,45 @@ import { onMounted, watch, ref, nextTick, computed, inject } from "vue";
 import type { PrintElement } from "@/types";
 import { useDesignerStore } from "@/stores/designer";
 import { normalizeVariableKey } from "@/utils/variables";
+import { usePrintSettings } from "@/composables/usePrintSettings";
 
 const props = defineProps<{
   element: PrintElement;
 }>();
 
 const store = useDesignerStore();
+const { printQuality } = usePrintSettings();
 const registerRenderTask = inject<((task: Promise<void>) => void) | null>(
   "registerRenderTask",
   null,
 );
 
 const barcodeRef = ref<HTMLImageElement | null>(null);
+
+const getPrintQualityScale = () => {
+  if (printQuality.value === "fast") return 0.5;
+  if (printQuality.value === "high") return 1.5;
+  if (printQuality.value === "ultra") return 2;
+  return 1;
+};
+
+const waitForImageReady = async (img: HTMLImageElement) => {
+  if (typeof img.decode === "function") {
+    try {
+      await img.decode();
+      return;
+    } catch {
+      // Fall back to load/error events below.
+    }
+  }
+
+  if (img.complete) return;
+
+  await new Promise<void>((resolve) => {
+    img.addEventListener("load", () => resolve(), { once: true });
+    img.addEventListener("error", () => resolve(), { once: true });
+  });
+};
 
 const resolvedContent = computed(() => {
   const variable = props.element.variable || "";
@@ -59,22 +86,27 @@ const renderBarcode = async () => {
     const JsBarcode = (jsBarcodeModule as any)?.default || jsBarcodeModule;
     const content = resolvedContent.value;
     const style = props.element.style as any;
+    const qualityScale = getPrintQualityScale();
+    const canvas = document.createElement("canvas");
 
-    JsBarcode(barcodeRef.value, content, {
+    JsBarcode(canvas, content, {
       format: style.barcodeFormat || "CODE128",
       lineColor: style.color || "#000000",
-      width: Number(style.barcodeWidth) || 2,
-      height: Number(style.barcodeHeight) || 40,
+      width: (Number(style.barcodeWidth) || 2) * qualityScale,
+      height: (Number(style.barcodeHeight) || 40) * qualityScale,
       displayValue: style.showText !== false && style.showText !== "false",
       fontOptions: style.fontOptions || "",
       font: style.font || "monospace",
       textAlign: style.textAlign || "center",
       textPosition: style.textPosition || "bottom",
-      textMargin: Number(style.textMargin) || 2,
-      fontSize: Number(style.fontSize) || 20,
+      textMargin: (Number(style.textMargin) || 2) * qualityScale,
+      fontSize: (Number(style.fontSize) || 20) * qualityScale,
       background: "transparent",
-      margin: Number(style.margin) || 0,
+      margin: (Number(style.margin) || 0) * qualityScale,
     });
+
+    barcodeRef.value.src = canvas.toDataURL("image/png");
+    await waitForImageReady(barcodeRef.value);
   } catch (e) {
     console.error("Barcode render error", e);
   }
@@ -90,6 +122,9 @@ watch(
     props.element.content,
     props.element.variable,
     props.element.style,
+    props.element.width,
+    props.element.height,
+    printQuality.value,
     store.isExporting,
     store.testData,
     (store as any).variables,

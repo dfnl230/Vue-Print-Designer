@@ -179,7 +179,7 @@ export const elementConfigRegistry: Partial<
   [ElementType.PAGE_NUMBER]: () => ({
     width: 52,
     height: 20,
-    format: "1/Total",
+    format: "1",
     labelColor: "#000000",
     labelBackgroundColor: "transparent",
     labelBorderColor: "transparent",

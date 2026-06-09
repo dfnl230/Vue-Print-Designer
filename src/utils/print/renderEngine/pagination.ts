@@ -14,7 +14,17 @@ export const createPagination = ({ store }: { store: DesignerStore }) => {
       pageNumberElements.forEach((el) => {
         const textSpan = el.querySelector(".page-number-text");
         if (textSpan) {
-          textSpan.textContent = `${pageIndex + 1}/${totalPages}`;
+          const current = pageIndex + 1;
+          const format = el.getAttribute("data-page-format") || "1";
+
+          if (format === "1") {
+            textSpan.textContent = `${current}`;
+          } else if (format === "Page 1") {
+            const template = el.getAttribute("data-page-template") || "Page 1";
+            textSpan.textContent = template.replace(/\d+/, `${current}`);
+          } else {
+            textSpan.textContent = `${current}/${totalPages}`;
+          }
         }
       });
     });
@@ -127,18 +137,22 @@ export const createPagination = ({ store }: { store: DesignerStore }) => {
           "type",
           customScript,
         );
-        func(data, footerData, [], "page");
+        const result = func(data, footerData, [], "page");
+        const nextFooterData =
+          result && Array.isArray(result.footerData)
+            ? result.footerData
+            : footerData;
 
         // 4. 回写页脚 DOM
-        if (footerData.length > 0) {
+        if (nextFooterData.length > 0) {
           const rows = Array.from(tfoot.querySelectorAll("tr"));
           rows.forEach((row, i) => {
-            if (footerData[i]) {
+            if (nextFooterData[i]) {
               const cells = Array.from(row.querySelectorAll("td"));
               cells.forEach((cell) => {
                 const field = cell.getAttribute("data-field");
-                if (field && footerData[i][field] !== undefined) {
-                  let val = footerData[i][field];
+                if (field && nextFooterData[i][field] !== undefined) {
+                  let val = nextFooterData[i][field];
                   if (val && typeof val === "object") {
                     if (val.result !== undefined) val = val.result;
                     else if (val.value !== undefined) val = val.value;
@@ -1274,12 +1288,18 @@ export const createPagination = ({ store }: { store: DesignerStore }) => {
             marginBottom;
           const tableFitsFreshPage =
             tableRect.height <= availableContentHeight * getPageScaleY(pageRect) + 1;
+          const firstRowBottomWithFooter = rows[0]
+            ? rows[0].getBoundingClientRect().bottom + repeatedFooterHeight
+            : Number.POSITIVE_INFINITY;
+          const firstRowFitsCurrentPage =
+            rows.length > 0 && firstRowBottomWithFooter <= limitBottom + 1;
 
           if (
             rows.length > 0 &&
             tableRect.bottom > limitBottom + 1 &&
             wrapperTopInPage > minTop + 5 &&
-            tableFitsFreshPage
+            tableFitsFreshPage &&
+            !firstRowFitsCurrentPage
           ) {
             const newPage = createFlowOverflowPage(page, i);
             const startY = resolveFlowChunkStartY(wrapper);
@@ -1334,8 +1354,9 @@ export const createPagination = ({ store }: { store: DesignerStore }) => {
           if (splitIndex === -1 && rows.length > 0) {
             if (tableRect.bottom > limitBottom + 2) {
               if (wrapperTopInPage > minTop + 5) {
-                // 距离页首有空间，说明推入新页能获得更大完整空间，整体移入下一页
-                splitIndex = 0;
+                splitIndex = firstRowFitsCurrentPage && rows.length > 1
+                  ? rows.length - 1
+                  : 0;
               } else if (rows.length > 1) {
                 // 贴近页首且有多行，把最后一行移走
                 splitIndex = rows.length - 1;

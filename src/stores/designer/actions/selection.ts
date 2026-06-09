@@ -281,6 +281,86 @@ export const selectionActions = {
 
       const movedIdsSet = new Set(movableIds);
       const movedTableDeltaById = new Map<string, { dx: number; dy: number }>();
+      const alignedElementIds = new Set<string>(
+        snapped.highlightedAlignedElementIds || [],
+      );
+      const alignEpsilon = 0.5;
+      const getCenter = (min: number, max: number) => (min + max) / 2;
+
+      for (let pageIndex = 0; pageIndex < this.pages.length; pageIndex += 1) {
+        const page = this.pages[pageIndex];
+        const movingElements = page.elements.filter((item) =>
+          movedIdsSet.has(item.id),
+        );
+        if (movingElements.length === 0) continue;
+
+        const movingTableIds = new Set(
+          movingElements
+            .filter((item) => item.type === ElementType.TABLE)
+            .map((item) => item.id),
+        );
+        const referenceElements = page.elements.filter(
+          (item) =>
+            !movedIdsSet.has(item.id) &&
+            (!item.embeddedInTableId ||
+              !movingTableIds.has(item.embeddedInTableId)),
+        );
+
+        for (const movingElement of movingElements) {
+          const movedBounds = this.getElementBoundsAtPosition(
+            movingElement,
+            movingElement.x + actualDx,
+            movingElement.y + actualDy,
+          );
+          const movedXPoints = [
+            movedBounds.minX,
+            getCenter(movedBounds.minX, movedBounds.maxX),
+            movedBounds.maxX,
+          ];
+          const movedYPoints = [
+            movedBounds.minY,
+            getCenter(movedBounds.minY, movedBounds.maxY),
+            movedBounds.maxY,
+          ];
+
+          for (const referenceElement of referenceElements) {
+            const referenceBounds = this.getElementBoundsAtPosition(
+              referenceElement,
+              referenceElement.x,
+              referenceElement.y,
+            );
+            const referenceXPoints = [
+              referenceBounds.minX,
+              getCenter(referenceBounds.minX, referenceBounds.maxX),
+              referenceBounds.maxX,
+            ];
+            const referenceYPoints = [
+              referenceBounds.minY,
+              getCenter(referenceBounds.minY, referenceBounds.maxY),
+              referenceBounds.maxY,
+            ];
+            const hasXAlignment = movedXPoints.some((movedPoint) =>
+              referenceXPoints.some(
+                (referencePoint) =>
+                  Math.abs(referencePoint - movedPoint) <= alignEpsilon,
+              ),
+            );
+            const hasYAlignment = movedYPoints.some((movedPoint) =>
+              referenceYPoints.some(
+                (referencePoint) =>
+                  Math.abs(referencePoint - movedPoint) <= alignEpsilon,
+              ),
+            );
+
+            if (hasXAlignment || hasYAlignment) {
+              alignedElementIds.add(referenceElement.id);
+            }
+          }
+        }
+      }
+
+      this.setHighlightedAlignedElements(Array.from(alignedElementIds));
+
       for (const id of movableIds) {
         for (const page of this.pages) {
           const el = page.elements.find((item) => item.id === id);

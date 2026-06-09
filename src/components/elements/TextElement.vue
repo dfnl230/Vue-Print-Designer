@@ -222,16 +222,94 @@ const activeVerticalAlign = computed(() => {
   return props.element.style.verticalAlign || "";
 });
 
-const setTextAlign = (textAlign: "left" | "center" | "right") => {
-  const nextTextAlign = activeTextAlign.value === textAlign ? "" : textAlign;
-  store.updateSelectedElementsStyle({ textAlign: nextTextAlign });
+type HorizontalAlignment = "left" | "center" | "right";
+type VerticalAlignment = "top" | "middle" | "bottom";
+type AlignmentType = HorizontalAlignment | VerticalAlignment;
+type AlignmentCycleStep = "element" | "content";
+
+const createAlignmentCycle = (): Record<AlignmentType, AlignmentCycleStep> => ({
+  left: "element",
+  center: "element",
+  right: "element",
+  top: "element",
+  middle: "element",
+  bottom: "element",
+});
+
+const alignmentCycle = ref(createAlignmentCycle());
+const isContentAlignmentMode = ref(false);
+
+const resetAlignmentCycle = () => {
+  alignmentCycle.value = createAlignmentCycle();
+  isContentAlignmentMode.value = false;
 };
 
-const setVerticalAlign = (verticalAlign: "top" | "middle" | "bottom") => {
-  const nextVerticalAlign =
-    activeVerticalAlign.value === verticalAlign ? "" : verticalAlign;
-  store.updateSelectedElementsStyle({ verticalAlign: nextVerticalAlign });
+const isHorizontalAlignment = (
+  type: AlignmentType,
+): type is HorizontalAlignment => {
+  return type === "left" || type === "center" || type === "right";
 };
+
+const setNextAlignmentCycleStep = (
+  type: AlignmentType,
+  step: AlignmentCycleStep,
+) => {
+  alignmentCycle.value = {
+    ...alignmentCycle.value,
+    [type]: step,
+  };
+};
+
+const updateContentAlignment = (type: AlignmentType, toggle = true) => {
+  if (isHorizontalAlignment(type)) {
+    if (toggle && activeTextAlign.value === type) {
+      store.updateSelectedElementsStyle({ textAlign: "" });
+      resetAlignmentCycle();
+      return;
+    }
+
+    store.updateSelectedElementsStyle({ textAlign: type });
+    return;
+  }
+
+  if (toggle && activeVerticalAlign.value === type) {
+    store.updateSelectedElementsStyle({ verticalAlign: "" });
+    resetAlignmentCycle();
+    return;
+  }
+
+  store.updateSelectedElementsStyle({ verticalAlign: type });
+};
+
+const handleAlignmentClick = (type: AlignmentType) => {
+  if (isContentAlignmentMode.value) {
+    updateContentAlignment(type);
+    return;
+  }
+
+  const step = alignmentCycle.value[type];
+  if (step === "element") {
+    store.alignSelectedElements(type);
+    setNextAlignmentCycleStep(type, "content");
+    return;
+  }
+
+  updateContentAlignment(type, false);
+  isContentAlignmentMode.value = true;
+};
+
+const setTextAlign = (textAlign: HorizontalAlignment) => {
+  handleAlignmentClick(textAlign);
+};
+
+const setVerticalAlign = (verticalAlign: VerticalAlignment) => {
+  handleAlignmentClick(verticalAlign);
+};
+
+watch(
+  () => store.selectedElementIds.join("|"),
+  () => resetAlignmentCycle(),
+);
 
 const toggleBold = () => {
   store.updateSelectedElementsStyle({

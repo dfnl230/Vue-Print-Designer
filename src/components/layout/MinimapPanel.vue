@@ -292,7 +292,7 @@ const getElementStyle = (element: any) => {
 const getPageNumberText = (element: any, pageIndex: number) => {
   const current = pageIndex + 1;
   const total = props.pages?.length || 1;
-  const format = element.format || "1/Total";
+  const format = element.format || "1";
 
   if (format === "1") return `${current}`;
   if (format === "Page 1") return `Page ${current}`;

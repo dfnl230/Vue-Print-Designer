@@ -3,6 +3,7 @@ import {
   cleanElement,
   cloneElementWithStyles,
   createCloneStyleCache,
+  deduplicateInlineStyles,
   isShadowDomContent,
   lockViewportScroll,
 } from "../dom";
@@ -141,6 +142,8 @@ export const createImageRenderer = (deps: ImageRendererDeps) => {
 
         previewContainer.appendChild(clone);
       });
+
+      deduplicateInlineStyles(previewContainer);
 
       reportStageProgress(96);
 
