@@ -6,7 +6,6 @@ import { ElementType, type Page } from "@/types";
 import { usePrintSettings } from "@/composables/usePrintSettings";
 import { toast } from "@/utils/toast";
 import i18n from "@/locales";
-import baseStyles from "@/style.css?inline";
 import { isShadowDomContent, lockViewportScroll } from "./dom";
 import { createPrintExecutor } from "./printChannel";
 import { createRenderEngine } from "./renderEngine";
@@ -297,7 +296,9 @@ export const usePrint = () => {
         total: 1,
         message: i18n.global.t("statusBar.progress.rendering"),
       });
-      const html = await getPrintHtml(targetContent as HTMLElement[]);
+      const html = await getPrintHtml(targetContent as HTMLElement[], {
+        mode: "export",
+      });
 
       const fullHtml = `<!DOCTYPE html>
 <html lang="en">
@@ -305,19 +306,8 @@ export const usePrint = () => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${filename}</title>
-  <style>
-    ${baseStyles}
-    body {
-      background-color: #f3f4f6;
-      padding: 20px;
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-  </style>
 </head>
-<body>
+<body style="background-color: #f3f4f6; padding: 20px; margin: 0; display: flex; flex-direction: column; align-items: center;">
   ${html}
 </body>
 </html>`;

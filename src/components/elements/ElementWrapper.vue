@@ -1594,6 +1594,7 @@ const handleResizeStart = (e: MouseEvent, direction: ResizeHandleDirection) => {
 
     <div
       v-if="!readOnly && !actualIsSelected"
+      data-print-exclude="true"
       :class="[
         'absolute inset-0 box-border border pointer-events-none z-30 transition-opacity duration-75',
         isHovered || forceHover ? 'opacity-100' : 'opacity-0',

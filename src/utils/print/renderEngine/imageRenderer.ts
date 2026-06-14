@@ -1,5 +1,6 @@
 import { pxToMm } from "@/utils/units";
 import {
+  cleanupForExport,
   cleanElement,
   cloneElementWithStyles,
   createCloneStyleCache,
@@ -45,9 +46,12 @@ export const createImageRenderer = (deps: ImageRendererDeps) => {
     new Promise<void>((resolve) => setTimeout(resolve, 0));
 
   // 生成打印预览 HTML：兼容字符串与 DOM 节点两种输入。
+  // mode="preview"（默认）保留去重后的 <style>+class 形式以减小体积；
+  // mode="export" 输出完全内联、无 class/数据属性的独立 HTML 文档。
   const getPrintHtml = async (
     content?: HTMLElement[],
     options: {
+      mode?: "preview" | "export";
       onStageProgress?: (progress: {
         current: number;
         total: number;
@@ -56,6 +60,7 @@ export const createImageRenderer = (deps: ImageRendererDeps) => {
     } = {},
   ): Promise<string> => {
     const startTime = performance.now();
+    const mode = options.mode ?? "preview";
     const reportStageProgress = (
       current: number,
       message?: string,
@@ -143,7 +148,11 @@ export const createImageRenderer = (deps: ImageRendererDeps) => {
         previewContainer.appendChild(clone);
       });
 
-      deduplicateInlineStyles(previewContainer);
+      if (mode === "export") {
+        cleanupForExport(previewContainer);
+      } else {
+        deduplicateInlineStyles(previewContainer);
+      }
 
       reportStageProgress(96);
 

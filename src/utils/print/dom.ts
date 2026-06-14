@@ -232,14 +232,16 @@ export const cloneElementWithStyles = (
   sharedCache?: CloneStyleCache,
 ): HTMLElement => {
   const clone = element.cloneNode(true) as HTMLElement;
-  // 使用索引遍历避免 Array.shift() 的 O(n²) 开销；第三个字段是父节点的路径 ID
-  const pairs: [HTMLElement, HTMLElement, number][] = [[element, clone, 0]];
+  // 使用索引遍历避免 Array.shift() 的 O(n²) 开销；
+  // 第三个字段是父节点的路径 ID，第四个字段是当前元素在父节点中的子元素索引。
+  const pairs: [HTMLElement, HTMLElement, number, number][] = [[element, clone, 0, 0]];
 
   // 路径感知样式缓存：
-  //   pathKeys  保存 "parentPathId:tagName|id|class|inline" → 唯一整数 pathId
+  //   pathKeys  保存 "parentPathId:childIndex:tagName|id|class|inline" → 唯一整数 pathId
   //   styleValues 保存 pathId → inlined cssText
-  // 同一路径上的元素（祖先链完全相同）共享同一 pathId，
+  // 同一路径上的元素（祖先链 + 同位置）共享同一 pathId，
   // 因此 CSS 继承关系被完整编码进缓存键，不会出现不同父容器下同名元素互相污染的问题。
+  // childIndex 的加入确保同级元素（如表行 tr、表单元格 td）不会因结构相同而错误碰撞。
   // 当 sharedCache 传入时，多页克隆共享同一张表——第 2 页几乎全部命中缓存。
   const pathKeys = sharedCache?.pathKeys ?? new Map<string, number>();
   const styleValues = sharedCache?.styleValues ?? new Map<number, string>();
@@ -247,11 +249,11 @@ export const cloneElementWithStyles = (
 
   let qi = 0;
   while (qi < pairs.length) {
-    const [source, target, parentPathId] = pairs[qi++];
+    const [source, target, parentPathId, childIndex] = pairs[qi++];
 
     if (source.nodeType === 1) {
-      // 构造当前节点的路径键（含父路径 ID，安全捕获继承上下文）
-      const pathKey = `${parentPathId}:${source.tagName}|${source.id}|${source.className}|${source.style.cssText}`;
+      // 构造当前节点的路径键（含父路径 ID + 子元素索引，安全捕获继承上下文与同级位置）
+      const pathKey = `${parentPathId}:${childIndex}:${source.tagName}|${source.id}|${source.className}|${source.style.cssText}`;
       let pathId = pathKeys.get(pathKey);
       if (pathId === undefined) {
         pathId = nextId++;
@@ -273,6 +275,7 @@ export const cloneElementWithStyles = (
             source.children[i] as HTMLElement,
             target.children[i] as HTMLElement,
             pathId,
+            i,
           ]);
         }
       }
@@ -320,4 +323,171 @@ export const deduplicateInlineStyles = (root: HTMLElement): void => {
   const styleTag = document.createElement("style");
   styleTag.textContent = rules.join("");
   root.insertBefore(styleTag, root.firstChild);
+};
+
+// 拖拽/手柄相关需要从内联样式中剔除的属性。
+const EXPORT_STRIP_PROPS = [
+  "user-select",
+  "-webkit-user-select",
+  "-moz-user-select",
+  "-ms-user-select",
+];
+
+const BORDER_SIDES: Array<"" | "top" | "right" | "bottom" | "left"> = [
+  "",
+  "top",
+  "right",
+  "bottom",
+  "left",
+];
+
+type CssDeclaration = [string, string];
+
+const parseCssDeclarations = (cssText: string): CssDeclaration[] => {
+  const declarations: CssDeclaration[] = [];
+  const re = /([a-zA-Z-][a-zA-Z0-9-]*)\s*:\s*([^;]+);?/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(cssText)) !== null) {
+    const prop = match[1].trim().toLowerCase();
+    const value = match[2].trim();
+    if (prop) {
+      declarations.push([prop, value]);
+    }
+  }
+  return declarations;
+};
+
+const serializeCssDeclarations = (declarations: CssDeclaration[]): string => {
+  if (declarations.length === 0) return "";
+  return `${declarations.map(([p, v]) => `${p}: ${v}`).join("; ")};`;
+};
+
+const mergeBorderShorthand = (declarations: CssDeclaration[]): void => {
+  for (const side of BORDER_SIDES) {
+    const prefix = side ? `border-${side}` : "border";
+    const widthProp = `${prefix}-width`;
+    const styleProp = `${prefix}-style`;
+    const colorProp = `${prefix}-color`;
+
+    const widthIdx = declarations.findIndex(([p]) => p === widthProp);
+    if (widthIdx === -1) continue;
+    const styleIdx = declarations.findIndex(([p]) => p === styleProp);
+    if (styleIdx === -1) continue;
+    const colorIdx = declarations.findIndex(([p]) => p === colorProp);
+    if (colorIdx === -1) continue;
+
+    const firstIdx = Math.min(widthIdx, styleIdx, colorIdx);
+    const value = `${declarations[widthIdx][1]} ${declarations[styleIdx][1]} ${declarations[colorIdx][1]}`;
+
+    declarations.splice(firstIdx, 3, [prefix, value]);
+  }
+};
+
+const FONT_LONGHAND_PROPS = [
+  "font-style",
+  "font-variant",
+  "font-weight",
+  "font-size",
+  "line-height",
+  "font-family",
+];
+
+const mergeFontShorthand = (declarations: CssDeclaration[]): void => {
+  const indicesToRemove = FONT_LONGHAND_PROPS.map((p) =>
+    declarations.findIndex(([d]) => d === p),
+  ).filter((i) => i !== -1);
+
+  // font shorthand requires both font-size and font-family
+  const hasSize = indicesToRemove.some(
+    (i) => declarations[i]?.[0] === "font-size",
+  );
+  const hasFamily = indicesToRemove.some(
+    (i) => declarations[i]?.[0] === "font-family",
+  );
+  if (!hasSize || !hasFamily) return;
+
+  const firstIdx = Math.min(...indicesToRemove);
+  const parts: string[] = [];
+
+  const styleVal = declarations.find(([p]) => p === "font-style")?.[1];
+  if (styleVal && styleVal !== "normal") parts.push(styleVal);
+  const variantVal = declarations.find(([p]) => p === "font-variant")?.[1];
+  if (variantVal && variantVal !== "normal") parts.push(variantVal);
+  const weightVal = declarations.find(([p]) => p === "font-weight")?.[1];
+  if (weightVal && weightVal !== "normal") parts.push(weightVal);
+
+  const sizeVal = declarations.find(([p]) => p === "font-size")?.[1] || "";
+  const lineHeightVal = declarations.find(([p]) => p === "line-height")?.[1];
+  let sizePart = sizeVal;
+  if (lineHeightVal) {
+    sizePart += `/${lineHeightVal}`;
+  }
+  parts.push(sizePart);
+  parts.push(declarations.find(([p]) => p === "font-family")?.[1] || "");
+
+  // Remove longhands in descending order so splice indices stay valid.
+  for (const idx of [...indicesToRemove].sort((a, b) => b - a)) {
+    declarations.splice(idx, 1);
+  }
+
+  declarations.splice(firstIdx, 0, ["font", parts.join(" ")]);
+};
+
+/**
+ * 把单边 border-* / font-* 等拆解后的属性重新合并为 `border` / `font` 简写，
+ * 让最终 HTML 体积更小、可读性更高。Chrome/Edge 的 cssText getter 不会自动
+ * 合并 longhand，因此这里手动实现合并逻辑。
+ */
+const optimizeCssText = (cssText: string): string => {
+  if (!cssText) return "";
+
+  const declarations = parseCssDeclarations(cssText);
+  mergeBorderShorthand(declarations);
+  mergeFontShorthand(declarations);
+  return serializeCssDeclarations(declarations);
+};
+
+/**
+ * 导出 HTML 前的最终清理：移除编辑器相关的 class / data-* / draggable 属性、
+ * 删除装饰性元素（拖拽手柄等），合并 font/border 简写，去掉注释和 user-select。
+ * 保证导出的 HTML 完全靠内联样式呈现，无任何 <style> / class 残留。
+ */
+export const cleanupForExport = (root: HTMLElement): void => {
+  // 1. 移除拖拽手柄、调整尺寸手柄等装饰性元素。
+  root
+    .querySelectorAll('[data-print-exclude="true"]')
+    .forEach((el) => el.remove());
+
+  // 2. 清理元素上的 class / data-* / draggable 属性，并优化内联样式。
+  const all: Element[] = [root, ...Array.from(root.querySelectorAll("*"))];
+  for (const node of all) {
+    if (!(node instanceof HTMLElement)) continue;
+    const el = node;
+
+    el.removeAttribute("class");
+    for (const attr of Array.from(el.attributes)) {
+      if (attr.name.startsWith("data-") || attr.name === "draggable") {
+        el.removeAttribute(attr.name);
+      }
+    }
+
+    if (el.style.cssText) {
+      for (const prop of EXPORT_STRIP_PROPS) {
+        el.style.removeProperty(prop);
+      }
+      el.style.cssText = optimizeCssText(el.style.cssText);
+    }
+  }
+
+  // 3. 移除所有 HTML 注释节点。
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT);
+  const comments: Node[] = [];
+  let current: Node | null = walker.nextNode();
+  while (current) {
+    comments.push(current);
+    current = walker.nextNode();
+  }
+  for (const c of comments) {
+    c.parentNode?.removeChild(c);
+  }
 };

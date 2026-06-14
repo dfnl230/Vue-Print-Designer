@@ -748,24 +748,6 @@ const tableOuterEdgeStyle = computed(() => {
   };
 });
 
-const exportTableRightEdgeStyle = computed(() => {
-  const borderStyle = props.element.style.borderStyle || "solid";
-  const borderWidth = props.element.style.borderWidth || 1;
-  if (borderStyle === "none" || borderWidth <= 0) return {};
-
-  return {
-    borderLeft: `${borderWidth}px ${borderStyle} ${props.element.style.borderColor || "#000"}`,
-  };
-});
-
-const shouldRenderExportTableRightEdge = computed(() => {
-  if (!store.isExporting) return false;
-
-  const borderStyle = props.element.style.borderStyle || "solid";
-  const borderWidth = props.element.style.borderWidth || 1;
-  return borderStyle !== "none" && borderWidth > 0;
-});
-
 const shouldRenderTableOuterEdge = computed(() => {
   return !store.isExporting;
 });
@@ -970,33 +952,15 @@ const getColSpan = (row: any, field: string) => {
 };
 
 const getExportRightEdgeCellStyle = (
-  row: any,
-  colIndex: number | string,
-  field?: string,
-  section: "header" | "body" | "footer" = "body",
+  _row: any,
+  _colIndex: number | string,
+  _field?: string,
+  _section: "header" | "body" | "footer" = "body",
 ): CSSProperties => {
-  if (!store.isExporting || !shouldRenderExportTableRightEdge.value) {
-    return {};
-  }
-
-  const totalColumns = processedData.value.columns.length;
-  if (totalColumns <= 0) return {};
-
-  const normalizedColIndex = Number(colIndex);
-  if (!Number.isFinite(normalizedColIndex)) return {};
-
-  const colSpan =
-    section === "header"
-      ? 1
-      : Math.max(1, Number(getColSpan(row, field || "")) || 1);
-  const isRightEdgeCell = normalizedColIndex + colSpan >= totalColumns;
-
-  if (!isRightEdgeCell) return {};
-
-  return {
-    borderRightWidth: "0px",
-    borderRightStyle: "none",
-  };
+  // 导出时保留单元格自身右边框，不再依赖外补叠层。
+  // 预览的 tableOuterEdgeStyle 与外补叠层本身就会与单元格边框在同一位置重叠，
+  // 视觉效果一致，且避免了双线问题。
+  return {};
 };
 
 const shouldRenderCell = (row: any, field: string) => {
@@ -2381,12 +2345,6 @@ export const elementPropertiesSchema: ElementPropertiesSchema = {
         </tr>
       </tfoot>
       </table>
-      <div
-        v-if="shouldRenderExportTableRightEdge"
-        data-print-table-right-edge="true"
-        class="absolute top-0 right-0 bottom-0 w-0 pointer-events-none"
-        :style="exportTableRightEdgeStyle"
-      ></div>
     </div>
     <div
       v-if="shouldRenderTableOuterEdge"
