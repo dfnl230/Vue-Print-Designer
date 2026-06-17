@@ -733,6 +733,7 @@ export const usePrint = () => {
     rawHtml?: string;
     rawJson?: string | object;
     printQuality?: PrintQuality;
+    canvasSize?: { width: number; height: number };
   };
 
   const blobToDataUrl = (blob: Blob) =>
@@ -755,6 +756,9 @@ export const usePrint = () => {
     const title = request.title || "";
     const key = request.key || localSettings.secretKey.trim();
     const previewPrintQuality = request.printQuality || printQuality.value;
+    const previewCanvasSize = cloneDeep(
+      request.canvasSize || store.canvasSize,
+    );
 
     let previewContent = "";
     let renderTicker: number | ReturnType<typeof setInterval> | null = null;
@@ -878,6 +882,7 @@ export const usePrint = () => {
         mode,
         content: previewContent,
         printQuality: previewPrintQuality,
+        canvasSize: previewCanvasSize,
       };
       if (title) payload.title = title;
       if (key) payload.key = key;

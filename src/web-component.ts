@@ -96,6 +96,7 @@ export type DesignerClientPreviewRequest = {
   html?: string;
   json?: string | object;
   printQuality?: PrintQuality;
+  canvasSize?: { width: number; height: number };
   onProgress?: DesignerProgressCallback;
 };
 
@@ -715,6 +716,7 @@ class PrintDesignerElement extends HTMLElement {
         rawHtml: request.html,
         rawJson: request.json,
         printQuality: request.printQuality,
+        canvasSize: request.canvasSize,
       })) as DesignerClientPreviewResult;
       stopTicker();
       emitProgress(100, renderingMessage);

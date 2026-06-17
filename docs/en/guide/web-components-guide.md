@@ -470,6 +470,7 @@ Parameters:
 | `html` | `string` | No | Raw HTML to send when `mode: 'html'`; if omitted, the current designer preview HTML is generated and sent. |
 | `json` | `string \| object` | No | Template JSON to send when `mode: 'json'`; if omitted, the current designer template data is sent. |
 | `printQuality` | `'fast' \| 'normal' \| 'high' \| 'ultra'` | No | Quality used by the client when rendering HTML/JSON into PDF. If omitted, the current `getPrintQuality()` value is used. |
+| `canvasSize` | `{ width: number; height: number }` | No | Page size in px used by the client when rendering HTML/JSON into PDF. If omitted, the current designer `canvasSize` is used. |
 | `onProgress` | `(progress: DesignerProgressPayload) => void` | No | Progress callback fired when progress changes. |
 
 Returns: `Promise<{ type: 'preview_result'; status: 'success' | 'error'; message?: string }>`. `status: 'success'` means the client has accepted the preview request and opened the preview window; the actual PDF rendering happens inside the client preview window.
@@ -482,7 +483,7 @@ Content flow by `mode`:
 | `html` | Send pre-paginated HTML, or the HTML passed in `request.html`. | The client renders the HTML into PDF using `printQuality`, then displays the PDF. |
 | `json` | Send the current template JSON, or the JSON passed in `request.json`. | The client loads the template JSON and renders it into PDF using `printQuality`, then displays the PDF. |
 
-The preview message sent to the client has the following shape. Client implementations should preserve and use `printQuality` in the `preview` pipeline:
+The preview message sent to the client has the following shape. Client implementations should preserve and use `printQuality` and `canvasSize` in the `preview` pipeline:
 
 ```json
 {
@@ -490,7 +491,8 @@ The preview message sent to the client has the following shape. Client implement
   "mode": "html",
   "content": "<div>...</div>",
   "title": "Order Preview",
-  "printQuality": "high"
+  "printQuality": "high",
+  "canvasSize": { "width": 794, "height": 1123 }
 }
 ```
 
