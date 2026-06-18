@@ -1,15 +1,8 @@
-const localHosts = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1"]);
-
 const getPrintDesignerVersion = () =>
   typeof __PRINT_DESIGNER_VERSION__ === "string" &&
   __PRINT_DESIGNER_VERSION__.trim()
     ? __PRINT_DESIGNER_VERSION__.trim()
     : "0.0.0";
-
-const isLocalHost = (hostname: string) => {
-  const normalized = hostname.trim().toLowerCase().replace(/^\[|\]$/g, "");
-  return localHosts.has(normalized) || normalized.endsWith(".localhost");
-};
 
 const createNonce = () => {
   const cryptoApi = globalThis.crypto;
@@ -37,7 +30,7 @@ const encodeBase64 = (value: string) => {
 export const buildClientHostToken = () => {
   const location = typeof window === "undefined" ? null : window.location;
   const hostname = location?.hostname || "";
-  const domain = hostname && !isLocalHost(hostname) ? hostname : "";
+  const domain = hostname;
   const timestamp = Date.now();
 
   return encodeBase64(
@@ -46,7 +39,10 @@ export const buildClientHostToken = () => {
       version: getPrintDesignerVersion(),
       protocolVersion: 1,
       domain,
-      origin: domain && location ? location.origin : "",
+      host: location?.host || "",
+      hostname,
+      port: location?.port || "",
+      origin: location?.origin || "",
       protocol: location?.protocol.replace(/:$/, "") || "",
       timestamp,
       issuedAt: new Date(timestamp).toISOString(),
