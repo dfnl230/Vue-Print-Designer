@@ -3,6 +3,7 @@ import {
   type PrintMode,
   type PrintOptions,
 } from "@/composables/usePrintSettings";
+import { appendClientHost } from "@/utils/clientHost";
 import { toast } from "@/utils/toast";
 import i18n from "@/locales";
 
@@ -238,7 +239,7 @@ export const createPrintExecutor = (deps: PrintExecutorDeps) => {
               socket.addEventListener("message", handleMessage);
               socket.addEventListener("error", handleError);
               socket.addEventListener("close", handleClose);
-              socket.send(JSON.stringify(payload));
+              socket.send(JSON.stringify(appendClientHost(payload)));
             } catch (error) {
               resolved = true;
               window.clearTimeout(timeoutId);

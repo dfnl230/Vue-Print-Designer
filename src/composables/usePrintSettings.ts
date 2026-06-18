@@ -1,4 +1,5 @@
 import { computed, reactive, ref, watch, type ComputedRef } from "vue";
+import { appendClientHost } from "@/utils/clientHost";
 
 export type PrintMode = "browser" | "local" | "remote";
 export type ConnectionStatus =
@@ -243,7 +244,7 @@ const waitForWsMessage = <T>(
 
     socket.onopen = () => {
       if (initMessage) {
-        socket.send(JSON.stringify(initMessage));
+        socket.send(JSON.stringify(appendClientHost(initMessage)));
       }
     };
 
@@ -642,7 +643,7 @@ const createState = (): PrintSettingsState => {
       }, timeoutMs);
 
       waiters.push({ match, resolve, reject, timeoutId });
-      socket.send(JSON.stringify(payload));
+      socket.send(JSON.stringify(appendClientHost(payload)));
     });
 
   const attachLocalHandlers = (socket: WebSocket) => {
@@ -750,7 +751,7 @@ const createState = (): PrintSettingsState => {
         localStatus.value = "connected";
         clearLocalRetry();
         localConnectPromise = null;
-        socket.send(JSON.stringify({ type: "get_printers" }));
+        socket.send(JSON.stringify(appendClientHost({ type: "get_printers" })));
         resolve();
       });
       socket.addEventListener("error", () => {
@@ -832,7 +833,7 @@ const createState = (): PrintSettingsState => {
           socket.addEventListener("open", () => {
             remoteStatus.value = "connected";
             clearRemoteRetry();
-            socket.send(JSON.stringify({ cmd: "get_clients" }));
+            socket.send(JSON.stringify(appendClientHost({ cmd: "get_clients" })));
             resolve();
           });
           socket.addEventListener("error", () => {

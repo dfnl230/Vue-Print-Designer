@@ -2,7 +2,13 @@ import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import Icons from "unplugin-icons/vite";
 import { fileURLToPath, URL } from "node:url";
+import { readFileSync } from "node:fs";
 import { visualizer } from "rollup-plugin-visualizer";
+
+const packageJson = JSON.parse(
+  readFileSync(new URL("./package.json", import.meta.url), "utf-8"),
+) as { version?: string };
+const printDesignerVersion = packageJson.version || "0.0.0";
 
 export default defineConfig({
   plugins: [
@@ -11,6 +17,7 @@ export default defineConfig({
     visualizer({ filename: "stats-wc.html", open: false }),
   ],
   define: {
+    __PRINT_DESIGNER_VERSION__: JSON.stringify(printDesignerVersion),
     __VUE_PROD_DEVTOOLS__: false,
     __VUE_I18N_FULL_INSTALL__: false,
     __VUE_I18N_LEGACY_API__: false,
