@@ -45,6 +45,77 @@ export const createImageRenderer = (deps: ImageRendererDeps) => {
   const yieldToMainThread = () =>
     new Promise<void>((resolve) => setTimeout(resolve, 0));
 
+  const toFixedCssPx = (value: number) =>
+    `${Math.max(0, Number(value.toFixed(2)))}px`;
+
+  const resolveNumericLineHeight = (cell: HTMLElement) => {
+    const computed = window.getComputedStyle(cell);
+    const lineHeight = Number.parseFloat(computed.lineHeight || "");
+    if (Number.isFinite(lineHeight) && lineHeight > 0) return lineHeight;
+
+    const fontSize = Number.parseFloat(computed.fontSize || "");
+    return Number.isFinite(fontSize) && fontSize > 0 ? fontSize * 1.2 : 0;
+  };
+
+  // 独立 HTML 会在客户端 WebView 中重新排版表格；序列化前固化当前浏览器测得的几何，
+  // 避免表格高度被目标渲染器撑大后覆盖后续绝对定位元素。
+  const stabilizeStandaloneHtmlTableLayout = (pages: HTMLElement[]) => {
+    pages.forEach((page) => {
+      const tables = Array.from(page.querySelectorAll<HTMLTableElement>("table"));
+
+      tables.forEach((table) => {
+        const tableRect = table.getBoundingClientRect();
+        if (tableRect.width <= 0 || tableRect.height <= 0) return;
+
+        table.style.setProperty("table-layout", "fixed");
+        table.style.setProperty("box-sizing", "border-box");
+        table.style.setProperty("width", toFixedCssPx(tableRect.width));
+        table.style.setProperty("min-width", toFixedCssPx(tableRect.width));
+        table.style.setProperty("height", toFixedCssPx(tableRect.height));
+        table.style.setProperty("min-height", toFixedCssPx(tableRect.height));
+
+        const rows = Array.from(table.querySelectorAll<HTMLTableRowElement>("tr"));
+        rows.forEach((row) => {
+          const rowRect = row.getBoundingClientRect();
+          if (rowRect.height > 0) {
+            row.style.setProperty("height", toFixedCssPx(rowRect.height));
+            row.style.setProperty("min-height", toFixedCssPx(rowRect.height));
+          }
+
+          const cells = Array.from(row.children).filter(
+            (child): child is HTMLTableCellElement =>
+              child instanceof HTMLTableCellElement,
+          );
+
+          cells.forEach((cell) => {
+            const cellRect = cell.getBoundingClientRect();
+            if (cellRect.width > 0) {
+              cell.style.setProperty("width", toFixedCssPx(cellRect.width));
+              cell.style.setProperty("min-width", toFixedCssPx(cellRect.width));
+            }
+            if (cellRect.height > 0) {
+              cell.style.setProperty("height", toFixedCssPx(cellRect.height));
+              cell.style.setProperty("min-height", toFixedCssPx(cellRect.height));
+            }
+
+            const lineHeight = resolveNumericLineHeight(cell);
+            if (lineHeight > 0) {
+              const lineHeightPx = toFixedCssPx(lineHeight);
+              cell.style.setProperty("line-height", lineHeightPx);
+              Array.from(cell.children).forEach((child) => {
+                if (!(child instanceof HTMLElement)) return;
+                if (window.getComputedStyle(child).position === "absolute") return;
+                child.style.setProperty("line-height", lineHeightPx);
+              });
+            }
+
+            cell.style.setProperty("box-sizing", "border-box");
+          });
+        });
+      });
+    });
+  };
+
   // 生成打印预览 HTML：兼容字符串与 DOM 节点两种输入。
   // mode="preview"（默认）保留去重后的 <style>+class 形式以减小体积；
   // mode="export" 输出完全内联、无 class/数据属性的独立 HTML 文档。
@@ -131,6 +202,8 @@ export const createImageRenderer = (deps: ImageRendererDeps) => {
       const paginatedPages = Array.from(resultContainer.children).filter(
         (el) => !["STYLE", "LINK", "SCRIPT"].includes(el.tagName),
       ) as HTMLElement[];
+
+      stabilizeStandaloneHtmlTableLayout(paginatedPages);
 
       paginatedPages.forEach((page, index) => {
         const clone = page.cloneNode(true) as HTMLElement;
