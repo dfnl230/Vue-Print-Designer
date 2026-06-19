@@ -708,6 +708,7 @@ export const useTemplateStore = defineStore("templates", {
       const newTemplate: Template = normalizeEntityConstraints(
         templateBase,
       ) as Template;
+      let createdTemplateId: string | null = null;
 
       if (mode === "remote") {
         this.isLoading = true;
@@ -746,6 +747,7 @@ export const useTemplateStore = defineStore("templates", {
           });
 
           await this.loadTemplates();
+          createdTemplateId = id;
         } catch (e) {
           console.error("Failed to create template", e);
         } finally {
@@ -754,9 +756,13 @@ export const useTemplateStore = defineStore("templates", {
       } else {
         this.templates.push(newTemplate);
         this.saveToLocalStorage();
+        createdTemplateId = newTemplate.id;
       }
 
-      this.currentTemplateId = newTemplate.id;
+      if (createdTemplateId) {
+        this.currentTemplateId = createdTemplateId;
+        this.updateLastSavedStateString();
+      }
     },
 
     async deleteTemplate(id: string) {

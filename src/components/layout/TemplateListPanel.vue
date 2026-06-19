@@ -57,6 +57,7 @@ const modalMode = ref<"create" | "edit" | "copy">("create");
 const modalInitialName = ref("");
 const modalInitialValues = ref<Record<string, any>>({});
 const targetTemplateId = ref<string | null>(null);
+const shouldPreserveCurrentDesignOnCreate = ref(false);
 
 const showTestDataModal = ref(false);
 const testDataContent = ref("");
@@ -390,6 +391,9 @@ const handleCreate = (e?: Event) => {
   activeMenuId.value = null;
   modalMode.value = "create";
   targetTemplateId.value = null;
+  shouldPreserveCurrentDesignOnCreate.value = Boolean(
+    (e as CustomEvent | undefined)?.detail?.preserveCurrentDesign,
+  );
   modalInitialName.value = "";
   modalInitialValues.value = buildModalInitialValues("", "create");
   showModal.value = true;
@@ -409,6 +413,7 @@ const handleSaveAsEvent = async (e: Event) => {
 
   modalMode.value = "create";
   targetTemplateId.value = currentId;
+  shouldPreserveCurrentDesignOnCreate.value = true;
   modalInitialName.value = copyName;
   modalInitialValues.value = buildModalInitialValues(
     copyName,
@@ -822,10 +827,11 @@ const handleModalSave = (payload: ModalSavePayload) => {
       }
     }
 
-    if (!targetTemplateId.value) {
+    if (!targetTemplateId.value && !shouldPreserveCurrentDesignOnCreate.value) {
       designerStore.resetCanvas();
     }
     templateStore.createTemplate(name, undefined, extraValues);
+    shouldPreserveCurrentDesignOnCreate.value = false;
     return;
   }
 

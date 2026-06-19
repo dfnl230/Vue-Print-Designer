@@ -1402,7 +1402,9 @@ const handleSave = () => {
       return;
     }
   }
-  dispatchDesignerEvent("designer:new-template");
+  dispatchDesignerEvent("designer:new-template", {
+    preserveCurrentDesign: true,
+  });
 };
 
 const getExportBaseName = () => {
