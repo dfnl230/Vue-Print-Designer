@@ -81,7 +81,7 @@ Join our QQ group for usage discussions, integration tips, and troubleshooting. 
 
 ## Companion Print Client (PrintDot Client)
 
-PrintDot Client is the companion desktop app for this project. It connects to your local printers and handles silent print jobs, so you can print straight from the browser without any pop-up dialogs.
+PrintDot Client is the companion desktop app for this project. It connects to your local printers and handles silent print jobs, so you can print straight from the browser without any pop-up dialogs. It provides service control, connection settings, print history, update notifications, and print preview to help you complete the local print workflow.
 
 - **Platforms**: Windows / macOS / Linux
 - **Key capabilities**: Automatic device discovery, stable connection & forwarding queue, lightweight background mode, print job history and update notifications
@@ -89,20 +89,18 @@ PrintDot Client is the companion desktop app for this project. It connects to yo
 
 <table width="100%">
   <tr>
-    <td align="center" width="50%"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/2-1.png" alt="PrintDot main view" height="180" /></td>
-    <td align="center" width="50%"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/2-2.png" alt="PrintDot settings" height="180" /></td>
+    <td align="center" width="20%"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/2-1.png" alt="PrintDot main view" height="180" /></td>
+    <td align="center" width="20%"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/2-2.png" alt="PrintDot settings" height="180" /></td>
+    <td align="center" width="20%"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/2-3.png" alt="PrintDot job history" height="180" /></td>
+    <td align="center" width="20%"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/2-4.png" alt="PrintDot update notification" height="180" /></td>
+    <td align="center" width="20%"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/2-5.png" alt="PrintDot print preview" height="180" /></td>
   </tr>
   <tr>
     <td align="center"><b>Main view - service control and available printers</b></td>
     <td align="center"><b>Settings - cloud relay and connection config</b></td>
-  </tr>
-  <tr>
-    <td align="center" width="50%"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/2-3.png" alt="PrintDot job history" height="180" /></td>
-    <td align="center" width="50%"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/2-4.png" alt="PrintDot update notification" height="180" /></td>
-  </tr>
-  <tr>
     <td align="center"><b>Job history - task status and retry</b></td>
     <td align="center"><b>Update notification - check for latest client</b></td>
+    <td align="center"><b>Print preview - real-time preview in local client</b></td>
   </tr>
 </table>
 
