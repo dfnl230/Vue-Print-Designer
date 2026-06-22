@@ -43,9 +43,9 @@ Join our QQ group for usage discussions, integration tips, and troubleshooting. 
 
 <table width="100%">
   <tr>
-    <td align="center" width="33%"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/1.png" alt="Designer main view" height="180" /></td>
-    <td align="center" width="34%"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/2.png" alt="Print preview" height="180" /></td>
-    <td align="center" width="33%"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/3.png" alt="Print parameter settings" height="180" /></td>
+    <td align="center" width="33%"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/1.png" alt="Designer main view" width="100%" /></td>
+    <td align="center" width="34%"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/2.png" alt="Print preview" width="100%" /></td>
+    <td align="center" width="33%"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/3.png" alt="Print parameter settings" width="100%" /></td>
   </tr>
   <tr>
     <td align="center"><b>Designer main view and canvas</b></td>
@@ -53,9 +53,9 @@ Join our QQ group for usage discussions, integration tips, and troubleshooting. 
     <td align="center"><b>Print parameter settings</b></td>
   </tr>
   <tr>
-    <td align="center"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/4.png" alt="System settings" height="180" /></td>
-    <td align="center"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/5.png" alt="Shortcut reference" height="180" /></td>
-    <td align="center"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/6.png" alt="Advanced table editing" height="180" /></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/4.png" alt="System settings" width="100%" /></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/5.png" alt="Shortcut reference" width="100%" /></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/6.png" alt="Advanced table editing" width="100%" /></td>
   </tr>
   <tr>
     <td align="center"><b>System settings and preferences</b></td>
@@ -112,9 +112,9 @@ A complete integration example based on **Vue 3 + Element Plus**, demonstrating 
 
 <table width="100%">
   <tr>
-    <td align="center" width="33%"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/11.png" alt="Parameter debugging" height="180" /></td>
-    <td align="center" width="34%"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/12.png" alt="Designer" height="180" /></td>
-    <td align="center" width="33%"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/13.png" alt="Dark mode" height="180" /></td>
+    <td align="center" width="33%"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/11.png" alt="Parameter debugging" width="100%" /></td>
+    <td align="center" width="34%"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/12.png" alt="Designer" width="100%" /></td>
+    <td align="center" width="33%"><img src="https://raw.githubusercontent.com/0ldFive/Vue-Print-Designer/master/docs/images/13.png" alt="Dark mode" width="100%" /></td>
   </tr>
   <tr>
     <td align="center"><b>Parameter Debugging</b></td>
