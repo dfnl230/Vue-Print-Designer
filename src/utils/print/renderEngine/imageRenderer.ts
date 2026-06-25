@@ -15,12 +15,19 @@ import type {
   PrepareEnvironmentFn,
   RenderContent,
 } from "./types";
-import type { RenderSource } from "./iframeRenderer";
+import type {
+  BatchRenderItem,
+  RenderSource,
+  ReusableRenderSession,
+} from "./iframeRenderer";
 
 export interface ImageRendererDeps {
   store: DesignerStore;
   prepareEnvironment: PrepareEnvironmentFn;
   resolveRenderSource: (content: RenderContent) => Promise<RenderSource>;
+  createReusableRenderSession: (
+    content?: RenderContent,
+  ) => Promise<ReusableRenderSession>;
   handleTablePagination: (
     container: HTMLElement,
     pageHeight: number,
@@ -38,6 +45,7 @@ export const createImageRenderer = (deps: ImageRendererDeps) => {
     store,
     prepareEnvironment,
     resolveRenderSource,
+    createReusableRenderSession,
     handleTablePagination,
     updatePageNumbers,
   } = deps;
@@ -950,10 +958,73 @@ export const createImageRenderer = (deps: ImageRendererDeps) => {
     }
   };
 
+  // 批量套打：复用单个 iframe 逐条渲染不同变量 → 累积每页 JPEG → 一次性合成多页 PDF。
+  // 与“逐条 createPdfDocument + 手动拼接”产物等价，但只挂一次 iframe、只建一次 PDF。
+  const createBatchPdfDocument = async (
+    items: BatchRenderItem[],
+    content: RenderContent,
+    options?: { onProgress?: (current: number, total: number) => void },
+  ) => {
+    const restore = await prepareEnvironment({
+      mutateStore: false,
+      setExporting: false,
+    });
+    const restoreViewport = lockViewportScroll(!isShadowDomContent(content));
+
+    const width = store.canvasSize.width;
+    const height = store.canvasSize.height;
+    const widthMm = pxToMm(width);
+    const heightMm = pxToMm(height);
+
+    let session: ReusableRenderSession | null = null;
+    const allPageImages: string[] = [];
+
+    try {
+      session = await createReusableRenderSession(content);
+      const total = items.length;
+
+      for (let i = 0; i < total; i++) {
+        const item = items[i] || {};
+        const { pages, getComputedStyleFn } = await session.renderVariant({
+          variables: item.variables,
+          testData: item.testData,
+        });
+
+        let tempWrapper: HTMLElement | null = null;
+        try {
+          const { container, tempWrapper: wrapper } =
+            await processContentForImage(
+              pages,
+              width,
+              height,
+              true,
+              getComputedStyleFn,
+            );
+          tempWrapper = wrapper;
+          const pageImages = await renderPageImages(container, width, height);
+          for (const img of pageImages) allPageImages.push(img);
+        } finally {
+          if (tempWrapper && tempWrapper.parentNode) {
+            tempWrapper.parentNode.removeChild(tempWrapper);
+          }
+        }
+
+        options?.onProgress?.(i + 1, total);
+      }
+
+      return buildPdfFromJpegs(allPageImages, widthMm, heightMm);
+    } finally {
+      if (session) session.dispose();
+      restoreViewport();
+      restore();
+    }
+  };
+
   return {
     getPrintHtml,
     processContentForImage,
     generatePageImages: renderPageImages,
     createPdfDocument,
+    createBatchPdfDocument,
   };
 };

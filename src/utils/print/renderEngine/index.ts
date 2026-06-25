@@ -15,10 +15,11 @@ export const createRenderEngine = (deps: {
 }) => {
   const { store, prepareEnvironment, createRepeatedPages } = deps;
 
-  const { resolveRenderSource } = createIframeRenderer({
-    store,
-    createRepeatedPages,
-  });
+  const { resolveRenderSource, createReusableRenderSession } =
+    createIframeRenderer({
+      store,
+      createRepeatedPages,
+    });
   const { updatePageNumbers, handleTablePagination } = createPagination({
     store,
   });
@@ -27,10 +28,12 @@ export const createRenderEngine = (deps: {
     processContentForImage,
     generatePageImages,
     createPdfDocument,
+    createBatchPdfDocument,
   } = createImageRenderer({
     store,
     prepareEnvironment,
     resolveRenderSource,
+    createReusableRenderSession,
     handleTablePagination,
     updatePageNumbers,
   });
@@ -41,5 +44,6 @@ export const createRenderEngine = (deps: {
     processContentForImage,
     generatePageImages,
     createPdfDocument,
+    createBatchPdfDocument,
   };
 };

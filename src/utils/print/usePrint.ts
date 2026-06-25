@@ -6,6 +6,8 @@ import { ElementType, type Page } from "@/types";
 import {
   usePrintSettings,
   type PrintQuality,
+  type PrintMode,
+  type PrintOptions,
 } from "@/composables/usePrintSettings";
 import { toast } from "@/utils/toast";
 import i18n from "@/locales";
@@ -188,6 +190,7 @@ export const usePrint = () => {
     processContentForImage,
     generatePageImages,
     createPdfDocument,
+    createBatchPdfDocument,
   } = createRenderEngine({
     store,
     createRepeatedPages,
@@ -334,6 +337,84 @@ export const usePrint = () => {
     }
   };
 
+  const printPdfBlobInBrowser = async (blob: Blob) => {
+    const blobUrl = URL.createObjectURL(blob);
+
+    const isEdge = /Edg\//.test(navigator.userAgent);
+    if (isEdge) {
+      const popup = window.open(blobUrl, "_blank", "noopener,noreferrer");
+      if (!popup) {
+        URL.revokeObjectURL(blobUrl);
+        return;
+      }
+
+      let blobRevoked = false;
+      const revokeBlob = () => {
+        if (blobRevoked) return;
+        blobRevoked = true;
+        URL.revokeObjectURL(blobUrl);
+      };
+
+      popup.addEventListener("afterprint", revokeBlob);
+      popup.addEventListener("beforeunload", revokeBlob);
+
+      popup.onload = () => {
+        try {
+          popup.focus();
+          popup.print();
+        } finally {
+          // Fallback: in case neither afterprint nor beforeunload fires.
+          setTimeout(revokeBlob, 60_000);
+        }
+      };
+      return { status: "success", mode: "browser" };
+    }
+
+    await new Promise<void>((resolve) => {
+      const iframe = document.createElement("iframe");
+      iframe.style.position = "fixed";
+      iframe.style.left = "0";
+      iframe.style.top = "0";
+      iframe.style.width = "100%";
+      iframe.style.height = "100%";
+      iframe.style.border = "0";
+      iframe.style.visibility = "hidden";
+      iframe.style.opacity = "0";
+      iframe.style.pointerEvents = "none";
+      iframe.src = blobUrl;
+      document.body.appendChild(iframe);
+
+      let cleaned = false;
+      const cleanup = () => {
+        if (cleaned) return;
+        cleaned = true;
+        if (iframe.parentNode) {
+          iframe.parentNode.removeChild(iframe);
+        }
+        URL.revokeObjectURL(blobUrl);
+      };
+
+      iframe.onload = () => {
+        const win = iframe.contentWindow;
+        if (win) {
+          // Clean up iframe after the user finishes or cancels printing.
+          win.addEventListener("afterprint", cleanup);
+          win.focus();
+          setTimeout(() => {
+            win.print();
+          }, 200);
+        }
+        // Fallback: in case afterprint never fires (some browsers).
+        setTimeout(cleanup, 60_000);
+
+        // Resolve immediately so the progress indicator is dismissed
+        // without waiting for the print dialog to close.
+        resolve();
+      };
+    });
+    return { status: "success", mode: "browser" };
+  };
+
   const browserPrint = async (
     content: HTMLElement | string | HTMLElement[],
   ) => {
@@ -343,81 +424,7 @@ export const usePrint = () => {
       const pdf = await createPdfDocument(content);
       store.setPrintProgress({ phase: "print", current: 1, total: 1, message: i18n.global.t("statusBar.progress.printing") });
       const blob = pdf.output("blob");
-      const blobUrl = URL.createObjectURL(blob);
-
-      const isEdge = /Edg\//.test(navigator.userAgent);
-      if (isEdge) {
-        const popup = window.open(blobUrl, "_blank", "noopener,noreferrer");
-        if (!popup) {
-          URL.revokeObjectURL(blobUrl);
-          return;
-        }
-
-        let blobRevoked = false;
-        const revokeBlob = () => {
-          if (blobRevoked) return;
-          blobRevoked = true;
-          URL.revokeObjectURL(blobUrl);
-        };
-
-        popup.addEventListener("afterprint", revokeBlob);
-        popup.addEventListener("beforeunload", revokeBlob);
-
-        popup.onload = () => {
-          try {
-            popup.focus();
-            popup.print();
-          } finally {
-            // Fallback: in case neither afterprint nor beforeunload fires.
-            setTimeout(revokeBlob, 60_000);
-          }
-        };
-        return { status: "success", mode: "browser" };
-      }
-
-      await new Promise<void>((resolve) => {
-        const iframe = document.createElement("iframe");
-        iframe.style.position = "fixed";
-        iframe.style.left = "0";
-        iframe.style.top = "0";
-        iframe.style.width = "100%";
-        iframe.style.height = "100%";
-        iframe.style.border = "0";
-        iframe.style.visibility = "hidden";
-        iframe.style.opacity = "0";
-        iframe.style.pointerEvents = "none";
-        iframe.src = blobUrl;
-        document.body.appendChild(iframe);
-
-        let cleaned = false;
-        const cleanup = () => {
-          if (cleaned) return;
-          cleaned = true;
-          if (iframe.parentNode) {
-            iframe.parentNode.removeChild(iframe);
-          }
-          URL.revokeObjectURL(blobUrl);
-        };
-
-        iframe.onload = () => {
-          const win = iframe.contentWindow;
-          if (win) {
-            // Clean up iframe after the user finishes or cancels printing.
-            win.addEventListener("afterprint", cleanup);
-            win.focus();
-            setTimeout(() => {
-              win.print();
-            }, 200);
-          }
-          // Fallback: in case afterprint never fires (some browsers).
-          setTimeout(cleanup, 60_000);
-
-          // Resolve immediately so the progress indicator is dismissed
-          // without waiting for the print dialog to close.
-          resolve();
-        };
-      });
-      return { status: "success", mode: "browser" };
+      return await printPdfBlobInBrowser(blob);
     } catch (error) {
       console.error("Print failed", error);
       toast.error("Print failed");
@@ -703,7 +710,7 @@ export const usePrint = () => {
     }
   };
 
-  const { print } = createPrintExecutor({
+  const { print, printPdf } = createPrintExecutor({
     printMode,
     silentPrint,
     localStatus,
@@ -718,10 +725,86 @@ export const usePrint = () => {
     submitRemoteTask,
     getPdfBlob: (content) => getPdfBlob(content, { showProgress: false }),
     browserPrint,
+    browserPrintBlob: printPdfBlobInBrowser,
     reportProgress: (progress) => {
       store.setPrintProgress(progress);
     },
   });
+
+  // 批量套打：每条自带变量/测试数据，复用单 iframe 逐条渲染并累积页图 → 一个多页 PDF。
+  type BatchPrintItem = {
+    variables?: Record<string, any>;
+    testData?: Record<string, any>;
+  };
+
+  const resolveBatchContent = (
+    content?: HTMLElement | string | HTMLElement[],
+  ) =>
+    content ||
+    (Array.from(document.querySelectorAll(".print-page")) as HTMLElement[]);
+
+  const reportBatchProgress = (phase: string) => (
+    current: number,
+    total: number,
+  ) => {
+    store.setPrintProgress({
+      phase,
+      current,
+      total,
+      message: i18n.global.t("statusBar.progress.renderingPage", {
+        current,
+        total,
+      }),
+    });
+  };
+
+  const getBatchPdfBlob = async (
+    items: BatchPrintItem[],
+    content?: HTMLElement | string | HTMLElement[],
+    options: { onProgress?: (current: number, total: number) => void } = {},
+  ) => {
+    const report = reportBatchProgress("pdf");
+    try {
+      const pdf = await createBatchPdfDocument(items, resolveBatchContent(content), {
+        onProgress: (current, total) => {
+          report(current, total);
+          options.onProgress?.(current, total);
+        },
+      });
+      return pdf.output("blob");
+    } finally {
+      store.setPrintProgress(null);
+    }
+  };
+
+  const exportBatchPdf = async (
+    items: BatchPrintItem[],
+    content?: HTMLElement | string | HTMLElement[],
+    filename = "print-batch.pdf",
+  ) => {
+    const report = reportBatchProgress("pdf");
+    try {
+      const pdf = await createBatchPdfDocument(items, resolveBatchContent(content), {
+        onProgress: report,
+      });
+      pdf.save(filename.endsWith(".pdf") ? filename : `${filename}.pdf`);
+    } finally {
+      store.setPrintProgress(null);
+    }
+  };
+
+  const printBatch = async (
+    items: BatchPrintItem[],
+    content?: HTMLElement | string | HTMLElement[],
+    request?: { mode?: PrintMode; options?: PrintOptions },
+  ) => {
+    const report = reportBatchProgress("print");
+    const pdf = await createBatchPdfDocument(items, resolveBatchContent(content), {
+      onProgress: report,
+    });
+    const blob = pdf.output("blob");
+    return await printPdf(blob, request);
+  };
 
   type PreviewMode = "pdf" | "html" | "json";
 
@@ -934,5 +1017,8 @@ export const usePrint = () => {
     exportImages,
     getPdfBlob,
     getImageBlob,
+    getBatchPdfBlob,
+    exportBatchPdf,
+    printBatch,
   };
 };

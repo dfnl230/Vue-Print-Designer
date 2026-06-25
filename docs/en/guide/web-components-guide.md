@@ -12,6 +12,7 @@
   - [Initialization Parameters (Suggested)](#initialization-parameters-suggested)
   - [1. Execute Print (print)](#1-execute-print-print)
   - [2. Export PDF/Images/HTML (export)](#2-export-pdfimageshtml-export)
+  - [2.1. Batch Variable Printing (printBatch / exportBatchPdf / getBatchPdfBlob)](#21-batch-variable-printing-printbatch--exportbatchpdf--getbatchpdfblob)
   - [3. Generate and Get HTML Preview Code (getPreviewHtml)](#3-generate-and-get-html-preview-code-getpreviewhtml)
   - [3.1. Send to Local Client Preview (preview)](#31-send-to-local-client-preview-preview)
   - [4. Set Default Print Options (setPrintDefaults)](#4-set-default-print-options-setprintdefaults)
@@ -68,6 +69,9 @@
 | ------------------------------------- | ------------------------------------------------------------ |
 | `print(request)`                      | Execute print                                                |
 | `export(request)`                     | Export PDF/Images/HTML                                       |
+| `getBatchPdfBlob(items, request?)`    | Batch variable printing into one multi-page PDF (returns Blob) |
+| `exportBatchPdf(items, request?)`     | Batch variable printing into one multi-page PDF and download |
+| `printBatch(items, request?)`         | Batch variable printing into one PDF, printed as a single job |
 | `getPreviewHtml(options?)`            | Generate and get HTML preview code                           |
 | `preview(request?)`                   | Send content to the local client preview window              |
 | `setPrintDefaults(payload)`           | Set default print options                                    |
@@ -407,6 +411,71 @@ Parameters:
 | `filenamePrefix` | `string`                                                  | No       | Image filename prefix |
 | `merged`         | `boolean`                                                 | No       | Merge images or not   |
 | `onProgress`     | `(progress: DesignerProgressPayload) => void`            | No       | Progress callback fired when progress changes. |
+
+### 2.1. Batch Variable Printing (printBatch / exportBatchPdf / getBatchPdfBlob)
+
+Description: For "one template + a set of data" batch variable-printing scenarios. Pass an array of data records; the component reuses a single hidden render environment, applies the template to each record in order, and finally **produces one multi-page PDF** (each record maps to its own page(s); no image stitching).
+
+The three methods:
+
+| Method                             | Purpose                                                                                          | Returns                 |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------ | ----------------------- |
+| `getBatchPdfBlob(items, request?)` | Build the multi-page PDF and return a `Blob` for you to upload/preview/save.                      | `Promise<Blob \| null>` |
+| `exportBatchPdf(items, request?)`  | Build the multi-page PDF and trigger a browser download.                                          | `Promise<void>`         |
+| `printBatch(items, request?)`      | Build the multi-page PDF, then print it as a **single print job** (browser/local/remote client). | `Promise<any>`          |
+
+```ts
+// Each record carries its own variables / testData (example: three product labels)
+const items = [
+  { variables: { code: 'A001', name: 'Apple', qty: 10 } },
+  { variables: { code: 'A002', name: 'Banana', qty: 20 } },
+  { variables: { code: 'A003', name: 'Orange', qty: 30 } },
+]
+
+// 1) Get the combined single multi-page PDF Blob (upload/preview/save yourself)
+const blob = await el.getBatchPdfBlob(items)
+
+// 2) Build and download directly
+await el.exportBatchPdf(items, {
+  filename: 'labels.pdf',
+  onProgress: (p) => console.log('Batch export', p.percent, p.message),
+})
+
+// 3) Build, then print as a single job (local client example)
+await el.printBatch(items, {
+  mode: 'local',
+  options: { printer: 'HP LaserJet', copies: 1 },
+  onProgress: (p) => console.log('Batch print', p.percent, p.message),
+})
+```
+
+`items` array item (`DesignerBatchItem`):
+
+| Field       | Type                  | Required | Description                                                                                     |
+| ----------- | --------------------- | -------- | ----------------------------------------------------------------------------------------------- |
+| `variables` | `Record<string, any>` | No       | Variable values for this record (for `@variable` binding), matching export-mode variable data.  |
+| `testData`  | `Record<string, any>` | No       | Test data for this record, used as the variable fallback.                                       |
+
+`request` for `getBatchPdfBlob` / `exportBatchPdf` (`DesignerBatchExportRequest`):
+
+| Field        | Type                                          | Required | Description                                                                      |
+| ------------ | --------------------------------------------- | -------- | -------------------------------------------------------------------------------- |
+| `filename`   | `string`                                      | No       | Download filename, used by `exportBatchPdf` only; defaults to `print-batch.pdf`. |
+| `onProgress` | `(progress: DesignerProgressPayload) => void` | No       | Progress callback fired after each record is rendered.                           |
+
+`request` for `printBatch` (`DesignerBatchPrintRequest`):
+
+| Field        | Type                                          | Required | Description                                       |
+| ------------ | --------------------------------------------- | -------- | ------------------------------------------------- |
+| `mode`       | `'browser' \| 'local' \| 'remote'`            | No       | Print mode. If omitted, the default mode is used. |
+| `options`    | `PrintOptions`                                | No       | Print options (see "Print Options Detail" below). |
+| `onProgress` | `(progress: DesignerProgressPayload) => void` | No       | Progress callback fired after each record is rendered. |
+
+Returns: `getBatchPdfBlob` returns `Promise<Blob | null>` (`null` when no render environment is available); `exportBatchPdf` returns `Promise<void>` (triggers a download); `printBatch` returns `Promise<any>` (the underlying print-channel status object; per-`mode` behavior matches `print`).
+
+> Tip: for variables to take effect, the text element in the template must bind a variable (e.g. bind `@code`), not merely contain `@code` in its content.
+>
+> Events: batch export reuses the `export` / `exported` events, batch print reuses the `print` / `printed` events; errors are emitted via the `error` event with `detail.scope` of `getBatchPdfBlob` / `exportBatchPdf` / `printBatch`.
 
 ### 3. Generate and Get HTML Preview Code (getPreviewHtml)
 

@@ -69,6 +69,23 @@ export type DesignerPrintRequest = {
   onProgress?: DesignerProgressCallback;
 };
 
+// 批量套打：每项自带变量/测试数据，循环套用同一模板。
+export type DesignerBatchItem = {
+  variables?: Record<string, any>;
+  testData?: Record<string, any>;
+};
+
+export type DesignerBatchExportRequest = {
+  filename?: string;
+  onProgress?: DesignerProgressCallback;
+};
+
+export type DesignerBatchPrintRequest = {
+  mode?: PrintMode;
+  options?: PrintOptions;
+  onProgress?: DesignerProgressCallback;
+};
+
 export type DesignerProgressScope = "print" | "export" | "preview";
 
 export type DesignerProgressPayload = {
@@ -807,6 +824,105 @@ class PrintDesignerElement extends HTMLElement {
     } finally {
       stopProgress();
       this.printSettings.exportImageMerged.value = previousMerged;
+    }
+  }
+
+  // 批量套打：一组数据套用同一模板 → 合成一个多页 PDF blob（不拼接、复用单 iframe）。
+  async getBatchPdfBlob(
+    items: DesignerBatchItem[],
+    request: DesignerBatchExportRequest = {},
+  ) {
+    if (!this.printApi) return null;
+    const stopProgress = this.bindProgressReporter("export", request.onProgress);
+    try {
+      this.dispatchEvent(
+        new CustomEvent("export", {
+          detail: { request: { type: "batchPdfBlob", items } },
+        }),
+      );
+      const blob = await this.printApi.getBatchPdfBlob(
+        items,
+        this.getPrintPages(),
+      );
+      this.dispatchEvent(
+        new CustomEvent("exported", {
+          detail: { request: { type: "batchPdfBlob" }, blob },
+        }),
+      );
+      return blob;
+    } catch (error) {
+      this.dispatchEvent(
+        new CustomEvent("error", {
+          detail: { scope: "getBatchPdfBlob", error },
+        }),
+      );
+      throw error;
+    } finally {
+      stopProgress();
+    }
+  }
+
+  // 批量套打：直接下载合成的多页 PDF。
+  async exportBatchPdf(
+    items: DesignerBatchItem[],
+    request: DesignerBatchExportRequest = {},
+  ) {
+    if (!this.printApi) return;
+    const stopProgress = this.bindProgressReporter("export", request.onProgress);
+    try {
+      this.dispatchEvent(
+        new CustomEvent("export", {
+          detail: { request: { type: "batchPdf", items } },
+        }),
+      );
+      await this.printApi.exportBatchPdf(
+        items,
+        this.getPrintPages(),
+        request.filename || "print-batch.pdf",
+      );
+      this.dispatchEvent(
+        new CustomEvent("exported", { detail: { request: { type: "batchPdf" } } }),
+      );
+    } catch (error) {
+      this.dispatchEvent(
+        new CustomEvent("error", {
+          detail: { scope: "exportBatchPdf", error },
+        }),
+      );
+      throw error;
+    } finally {
+      stopProgress();
+    }
+  }
+
+  // 批量套打：合成一个多页 PDF 后按单个任务打印（浏览器/本地/远程客户端），
+  // 打印机只定位一次纸张，根治“打一张回退一次”。
+  async printBatch(
+    items: DesignerBatchItem[],
+    request: DesignerBatchPrintRequest = {},
+  ) {
+    if (!this.printApi) return;
+    this.dispatchEvent(
+      new CustomEvent("print", { detail: { request: { ...request, batch: true } } }),
+    );
+    const stopProgress = this.bindProgressReporter("print", request.onProgress);
+    try {
+      const result = await this.printApi.printBatch(
+        items,
+        this.getPrintPages(),
+        { mode: request.mode, options: request.options },
+      );
+      this.dispatchEvent(
+        new CustomEvent("printed", { detail: { request, result } }),
+      );
+      return result;
+    } catch (error) {
+      this.dispatchEvent(
+        new CustomEvent("error", { detail: { scope: "printBatch", error } }),
+      );
+      throw error;
+    } finally {
+      stopProgress();
     }
   }
 

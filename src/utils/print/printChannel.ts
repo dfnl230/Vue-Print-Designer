@@ -41,6 +41,7 @@ type PrintExecutorDeps = {
   ) => Promise<any>;
   getPdfBlob: (content: HTMLElement | string | HTMLElement[]) => Promise<Blob>;
   browserPrint: (content: HTMLElement | string | HTMLElement[]) => Promise<any>;
+  browserPrintBlob: (pdfBlob: Blob) => Promise<any>;
   reportProgress?: (progress: PrintProgress | null) => void;
 };
 
@@ -256,14 +257,15 @@ export const createPrintExecutor = (deps: PrintExecutorDeps) => {
     return localQueue;
   };
 
-  const print = async (
-    content: HTMLElement | string | HTMLElement[],
+  const executePrint = async (
+    acquirePdfBlob: () => Promise<Blob>,
+    doBrowserPrint: () => Promise<any>,
     request?: PrintRequest,
   ) => {
     const mode = request?.mode || deps.printMode.value;
 
     if (mode === "browser") {
-      return await deps.browserPrint(content);
+      return await doBrowserPrint();
     }
 
     const connectionOk =
@@ -271,7 +273,7 @@ export const createPrintExecutor = (deps: PrintExecutorDeps) => {
         ? deps.localStatus.value === "connected"
         : deps.remoteStatus.value === "connected";
     if (!connectionOk) {
-      return await deps.browserPrint(content);
+      return await doBrowserPrint();
     }
 
     const options =
@@ -345,7 +347,7 @@ export const createPrintExecutor = (deps: PrintExecutorDeps) => {
         }
       }, 120);
 
-      const pdfBlob = await deps.getPdfBlob(content);
+      const pdfBlob = await acquirePdfBlob();
       if (renderTicker !== null) {
         window.clearInterval(renderTicker);
         renderTicker = null;
@@ -423,5 +425,23 @@ export const createPrintExecutor = (deps: PrintExecutorDeps) => {
     }
   };
 
-  return { print };
+  const print = (
+    content: HTMLElement | string | HTMLElement[],
+    request?: PrintRequest,
+  ) =>
+    executePrint(
+      () => deps.getPdfBlob(content),
+      () => deps.browserPrint(content),
+      request,
+    );
+
+  // 用已构建好的 PDF（如批量套打合成的多页 PDF）直接走打印路由，跳过渲染。
+  const printPdf = (pdfBlob: Blob, request?: PrintRequest) =>
+    executePrint(
+      () => Promise.resolve(pdfBlob),
+      () => deps.browserPrintBlob(pdfBlob),
+      request,
+    );
+
+  return { print, printPdf };
 };

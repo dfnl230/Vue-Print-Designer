@@ -4,6 +4,9 @@ import type {
   DesignerClientPreviewRequest,
   DesignerClientPreviewResult,
   DesignerPrintRequest,
+  DesignerBatchItem,
+  DesignerBatchExportRequest,
+  DesignerBatchPrintRequest,
   DesignerPrintDefaults,
   DesignerListContextMenuConfig,
   DesignerListContextMenuItem,
@@ -44,6 +47,18 @@ export type CrudEndpoints = {
 export interface PrintDesignerElement extends HTMLElement {
   print(request?: DesignerPrintRequest): Promise<any>;
   export(request: DesignerExportRequest): Promise<void | Blob>;
+  getBatchPdfBlob(
+    items: DesignerBatchItem[],
+    request?: DesignerBatchExportRequest,
+  ): Promise<Blob | null>;
+  exportBatchPdf(
+    items: DesignerBatchItem[],
+    request?: DesignerBatchExportRequest,
+  ): Promise<void>;
+  printBatch(
+    items: DesignerBatchItem[],
+    request?: DesignerBatchPrintRequest,
+  ): Promise<any>;
   getPreviewHtml(request?: DesignerPreviewRequest): Promise<string>;
   preview(
     request?: DesignerClientPreviewRequest,

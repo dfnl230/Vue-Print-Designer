@@ -319,6 +319,34 @@
           </div>
 
           <div class="test-btn-group">
+            <h4 class="test-btn-group-title">批量套打测试 (批量变量打印)</h4>
+            <div class="test-btn-grid">
+              <button
+                id="btn-test-batch-pdf-blob"
+                title="API: getBatchPdfBlob(items, request?)"
+              >
+                批量导出 PDF Blob<span class="test-btn-api"
+                  >getBatchPdfBlob()</span
+                >
+              </button>
+              <button
+                id="btn-test-batch-export-pdf"
+                title="API: exportBatchPdf(items, request?)"
+              >
+                批量导出并下载 PDF<span class="test-btn-api"
+                  >exportBatchPdf()</span
+                >
+              </button>
+              <button
+                id="btn-test-batch-print"
+                title="API: printBatch(items, request?)"
+              >
+                批量打印（单任务）<span class="test-btn-api">printBatch()</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="test-btn-group">
             <h4 class="test-btn-group-title">业务数据与变量测试</h4>
             <div class="test-btn-grid">
               <button id="btn-test-get-test-data" title="API: getTestData()">
@@ -1684,6 +1712,151 @@
           } catch (err) {
             console.error("文本变量替换用例测试失败:", err);
             alert("文本变量替换用例测试失败: " + err.message);
+          }
+        });
+
+      // ===== 批量套打 (批量变量打印) 测试用例 =====
+      // 演示数据：三条商品标签，每条自带 variables。
+      const buildBatchDemoItems = () => [
+        { variables: { code: "A001", name: "苹果", qty: 10 } },
+        { variables: { code: "A002", name: "香蕉", qty: 20 } },
+        { variables: { code: "A003", name: "橙子", qty: 30 } },
+      ];
+
+      // 加载一个绑定 @code/@name/@qty 三个变量的标签模板，返回演示数据。
+      const seedBatchDemoTemplate = async () => {
+        const template = {
+          id: "tpl-batch-label",
+          name: "批量套打用例",
+          permissions: { editable: true, deletable: true, copyable: true },
+          data: {
+            testData: { code: "----", name: "----", qty: "0" },
+            pages: [
+              {
+                id: "page-batch-label",
+                elements: [
+                  {
+                    id: "el-batch-code",
+                    type: "text",
+                    x: 24,
+                    y: 24,
+                    width: 320,
+                    height: 48,
+                    content: "编号: @code",
+                    variable: "@code",
+                    style: { fontSize: 22, color: "#111827", fontWeight: "600" },
+                  },
+                  {
+                    id: "el-batch-name",
+                    type: "text",
+                    x: 24,
+                    y: 84,
+                    width: 320,
+                    height: 48,
+                    content: "品名: @name",
+                    variable: "@name",
+                    style: { fontSize: 22, color: "#111827" },
+                  },
+                  {
+                    id: "el-batch-qty",
+                    type: "text",
+                    x: 24,
+                    y: 144,
+                    width: 320,
+                    height: 48,
+                    content: "数量: @qty",
+                    variable: "@qty",
+                    style: { fontSize: 22, color: "#111827" },
+                  },
+                ],
+              },
+            ],
+          },
+        };
+        designer.setTemplates([template], { currentTemplateId: template.id });
+        await new Promise((resolve) => setTimeout(resolve, 120));
+        return buildBatchDemoItems();
+      };
+
+      document
+        .getElementById("btn-test-batch-pdf-blob")
+        .addEventListener("click", async () => {
+          try {
+            // API: getBatchPdfBlob(items, request?)
+            // 说明: 一组数据套用同一模板，合成单个多页 PDF（不拼接），返回 Blob。
+            const items = await seedBatchDemoTemplate();
+            const blob = await designer.getBatchPdfBlob(items, {
+              onProgress: (p) =>
+                console.log("批量导出进度", p.percent, p.message),
+            });
+            const isPdf = !!blob && blob.type === "application/pdf";
+            console.log("getBatchPdfBlob Result:", {
+              size: blob ? blob.size : 0,
+              type: blob ? blob.type : "null",
+            });
+            let opened = false;
+            if (blob) {
+              const url = URL.createObjectURL(blob);
+              opened = !!window.open(url, "_blank");
+              setTimeout(() => URL.revokeObjectURL(url), 60000);
+            }
+            alert(
+              [
+                isPdf && blob.size > 0
+                  ? "PASS: 已生成单个多页 PDF Blob"
+                  : "FAIL: 未生成有效 PDF Blob",
+                `数据条数: ${items.length}（预期 3 页）`,
+                `Blob 大小: ${blob ? blob.size : 0} bytes`,
+                `Blob 类型: ${blob ? blob.type : "null"}`,
+                opened
+                  ? "已在新窗口打开 PDF，可核对 A001/苹果、A002/香蕉、A003/橙子 三页。"
+                  : "新窗口被拦截，请允许弹窗或从控制台查看结果。",
+              ].join("\n"),
+            );
+          } catch (err) {
+            console.error("批量导出 PDF Blob 失败:", err);
+            alert("批量导出 PDF Blob 失败: " + err.message);
+          }
+        });
+
+      document
+        .getElementById("btn-test-batch-export-pdf")
+        .addEventListener("click", async () => {
+          try {
+            // API: exportBatchPdf(items, request?)
+            // 说明: 合成单个多页 PDF 并触发浏览器下载。
+            const items = await seedBatchDemoTemplate();
+            await designer.exportBatchPdf(items, {
+              filename: "batch-labels.pdf",
+              onProgress: (p) =>
+                console.log("批量下载进度", p.percent, p.message),
+            });
+            alert(
+              "已触发批量 PDF 下载：batch-labels.pdf（3 页：A001/A002/A003）。",
+            );
+          } catch (err) {
+            console.error("批量导出 PDF 失败:", err);
+            alert("批量导出 PDF 失败: " + err.message);
+          }
+        });
+
+      document
+        .getElementById("btn-test-batch-print")
+        .addEventListener("click", async () => {
+          try {
+            // API: printBatch(items, request?)
+            // 说明: 合成单个多页 PDF 后按“单个打印任务”打印（标签机只定位一次纸张）。
+            const items = await seedBatchDemoTemplate();
+            const result = await designer.printBatch(items, {
+              mode: "browser",
+              onProgress: (p) =>
+                console.log("批量打印进度", p.percent, p.message),
+            });
+            console.log("printBatch Result:", result);
+            alert("已触发批量打印（mode: browser，3 页合并为单个任务）。");
+          } catch (err) {
+            console.error("批量打印失败:", err);
+            alert("批量打印失败: " + err.message);
           }
         });
 

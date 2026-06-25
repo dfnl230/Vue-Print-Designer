@@ -18,6 +18,21 @@ export type RenderSource = {
   getComputedStyleFn: (elt: Element) => CSSStyleDeclaration;
 };
 
+// 批量套打的单条渲染输入：每条数据自带变量/测试数据，覆盖模板默认值。
+export type BatchRenderItem = {
+  variables?: Record<string, any>;
+  testData?: Record<string, any>;
+};
+
+// 复用同一 iframe 的重渲会话：renderVariant 按不同变量重渲并返回采集到的页面。
+export type ReusableRenderSession = {
+  renderVariant: (variant?: BatchRenderItem) => Promise<{
+    pages: HTMLElement[];
+    getComputedStyleFn: (elt: Element) => CSSStyleDeclaration;
+  }>;
+  dispose: () => void;
+};
+
 type PrintRenderPayload = {
   pages: Page[];
   canvasSize: { width: number; height: number };
@@ -398,6 +413,72 @@ export const createIframeRenderer = ({
     }
   };
 
+  // 复用同一个 iframe 的可重渲会话：挂载一次，按不同变量多次重渲并采集 .print-page。
+  // 用于批量套打，避免每条数据都重挂 iframe / 重等字体，显著降低重复开销。
+  const createReusableRenderSession = async (
+    content?: RenderContent,
+  ): Promise<ReusableRenderSession> => {
+    const token = uuidv4();
+    const iframe = document.createElement("iframe");
+    iframe.setAttribute("data-print-renderer", "true");
+    iframe.style.cssText =
+      "position:fixed;left:0;top:0;width:0;height:0;border:0;visibility:hidden;";
+    document.body.appendChild(iframe);
+
+    const frameDoc = iframe.contentDocument;
+    const frameWin = iframe.contentWindow;
+    if (!frameDoc || !frameWin) throw new Error("Print renderer not available");
+
+    const style = frameDoc.createElement("style");
+    style.textContent = baseStyles;
+    frameDoc.head.appendChild(style);
+
+    const mountEl = frameDoc.createElement("div");
+    mountEl.id = "app";
+    frameDoc.body.appendChild(mountEl);
+
+    // 不传 payload prop，让 PrintRenderer 进入“就绪后等待 payload 消息”的可复用模式。
+    const app = createApp({
+      render: () => h(PrintRenderer, { token }),
+    });
+    app.use(createPinia());
+    app.use(i18n);
+    app.mount(mountEl);
+
+    // 等待渲染器就绪，确保其 message 监听已挂载后再投递首个 payload。
+    await waitForMessage(token, "print-renderer-ready");
+
+    const renderVariant = async (variant?: BatchRenderItem) => {
+      const payload = buildPrintRenderPayload(content);
+      if (variant?.variables !== undefined) {
+        payload.variables = cloneDeep(variant.variables);
+      }
+      if (variant?.testData !== undefined) {
+        payload.testData = cloneDeep(variant.testData);
+      }
+      frameWin.postMessage(
+        { type: "print-renderer-payload", token, payload },
+        window.location.origin,
+      );
+      await waitForMessage(token, "print-renderer-rendered");
+      return {
+        pages: Array.from(
+          frameDoc.querySelectorAll(".print-page"),
+        ) as HTMLElement[],
+        getComputedStyleFn: frameWin.getComputedStyle.bind(frameWin),
+      };
+    };
+
+    const dispose = () => {
+      app.unmount();
+      if (iframe.parentNode) {
+        iframe.parentNode.removeChild(iframe);
+      }
+    };
+
+    return { renderVariant, dispose };
+  };
+
   // 统一解析渲染源：字符串直返，其它来源统一走 iframe 渲染。
   const resolveRenderSource = async (
     content: RenderContent,
@@ -418,5 +499,5 @@ export const createIframeRenderer = ({
     };
   };
 
-  return { resolveRenderSource };
+  return { resolveRenderSource, createReusableRenderSession };
 };
