@@ -46,7 +46,11 @@ export const layerActions = {
       const selectedTableIds = new Set<string>();
       for (const page of this.pages) {
         const selectedInPage = page.elements.filter(
-          (el) => idSet.has(el.id) && !el.locked,
+          (el) =>
+            idSet.has(el.id) &&
+            !el.locked &&
+            // The multi-label container must stay behind its label content.
+            el.type !== ElementType.MULTI_LABEL,
         );
 
         selectedInPage.forEach((el) => {

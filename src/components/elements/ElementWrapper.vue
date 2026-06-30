@@ -11,6 +11,7 @@ import { ElementType } from "@/types";
 import { useDesignerStore } from "@/stores/designer";
 import Lock from "~icons/material-symbols/lock";
 import RotateRight from "~icons/material-symbols/rotate-right";
+import AlignmentCenterCross from "@/components/common/AlignmentCenterCross.vue";
 
 const props = defineProps<{
   element: PrintElement;
@@ -320,7 +321,13 @@ const embeddedTableTextLayer = computed<"above" | "below" | null>(() => {
     : "below";
 });
 
-const shouldConstrainToCanvas = computed(() => !store.allowDragOutsideCanvas);
+const shouldConstrainToCanvas = computed(
+  () =>
+    // The multi-label layout ignores the global "allow drag outside canvas"
+    // setting and may always be dragged past the canvas edges.
+    props.element.type !== ElementType.MULTI_LABEL &&
+    !store.allowDragOutsideCanvas,
+);
 
 const selfBorderedTypes = [
   ElementType.TABLE,
@@ -377,6 +384,12 @@ const style = computed(() => {
       embeddedTableTextLayer.value === "above"
         ? Math.min(resolvedZIndex, 0)
         : Math.max(resolvedZIndex, 2);
+  }
+
+  if (props.element.type === ElementType.MULTI_LABEL) {
+    // The layout container is a backdrop for its first-label content: keep it
+    // behind the child elements so they remain clickable/selectable.
+    baseStyle.zIndex = 0;
   }
 
   if (props.element.type === ElementType.TEXT) {
@@ -1658,7 +1671,7 @@ const handleResizeStart = (e: MouseEvent, direction: ResizeHandleDirection) => {
       :style="{ borderWidth: oneDevicePixelInCanvasPx }"
     ></div>
 
-    <template v-if="isAlignmentTarget">
+    <template v-if="isAlignmentTarget && element.type !== ElementType.MULTI_LABEL">
       <div
         data-print-exclude="true"
         class="absolute inset-0 pointer-events-none z-30"
@@ -1671,24 +1684,7 @@ const handleResizeStart = (e: MouseEvent, direction: ResizeHandleDirection) => {
           class="absolute inset-0"
           style="background-color: var(--brand-500-alpha-10)"
         ></div>
-        <div
-          class="absolute w-px theme-bg-strong"
-          style="
-            left: 50%;
-            top: 50%;
-            height: 6px;
-            transform: translate(-0.5px, -50%);
-          "
-        ></div>
-        <div
-          class="absolute h-px theme-bg-strong"
-          style="
-            left: 50%;
-            top: 50%;
-            width: 6px;
-            transform: translate(-50%, -0.5px);
-          "
-        ></div>
+        <AlignmentCenterCross />
       </div>
     </template>
 
@@ -1775,8 +1771,9 @@ const handleResizeStart = (e: MouseEvent, direction: ResizeHandleDirection) => {
           <span class="absolute theme-bg" :style="resizeHandleStyles.bottomRightCornerV"></span>
         </div>
 
-      <!-- Rotation Handle (top right, no background) -->
+      <!-- Rotation Handle (top right, no background) — hidden for multi-label -->
       <div
+        v-if="element.type !== ElementType.MULTI_LABEL"
         data-print-exclude="true"
         class="rotate-handle absolute -top-4 -right-5 w-5 h-5 flex items-center justify-center cursor-grab z-50 theme-text theme-text-hover"
         :title="t('common.rotate')"

@@ -18,6 +18,7 @@ import Image from "~icons/material-symbols/image";
 import Table from "~icons/material-symbols/table-chart";
 import Barcode from "~icons/material-symbols/barcode";
 import QrCode from "~icons/material-symbols/qr-code";
+import GridView from "~icons/material-symbols/grid-view";
 import HorizontalRule from "~icons/material-symbols/horizontal-rule";
 import CheckBoxOutlineBlank from "~icons/material-symbols/check-box-outline-blank";
 import RadioButtonUnchecked from "~icons/material-symbols/radio-button-unchecked";
@@ -147,6 +148,11 @@ const categories = [
         icon: Barcode,
       },
       { type: ElementType.QRCODE, label: "elementsPanel.qrcode", icon: QrCode },
+      {
+        type: ElementType.MULTI_LABEL,
+        label: "editor.multiLabel",
+        icon: GridView,
+      },
     ],
   },
   {
@@ -171,7 +177,7 @@ const categories = [
   },
 ];
 
-const handleDragStart = (event: DragEvent, type: ElementType) => {
+const handleDragStart = (event: DragEvent, type: ElementType | string) => {
   if (event.dataTransfer) {
     event.dataTransfer.setData("application/json", JSON.stringify({ type }));
     event.dataTransfer.effectAllowed = "copy";

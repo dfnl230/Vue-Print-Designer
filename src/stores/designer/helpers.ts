@@ -12,18 +12,17 @@ import {
   type WatermarkSettings,
   type CustomElementEditSnapshot,
   type BrandingSettings,
+  type MultiLabelSettings,
   type DesignerFontOption,
   type ListContextMenuConfig,
   type ListContextMenuItem,
   type TemplateModalFormConfig,
   type TemplateModalField,
-} from "@/types";
-import {
+} from "@/types";import {
   getCrudConfig,
   buildEndpoint,
   buildFetchOptions,
-} from "../../utils/crudConfig";
-import { toast } from "../../utils/toast";
+} from "../../utils/crudConfig";import { toast } from "../../utils/toast";
 import {
   canCopyEntity,
   canDeleteEntity,
@@ -51,6 +50,24 @@ export const defaultBranding: BrandingSettings = {
   logoUrl: "",
   showTitle: true,
   showLogo: true,
+};
+
+export const defaultMultiLabel: MultiLabelSettings = {
+  enabled: false,
+  dataVariable: "@labels",
+  rows: 5,
+  cols: 3,
+  labelWidth: 200,
+  labelHeight: 120,
+  gapX: 12,
+  gapY: 12,
+  marginLeft: 40,
+  marginTop: 40,
+  direction: "row",
+  backgroundColor: "transparent",
+  borderStyle: "none",
+  borderWidth: 1,
+  borderColor: "#000000",
 };
 
 export const HISTORY_ACTION = {

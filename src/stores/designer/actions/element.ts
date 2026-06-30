@@ -280,6 +280,25 @@ export const elementActions = {
     },
 
   getElementBoundsAtPosition(el: PrintElement, x: number, y: number) {
+      // The multi-label container's footprint is its whole repeated grid (every
+      // label cell, including the ghost previews), so snapping, center-point
+      // alignment and movement bounds all treat the grid box as the element's
+      // bounds — its center is the center of the whole grid, not the first cell.
+      if (el.type === ElementType.MULTI_LABEL) {
+        const cols = Math.max(1, Math.round(el.cols || 1));
+        const rows = Math.max(1, Math.round(el.rows || 1));
+        const gapX = Math.max(0, el.gapX || 0);
+        const gapY = Math.max(0, el.gapY || 0);
+        const gridW = cols * el.width + (cols - 1) * gapX;
+        const gridH = rows * el.height + (rows - 1) * gapY;
+        return {
+          minX: x,
+          maxX: x + gridW,
+          minY: y,
+          maxY: y + gridH,
+        };
+      }
+
       const rotation = el.style?.rotate || 0;
       const normalized = ((rotation % 360) + 360) % 360;
       if (normalized === 0) {

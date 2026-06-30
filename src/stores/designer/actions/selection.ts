@@ -378,6 +378,29 @@ export const selectionActions = {
           const index = page.elements.findIndex((e) => e.id === id);
           if (index !== -1) {
             const el = page.elements[index];
+            // A multi-label container drags its in-region label content along.
+            if (el.type === ElementType.MULTI_LABEL) {
+              const rx = el.x;
+              const ry = el.y;
+              const rw = el.width || 1;
+              const rh = el.height || 1;
+              for (let ci = 0; ci < page.elements.length; ci += 1) {
+                const other = page.elements[ci];
+                if (other.id === el.id) continue;
+                if (other.type === ElementType.MULTI_LABEL) continue;
+                if (movedIdsSet.has(other.id)) continue;
+                if (other.locked) continue;
+                const cx = (other.x || 0) + (other.width || 0) / 2;
+                const cy = (other.y || 0) + (other.height || 0) / 2;
+                if (cx >= rx && cx <= rx + rw && cy >= ry && cy <= ry + rh) {
+                  page.elements[ci] = {
+                    ...other,
+                    x: (other.x || 0) + actualDx,
+                    y: (other.y || 0) + actualDy,
+                  };
+                }
+              }
+            }
             const movedElement = {
               ...el,
               x: el.x + actualDx,

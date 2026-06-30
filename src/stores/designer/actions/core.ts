@@ -431,6 +431,24 @@ export const coreActions = {
           const index = page.elements.findIndex((e) => e.id === id);
           if (index !== -1) {
             page.elements[index].locked = targetState;
+            // Locking a multi-label container locks/unlocks its label content
+            // (the elements inside the first cell) together.
+            if (page.elements[index].type === ElementType.MULTI_LABEL) {
+              const ml = page.elements[index];
+              const rx = ml.x;
+              const ry = ml.y;
+              const rw = ml.width || 1;
+              const rh = ml.height || 1;
+              for (const other of page.elements) {
+                if (other.id === ml.id) continue;
+                if (other.type === ElementType.MULTI_LABEL) continue;
+                const cx = (other.x || 0) + (other.width || 0) / 2;
+                const cy = (other.y || 0) + (other.height || 0) / 2;
+                if (cx >= rx && cx <= rx + rw && cy >= ry && cy <= ry + rh) {
+                  other.locked = targetState;
+                }
+              }
+            }
             break;
           }
         }

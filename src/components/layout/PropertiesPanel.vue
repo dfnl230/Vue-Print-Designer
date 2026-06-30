@@ -19,6 +19,7 @@ import { elementPropertiesSchema as QrCodeSchema } from "@/components/elements/Q
 import { elementPropertiesSchema as LineSchema } from "@/components/elements/LineElement.vue";
 import { elementPropertiesSchema as RectSchema } from "@/components/elements/RectElement.vue";
 import { elementPropertiesSchema as CircleSchema } from "@/components/elements/CircleElement.vue";
+import { elementPropertiesSchema as MultiLabelSchema } from "@/components/elements/MultiLabelElement.vue";
 import { pxToUnit, unitToPx, type Unit } from "@/utils/units";
 import PropertyInput from "@/components/properties/PropertyInput.vue";
 import PropertySelect from "@/components/properties/PropertySelect.vue";
@@ -116,14 +117,20 @@ const {
 
 const isSelfStyled = computed(() => {
   if (!element.value) return false;
-  return [ElementType.LINE, ElementType.RECT, ElementType.CIRCLE].includes(
-    element.value.type,
-  );
+  return [
+    ElementType.LINE,
+    ElementType.RECT,
+    ElementType.CIRCLE,
+    ElementType.MULTI_LABEL,
+  ].includes(element.value.type);
 });
 
 const showRepeatPerPage = computed(() => {
   if (!element.value) return false;
-  return element.value.type !== ElementType.TABLE;
+  return (
+    element.value.type !== ElementType.TABLE &&
+    element.value.type !== ElementType.MULTI_LABEL
+  );
 });
 
 const isTextElement = computed(() => element.value?.type === ElementType.TEXT);
@@ -365,6 +372,8 @@ const unitFieldKeys = new Set([
   "footerHeight",
   "labelFontSize",
   "labelBorderWidth",
+  "gapX",
+  "gapY",
 ]);
 
 const isUnitField = (field: PropertyField) => {
@@ -551,6 +560,8 @@ const getSchema = (type: ElementType): ElementPropertiesSchema | null => {
       return RectSchema;
     case ElementType.CIRCLE:
       return CircleSchema;
+    case ElementType.MULTI_LABEL:
+      return MultiLabelSchema;
     default:
       return null;
   }
@@ -1029,8 +1040,12 @@ const closePropertiesPanel = () => {
             >
               {{ t(section.title) }}
             </h3>
-            <div class="space-y-3">
-              <template v-for="(field, fi) in section.fields" :key="fi">
+            <div class="flex flex-wrap gap-3">
+              <div
+                v-for="(field, fi) in section.fields"
+                :key="fi"
+                :class="field.half ? 'w-[calc(50%-0.375rem)]' : 'w-full'"
+              >
                 <!-- Action Button -->
                 <div v-if="field.type === 'action'">
                   <button
@@ -1156,7 +1171,7 @@ const closePropertiesPanel = () => {
                     class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded focus:border-blue-500 outline-none h-24 resize-y font-mono disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-500 dark:disabled:text-gray-400 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
                   ></textarea>
                 </div>
-              </template>
+              </div>
             </div>
           </div>
 

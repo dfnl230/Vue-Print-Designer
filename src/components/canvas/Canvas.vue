@@ -2,6 +2,7 @@
 import {
   computed,
   ref,
+  watch,
   onMounted,
   onUnmounted,
   nextTick,
@@ -32,6 +33,16 @@ import MoveUpIcon from "~icons/material-symbols/arrow-upward";
 import MoveDownIcon from "~icons/material-symbols/arrow-downward";
 import { createNewElement } from "../../utils/elementFactory";
 import { buildWatermarkPatternSvg } from "@/svg/templates";
+import MultiLabelElement from "@/components/elements/MultiLabelElement.vue";
+import AlignmentCenterCross from "@/components/common/AlignmentCenterCross.vue";
+import {
+  classifyLabelElements,
+  getCellPosition,
+  getMultiLabelPerPage,
+  findMultiLabelElement,
+  multiLabelSettingsFromElement,
+} from "@/utils/multiLabel";
+import { normalizeVariableKey } from "@/utils/variables";
 
 const store = useDesignerStore();
 const designerRoot = inject<Ref<HTMLElement | null>>(
@@ -497,6 +508,8 @@ const getComponent = (type: ElementType) => {
       return RectElement;
     case ElementType.CIRCLE:
       return CircleElement;
+    case ElementType.MULTI_LABEL:
+      return MultiLabelElement;
     default:
       return TextElement;
   }
@@ -1105,6 +1118,18 @@ const handleDrop = (event: DragEvent, pageIndex: number) => {
 
   // Handle dropping a regular element from the left panel
   if (type) {
+    // Only one multi-label layout per design: re-select the existing one
+    // instead of creating a second container.
+    if (type === ElementType.MULTI_LABEL) {
+      const existing = store.pages[0]?.elements.find(
+        (e) => e.type === ElementType.MULTI_LABEL,
+      );
+      if (existing) {
+        store.selectElement(existing.id);
+        return;
+      }
+    }
+
     if (type === ElementType.TABLE) {
       openTableCreateModal(x, y, pageIndex);
       return;
@@ -1314,6 +1339,276 @@ const getGlobalElements = () => {
     return isRepeatPerPage || isHeader || isFooter;
   });
 };
+
+// ===== Multi-label batch layout (design-time ghost preview overlay) =====
+// The layout is a real MULTI_LABEL element (the first label cell). Selection,
+// drag, resize and snapping are handled by ElementWrapper like any element;
+// the code below only renders the read-only preview of the repeated grid.
+const multiLabelElement = computed<PrintElement | null>(() => {
+  if (store.editingCustomElementId) return null;
+  const firstPage = pages.value[0];
+  if (!firstPage) return null;
+  return findMultiLabelElement(firstPage.elements);
+});
+const multiLabelEnabled = computed(() => !!multiLabelElement.value);
+const multiLabelSettings = computed(() =>
+  multiLabelElement.value
+    ? multiLabelSettingsFromElement(multiLabelElement.value)
+    : null,
+);
+const multiLabelPerPage = computed(() =>
+  multiLabelSettings.value ? getMultiLabelPerPage(multiLabelSettings.value) : 1,
+);
+
+const multiLabelLabelElements = computed<PrintElement[]>(() => {
+  const ml = multiLabelSettings.value;
+  const firstPage = pages.value[0];
+  if (!ml || !firstPage) return [];
+  return classifyLabelElements(firstPage.elements, ml).labelElements;
+});
+
+// Resolve the bound data-array length (preview→testData, print→variables).
+const multiLabelDataCount = computed(() => {
+  const ml = multiLabelSettings.value;
+  if (!ml) return 0;
+  const key = normalizeVariableKey(ml.dataVariable || "");
+  if (key) {
+    const fromVars = store.variables ? store.variables[key] : undefined;
+    const fromTest = store.testData ? store.testData[key] : undefined;
+    const arr = Array.isArray(fromVars)
+      ? fromVars
+      : Array.isArray(fromTest)
+        ? fromTest
+        : null;
+    if (arr) return arr.length;
+  }
+  // No data bound → render one full template page worth of labels.
+  return multiLabelPerPage.value;
+});
+
+const multiLabelTotalPages = computed(() =>
+  Math.max(
+    1,
+    Math.ceil(multiLabelDataCount.value / Math.max(1, multiLabelPerPage.value)),
+  ),
+);
+
+const cellsOnMultiLabelPage = (pageIndex: number) => {
+  const start = pageIndex * multiLabelPerPage.value;
+  return Math.max(
+    0,
+    Math.min(multiLabelPerPage.value, multiLabelDataCount.value - start),
+  );
+};
+
+interface MultiLabelCellInfo {
+  key: string;
+  index: number;
+  isFirst: boolean;
+  frameStyle: CSSProperties;
+}
+
+const buildMultiLabelCells = (pageIndex: number): MultiLabelCellInfo[] => {
+  const ml = multiLabelSettings.value;
+  if (!ml) return [];
+  const hasBg =
+    !!ml.backgroundColor &&
+    ml.backgroundColor !== "transparent" &&
+    ml.backgroundColor !== "none";
+  const hasBorder = ml.borderStyle !== "none" && (ml.borderWidth || 0) > 0;
+  const cells: MultiLabelCellInfo[] = [];
+  const count = cellsOnMultiLabelPage(pageIndex);
+  for (let i = 0; i < count; i += 1) {
+    const pos = getCellPosition(i, ml);
+    const isFirst = pageIndex === 0 && i === 0;
+    const frameStyle: CSSProperties = {
+      position: "absolute",
+      left: `${pos.x}px`,
+      top: `${pos.y}px`,
+      width: `${ml.labelWidth}px`,
+      height: `${ml.labelHeight}px`,
+      boxSizing: "border-box",
+      pointerEvents: "none",
+    };
+    if (hasBg) frameStyle.backgroundColor = ml.backgroundColor;
+    if (hasBorder) {
+      frameStyle.border = `${ml.borderWidth}px ${ml.borderStyle} ${ml.borderColor}`;
+    } else {
+      frameStyle.outline = "1px dashed rgba(107,114,128,0.4)";
+      frameStyle.outlineOffset = "-1px";
+    }
+    cells.push({
+      key: `ml-cell-${pageIndex}-${i}`,
+      index: i,
+      isFirst,
+      frameStyle,
+    });
+  }
+  return cells;
+};
+
+// Page 0 cell backgrounds for cells #2..N (cell #1 is the real element).
+const multiLabelCells = computed<MultiLabelCellInfo[]>(() =>
+  multiLabelEnabled.value
+    ? buildMultiLabelCells(0).filter((c) => !c.isFirst)
+    : [],
+);
+
+const buildGhostElementsForPage = (
+  pageIndex: number,
+  includeFirst: boolean,
+): PrintElement[] => {
+  const ml = multiLabelSettings.value;
+  const templates = multiLabelLabelElements.value;
+  if (!ml || templates.length === 0) return [];
+  const ghosts: PrintElement[] = [];
+  const count = cellsOnMultiLabelPage(pageIndex);
+  for (let i = includeFirst ? 0 : 1; i < count; i += 1) {
+    const pos = getCellPosition(i, ml);
+    templates.forEach((el) => {
+      ghosts.push({
+        ...JSON.parse(JSON.stringify(el)),
+        id: `ml-ghost-${pageIndex}-${i}-${el.id}`,
+        x: (el.x || 0) + pos.offsetX,
+        y: (el.y || 0) + pos.offsetY,
+      } as PrintElement);
+    });
+  }
+  return ghosts;
+};
+
+// Page 0 ghosts: cells #2..N (cell #1 keeps the real, editable copies).
+const multiLabelGhostElements = computed<PrintElement[]>(() =>
+  multiLabelEnabled.value ? buildGhostElementsForPage(0, false) : [],
+);
+
+// Continuation pages (page index >= 1) for data that spans multiple pages.
+interface MultiLabelExtraPage {
+  key: string;
+  pageIndex: number;
+  cells: MultiLabelCellInfo[];
+  ghostElements: PrintElement[];
+}
+const multiLabelExtraPages = computed<MultiLabelExtraPage[]>(() => {
+  if (!multiLabelEnabled.value) return [];
+  const out: MultiLabelExtraPage[] = [];
+  for (let p = 1; p < multiLabelTotalPages.value; p += 1) {
+    out.push({
+      key: `ml-extra-page-${p}`,
+      pageIndex: p,
+      cells: buildMultiLabelCells(p),
+      ghostElements: buildGhostElementsForPage(p, true),
+    });
+  }
+  return out;
+});
+
+// When another element center-aligns with this layout, mark the whole grid's
+// center with a small cross (the layout's footprint is the entire grid, so its
+// center sits in the middle cell, not the first/editable cell).
+const multiLabelIsAlignTarget = computed(() => {
+  const el = multiLabelElement.value;
+  return !!el && store.highlightedAlignedElementIds.includes(el.id);
+});
+const multiLabelCenterStyle = computed<CSSProperties>(() => {
+  const el = multiLabelElement.value;
+  const ml = multiLabelSettings.value;
+  if (!el || !ml) return {};
+  const cols = Math.max(1, ml.cols);
+  const rows = Math.max(1, ml.rows);
+  const gridW = cols * ml.labelWidth + (cols - 1) * ml.gapX;
+  const gridH = rows * ml.labelHeight + (rows - 1) * ml.gapY;
+  return {
+    position: "absolute",
+    left: `${el.x + gridW / 2}px`,
+    top: `${el.y + gridH / 2}px`,
+  };
+});
+
+// Whole-grid footprint + selection state, used to render a selection outline
+// and the clickable/draggable handles over the ghost cells.
+const multiLabelSelected = computed(
+  () =>
+    !!multiLabelElement.value &&
+    isElementSelected(multiLabelElement.value.id),
+);
+const multiLabelGridBoxStyle = computed<CSSProperties>(() => {
+  const el = multiLabelElement.value;
+  const ml = multiLabelSettings.value;
+  if (!el || !ml) return {};
+  const cols = Math.max(1, ml.cols);
+  const rows = Math.max(1, ml.rows);
+  const gridW = cols * ml.labelWidth + (cols - 1) * ml.gapX;
+  const gridH = rows * ml.labelHeight + (rows - 1) * ml.gapY;
+  return {
+    position: "absolute",
+    left: `${el.x}px`,
+    top: `${el.y}px`,
+    width: `${gridW}px`,
+    height: `${gridH}px`,
+    boxSizing: "border-box",
+  };
+});
+
+// Clicking a ghost label selects the whole layout; dragging it moves the real
+// MULTI_LABEL element with snapping + child-follow, exactly like its first cell.
+let multiLabelGhostDrag: {
+  startX: number;
+  startY: number;
+  originX: number;
+  originY: number;
+  moved: boolean;
+} | null = null;
+
+const handleGhostMouseMove = (event: MouseEvent) => {
+  const el = multiLabelElement.value;
+  if (!multiLabelGhostDrag || !el) return;
+  const z = zoom.value > 0 ? zoom.value : 1;
+  const dx = (event.clientX - multiLabelGhostDrag.startX) / z;
+  const dy = (event.clientY - multiLabelGhostDrag.startY) / z;
+  if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+    if (!multiLabelGhostDrag.moved) {
+      store.snapshot("editor.historyAction.elementMove");
+      multiLabelGhostDrag.moved = true;
+    }
+    store.moveElementWithSnap(
+      el.id,
+      multiLabelGhostDrag.originX + dx,
+      multiLabelGhostDrag.originY + dy,
+      false,
+      // The multi-label layout may always be dragged outside the canvas.
+      false,
+    );
+  }
+};
+
+const handleGhostMouseUp = () => {
+  multiLabelGhostDrag = null;
+  window.removeEventListener("mousemove", handleGhostMouseMove);
+  window.removeEventListener("mouseup", handleGhostMouseUp);
+  store.setHighlightedGuide(null);
+  store.setHighlightedEdge(null);
+  store.setHighlightedAlignedElements([]);
+};
+
+const handleGhostMouseDown = (event: MouseEvent) => {
+  const el = multiLabelElement.value;
+  if (!el || !isTemplateEditable.value) return;
+  event.preventDefault();
+  event.stopPropagation();
+  // Clicking a ghost selects the whole layout (its real element).
+  store.selectElement(el.id);
+  if (el.locked) return; // locked layout: select only, no drag
+  multiLabelGhostDrag = {
+    startX: event.clientX,
+    startY: event.clientY,
+    originX: el.x,
+    originY: el.y,
+    moved: false,
+  };
+  window.addEventListener("mousemove", handleGhostMouseMove);
+  window.addEventListener("mouseup", handleGhostMouseUp);
+};
 </script>
 
 <template>
@@ -1430,6 +1725,16 @@ const getGlobalElements = () => {
             background-size: 20px 20px;
           "
         ></div>
+
+        <!-- Multi-label cell backgrounds (design page only, behind elements) -->
+        <template v-if="index === 0 && multiLabelEnabled">
+          <div
+            v-for="cell in multiLabelCells"
+            :key="cell.key"
+            data-print-exclude="true"
+            :style="cell.frameStyle"
+          ></div>
+        </template>
 
         <!-- Selection Box -->
         <div
@@ -1558,6 +1863,78 @@ const getGlobalElements = () => {
           />
         </ElementWrapper>
 
+        <!-- Multi-label ghost preview (cells #2..N) for the design page -->
+        <template v-if="index === 0 && multiLabelEnabled">
+          <div
+            data-print-exclude="true"
+            class="absolute inset-0 pointer-events-none z-[6] opacity-40 grayscale"
+          >
+            <ElementWrapper
+              v-for="ghost in multiLabelGhostElements"
+              :key="ghost.id"
+              :element="ghost"
+              :is-selected="false"
+              :zoom="zoom"
+              :page-index="0"
+              :read-only="true"
+            >
+              <component
+                :is="getComponent(ghost.type)"
+                :element="ghost"
+                :page-index="0"
+                :total-pages="1"
+              />
+            </ElementWrapper>
+          </div>
+
+          <!-- Ghost drag zones (cells #2..N): click selects the layout, drag
+               moves the whole layout (snapping + child-follow). -->
+          <template v-if="isTemplateEditable">
+            <div
+              v-for="cell in multiLabelCells"
+              :key="`ml-ghost-drag-${cell.key}`"
+              data-print-exclude="true"
+              class="absolute z-[7]"
+              :class="
+                multiLabelElement && multiLabelElement.locked
+                  ? 'cursor-default'
+                  : 'cursor-move'
+              "
+              :style="{
+                left: cell.frameStyle.left,
+                top: cell.frameStyle.top,
+                width: cell.frameStyle.width,
+                height: cell.frameStyle.height,
+              }"
+              @mousedown="handleGhostMouseDown"
+            ></div>
+          </template>
+
+          <!-- Selection outline around the whole grid when selected -->
+          <div
+            v-if="multiLabelSelected"
+            data-print-exclude="true"
+            :class="[
+              'absolute z-[8] pointer-events-none rounded-sm border',
+              multiLabelElement && multiLabelElement.locked
+                ? 'border-red-500'
+                : 'theme-border-strong',
+            ]"
+            :style="multiLabelGridBoxStyle"
+          ></div>
+
+          <!-- Center cross: marks the whole grid's center point when another
+               element center-aligns with this layout. -->
+          <div
+            v-if="multiLabelIsAlignTarget"
+            data-print-exclude="true"
+            class="absolute z-[45] pointer-events-none"
+            :style="multiLabelCenterStyle"
+          >
+            <AlignmentCenterCross />
+          </div>
+        </template>
+
         <!-- Corner Markers -->
         <div
           v-if="store.showCornerMarkers"
@@ -1619,6 +1996,52 @@ const getGlobalElements = () => {
         </div>
       </div>
     </div>
+
+    <!-- Multi-label continuation pages (when the data spans multiple pages) -->
+    <template v-if="multiLabelEnabled">
+      <div
+        v-for="mlpage in multiLabelExtraPages"
+        :key="mlpage.key"
+        class="relative group"
+        data-print-exclude="true"
+      >
+        <div
+          class="print-page shadow-lg relative overflow-hidden"
+          :style="pageStyle"
+        >
+          <div
+            class="absolute top-1.5 left-1.5 z-[9] px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-500/80 text-white shadow select-none pointer-events-none"
+          >
+            {{ mlpage.pageIndex + 1 }}
+          </div>
+          <!-- Cell backgrounds -->
+          <div
+            v-for="cell in mlpage.cells"
+            :key="cell.key"
+            :style="cell.frameStyle"
+          ></div>
+          <!-- Ghost elements -->
+          <div class="absolute inset-0 pointer-events-none opacity-40 grayscale">
+            <ElementWrapper
+              v-for="ghost in mlpage.ghostElements"
+              :key="ghost.id"
+              :element="ghost"
+              :is-selected="false"
+              :zoom="zoom"
+              :page-index="0"
+              :read-only="true"
+            >
+              <component
+                :is="getComponent(ghost.type)"
+                :element="ghost"
+                :page-index="0"
+                :total-pages="1"
+              />
+            </ElementWrapper>
+          </div>
+        </div>
+      </div>
+    </template>
 
     <InputModal
       :show="showTableCreateModal"

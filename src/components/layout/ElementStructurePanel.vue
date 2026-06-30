@@ -259,6 +259,7 @@ const elementTypeLabelMap = computed<Record<string, string>>(() => ({
   [ElementType.LINE]: t("elementsPanel.line"),
   [ElementType.RECT]: t("elementsPanel.rect"),
   [ElementType.CIRCLE]: t("elementsPanel.circle"),
+  [ElementType.MULTI_LABEL]: t("editor.multiLabel"),
 }));
 
 const getElementTypeLabel = (element: PrintElement) => {

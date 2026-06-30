@@ -11,6 +11,12 @@ import {
 } from "@/composables/usePrintSettings";
 import { toast } from "@/utils/toast";
 import i18n from "@/locales";
+import { normalizeVariableKey } from "@/utils/variables";
+import {
+  expandMultiLabelPages,
+  findMultiLabelElement,
+  multiLabelSettingsFromElement,
+} from "@/utils/multiLabel";
 import { isShadowDomContent, lockViewportScroll } from "./dom";
 import { createPrintExecutor } from "./printChannel";
 import { createRenderEngine } from "./renderEngine";
@@ -36,7 +42,40 @@ export const usePrint = () => {
     printQuality,
   } = usePrintSettings();
 
+  const createMultiLabelPages = (originalPages: Page[]): Page[] | null => {
+    const firstPage = originalPages[0];
+    if (!firstPage) return null;
+    const mlElement = findMultiLabelElement(firstPage.elements);
+    if (!mlElement) return null;
+    const ml = multiLabelSettingsFromElement(mlElement);
+
+    const key = normalizeVariableKey(ml.dataVariable || "");
+    let dataArray: any[] | null = null;
+    if (key) {
+      // Prefer the production data source (variables), fall back to preview
+      // sample data (testData) so the design-time preview still expands.
+      const fromVariables = store.variables ? store.variables[key] : undefined;
+      const fromTestData = store.testData ? store.testData[key] : undefined;
+      const candidate =
+        fromVariables !== undefined ? fromVariables : fromTestData;
+      if (Array.isArray(candidate)) dataArray = candidate;
+    }
+
+    return expandMultiLabelPages({
+      pages: originalPages,
+      multiLabel: ml,
+      dataArray,
+      pageHeight: store.canvasSize.height,
+    });
+  };
+
   const createRepeatedPages = (originalPages: Page[]): Page[] => {
+    // Multi-label batch layout takes over the page-expansion pipeline entirely:
+    // it produces the full label grid (across as many pages as the data needs),
+    // bypassing the normal header/footer/repeat-per-page cloning below.
+    const multiLabelPages = createMultiLabelPages(originalPages);
+    if (multiLabelPages) return multiLabelPages;
+
     const original = cloneDeep(originalPages);
     if (original.length === 0) return original;
 

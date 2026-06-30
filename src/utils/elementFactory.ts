@@ -181,6 +181,25 @@ export const elementConfigRegistry: Partial<
     style: { backgroundColor: "transparent", borderColor: "#000000" },
   }),
 
+  [ElementType.MULTI_LABEL]: () => ({
+    width: 200,
+    height: 120,
+    rows: 5,
+    cols: 3,
+    gapX: 12,
+    gapY: 12,
+    direction: "row",
+    dataVariable: "@labels",
+    variable: "",
+    printable: true,
+    style: {
+      backgroundColor: "transparent",
+      borderColor: "#000000",
+      borderStyle: "none",
+      borderWidth: 1,
+    },
+  }),
+
   [ElementType.PAGE_NUMBER]: () => ({
     width: 52,
     height: 20,

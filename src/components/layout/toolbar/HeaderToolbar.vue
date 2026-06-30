@@ -806,6 +806,15 @@ const isLocked = computed(() => {
   return store.selectedElement?.locked || false;
 });
 
+const alignControlsDisabled = computed(() => {
+  if (isLocked.value || !store.isTemplateEditable) return true;
+  return !store.selectedElementId;
+});
+
+const handleDeleteSelection = () => {
+  store.removeSelectedElements();
+};
+
 const isFontControlsDisabled = computed(() => {
   return (
     isHandPanActive.value ||
@@ -1891,9 +1900,7 @@ onUnmounted(() => {
         >
           <button
             @click="handleAlignmentClick('left')"
-            :disabled="
-              !store.selectedElementId || isLocked || !store.isTemplateEditable
-            "
+            :disabled="alignControlsDisabled"
             class="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded disabled:opacity-30 disabled:cursor-not-allowed"
             :title="t('editor.alignLeft')"
           >
@@ -1901,9 +1908,7 @@ onUnmounted(() => {
           </button>
           <button
             @click="handleAlignmentClick('center')"
-            :disabled="
-              !store.selectedElementId || isLocked || !store.isTemplateEditable
-            "
+            :disabled="alignControlsDisabled"
             class="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded disabled:opacity-30 disabled:cursor-not-allowed"
             :title="t('editor.alignCenter')"
           >
@@ -1911,9 +1916,7 @@ onUnmounted(() => {
           </button>
           <button
             @click="handleAlignmentClick('right')"
-            :disabled="
-              !store.selectedElementId || isLocked || !store.isTemplateEditable
-            "
+            :disabled="alignControlsDisabled"
             class="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded disabled:opacity-30 disabled:cursor-not-allowed"
             :title="t('editor.alignRight')"
           >
@@ -1921,9 +1924,7 @@ onUnmounted(() => {
           </button>
           <button
             @click="handleAlignmentClick('top')"
-            :disabled="
-              !store.selectedElementId || isLocked || !store.isTemplateEditable
-            "
+            :disabled="alignControlsDisabled"
             class="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded disabled:opacity-30 disabled:cursor-not-allowed"
             :title="t('editor.alignTop')"
           >
@@ -1931,9 +1932,7 @@ onUnmounted(() => {
           </button>
           <button
             @click="handleAlignmentClick('middle')"
-            :disabled="
-              !store.selectedElementId || isLocked || !store.isTemplateEditable
-            "
+            :disabled="alignControlsDisabled"
             class="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded disabled:opacity-30 disabled:cursor-not-allowed"
             :title="t('editor.alignMiddle')"
           >
@@ -1941,9 +1940,7 @@ onUnmounted(() => {
           </button>
           <button
             @click="handleAlignmentClick('bottom')"
-            :disabled="
-              !store.selectedElementId || isLocked || !store.isTemplateEditable
-            "
+            :disabled="alignControlsDisabled"
             class="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded disabled:opacity-30 disabled:cursor-not-allowed"
             :title="t('editor.alignBottom')"
           >
@@ -2150,10 +2147,8 @@ onUnmounted(() => {
             <Lock v-else class="w-4 h-4" />
           </button>
           <button
-            @click="store.removeSelectedElements()"
-            :disabled="
-              !store.selectedElementId || isLocked || !store.isTemplateEditable
-            "
+            @click="handleDeleteSelection()"
+            :disabled="alignControlsDisabled"
             class="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded disabled:opacity-30 disabled:cursor-not-allowed"
             :title="t('common.delete') + ' (' + formatShortcut(['Del']) + ')'"
           >

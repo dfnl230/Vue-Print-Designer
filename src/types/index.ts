@@ -15,6 +15,42 @@ export interface BrandingSettings {
   showLogo: boolean;
 }
 
+export type MultiLabelDirection = "row" | "column";
+export type MultiLabelBorderStyle = "none" | "solid" | "dashed" | "dotted";
+
+export interface MultiLabelSettings {
+  /** Whether multi-label batch layout is enabled. */
+  enabled: boolean;
+  /** Global variable token (e.g. "@labels") that holds the data array. */
+  dataVariable: string;
+  /** Number of label rows per page. */
+  rows: number;
+  /** Number of label columns per page. */
+  cols: number;
+  /** Single label width in px. */
+  labelWidth: number;
+  /** Single label height in px. */
+  labelHeight: number;
+  /** Horizontal gap between labels in px. */
+  gapX: number;
+  /** Vertical gap between labels in px. */
+  gapY: number;
+  /** Grid origin offset from the page left in px (also label #1 x). */
+  marginLeft: number;
+  /** Grid origin offset from the page top in px (also label #1 y). */
+  marginTop: number;
+  /** Fill direction when mapping the data array onto the grid. */
+  direction: MultiLabelDirection;
+  /** Per-label background color. */
+  backgroundColor: string;
+  /** Per-label border style. */
+  borderStyle: MultiLabelBorderStyle;
+  /** Per-label border width in px. */
+  borderWidth: number;
+  /** Per-label border color. */
+  borderColor: string;
+}
+
 export interface DesignerFontOption {
   label: string;
   value: string;
@@ -39,6 +75,7 @@ export enum ElementType {
   LINE = "line",
   RECT = "rect",
   CIRCLE = "circle",
+  MULTI_LABEL = "multiLabel",
 }
 
 export interface ElementStyle {
@@ -153,6 +190,14 @@ export interface PrintElement {
   frameBorderStyle?: "solid" | "dashed" | "dotted";
   frameBorderWidth?: number;
   frameBorderColor?: string;
+  // Multi-label layout (type === MULTI_LABEL). x/y = grid origin, width/height
+  // = single label cell size; appearance reuses style.backgroundColor/border*.
+  rows?: number;
+  cols?: number;
+  gapX?: number;
+  gapY?: number;
+  direction?: MultiLabelDirection;
+  dataVariable?: string; // bound array variable, e.g. "@labels"
 }
 
 export interface Page {
@@ -433,6 +478,8 @@ export interface PropertyField {
   options?: PropertyFieldOption[];
   defaultValue?: any;
   language?: string; // for code editor
+  /** Render this field at half width so two fields share one row. */
+  half?: boolean;
 }
 
 export interface PropertySection {

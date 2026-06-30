@@ -477,6 +477,29 @@ export const guideActions = {
           this.setHighlightedAlignedElements(
             snapped.highlightedAlignedElementIds || [],
           );
+          // A multi-label container drags its in-region label content with it,
+          // so the designed first-label template stays aligned to cell #1.
+          if (el.type === ElementType.MULTI_LABEL) {
+            const dx = snapped.x - el.x;
+            const dy = snapped.y - el.y;
+            if (dx !== 0 || dy !== 0) {
+              const rx = el.x;
+              const ry = el.y;
+              const rw = el.width || 1;
+              const rh = el.height || 1;
+              for (const other of page.elements) {
+                if (other.id === el.id) continue;
+                if (other.type === ElementType.MULTI_LABEL) continue;
+                if (other.locked) continue;
+                const cx = (other.x || 0) + (other.width || 0) / 2;
+                const cy = (other.y || 0) + (other.height || 0) / 2;
+                if (cx >= rx && cx <= rx + rw && cy >= ry && cy <= ry + rh) {
+                  other.x = (other.x || 0) + dx;
+                  other.y = (other.y || 0) + dy;
+                }
+              }
+            }
+          }
           this.updateElement(
             id,
             { x: snapped.x, y: snapped.y },
@@ -551,14 +574,46 @@ export const guideActions = {
       const canvasH = this.canvasSize.height;
       const marginX = this.pageSpacingX || 0;
       const marginY = this.pageSpacingY || 0;
-      const contentX = marginX;
-      const contentW = Math.max(0, canvasW - marginX * 2);
+      let contentX = marginX;
+      let contentW = Math.max(0, canvasW - marginX * 2);
       // Body area: excludes header/footer ranges when they are enabled
-      const bodyY = this.showHeaderLine ? marginY + this.headerHeight : marginY;
+      let bodyY = this.showHeaderLine ? marginY + this.headerHeight : marginY;
       const bodyBottom = this.showFooterLine
         ? canvasH - (this.footerHeight + marginY)
         : canvasH - marginY;
-      const bodyH = Math.max(0, bodyBottom - bodyY);
+      let bodyH = Math.max(0, bodyBottom - bodyY);
+
+      // Multi-label: when every selected element lives inside the label
+      // template region, center/align operations are computed relative to that
+      // single label rather than the whole page content area.
+      const mlElement = this.pages[0]?.elements.find(
+        (e) => e.type === ElementType.MULTI_LABEL,
+      );
+      if (mlElement) {
+        const region = {
+          x: mlElement.x,
+          y: mlElement.y,
+          width: Math.max(1, mlElement.width || 1),
+          height: Math.max(1, mlElement.height || 1),
+        };
+        const inRegion = (el: PrintElement) => {
+          if (el.type === ElementType.MULTI_LABEL) return false;
+          const cx = el.x + el.width / 2;
+          const cy = el.y + el.height / 2;
+          return (
+            cx >= region.x &&
+            cx <= region.x + region.width &&
+            cy >= region.y &&
+            cy <= region.y + region.height
+          );
+        };
+        if (normalElements.length > 0 && normalElements.every(inRegion)) {
+          contentX = region.x;
+          contentW = region.width;
+          bodyY = region.y;
+          bodyH = region.height;
+        }
+      }
       const isVerticalAlignment =
         type === "top" || type === "middle" || type === "bottom";
       const headerBoundary = marginY + this.headerHeight;
@@ -669,25 +724,66 @@ export const guideActions = {
         const el = normalElements[0];
         const verticalArea = getVerticalAlignmentArea(el) || getBodyVerticalArea();
 
+        // The multi-label container aligns by its whole grid footprint (every
+        // label cell incl. the ghost previews), so centering centers the
+        // entire layout on the page rather than just the first cell.
+        const isML = el.type === ElementType.MULTI_LABEL;
+        const cols = isML ? Math.max(1, Math.round(el.cols || 1)) : 1;
+        const rows = isML ? Math.max(1, Math.round(el.rows || 1)) : 1;
+        const gapX = isML ? Math.max(0, el.gapX || 0) : 0;
+        const gapY = isML ? Math.max(0, el.gapY || 0) : 0;
+        const effW = isML ? cols * el.width + (cols - 1) * gapX : el.width;
+        const effH = isML ? rows * el.height + (rows - 1) * gapY : el.height;
+        const beforeX = el.x;
+        const beforeY = el.y;
+
         switch (type) {
           case "left":
             el.x = contentX;
             break;
           case "center":
-            el.x = contentX + (contentW - el.width) / 2;
+            el.x = contentX + (contentW - effW) / 2;
             break;
           case "right":
-            el.x = contentX + contentW - el.width;
+            el.x = contentX + contentW - effW;
             break;
           case "top":
             el.y = verticalArea.y;
             break;
           case "middle":
-            el.y = verticalArea.y + (verticalArea.height - el.height) / 2;
+            el.y = verticalArea.y + (verticalArea.height - effH) / 2;
             break;
           case "bottom":
-            el.y = verticalArea.y + verticalArea.height - el.height;
+            el.y = verticalArea.y + verticalArea.height - effH;
             break;
+        }
+
+        // Drag the label content (first cell) along with the container.
+        if (isML) {
+          const dx = el.x - beforeX;
+          const dy = el.y - beforeY;
+          if (dx !== 0 || dy !== 0) {
+            const rx = beforeX;
+            const ry = beforeY;
+            const rw = el.width || 1;
+            const rh = el.height || 1;
+            const page = this.pages.find((p) =>
+              p.elements.some((e) => e.id === el.id),
+            );
+            if (page) {
+              for (const other of page.elements) {
+                if (other.id === el.id) continue;
+                if (other.type === ElementType.MULTI_LABEL) continue;
+                if (other.locked) continue;
+                const cx = (other.x || 0) + (other.width || 0) / 2;
+                const cy = (other.y || 0) + (other.height || 0) / 2;
+                if (cx >= rx && cx <= rx + rw && cy >= ry && cy <= ry + rh) {
+                  other.x = (other.x || 0) + dx;
+                  other.y = (other.y || 0) + dy;
+                }
+              }
+            }
+          }
         }
       }
 
